@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f1720">
+  <title>Fred</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Fred</h1>
+    <div id="today" class="today"></div>
+    <div class="hright">
+      <div id="nextup" class="nextup">No upcoming events</div>
+      <button id="btn-settings" class="ghost" aria-label="Settings">Settings</button>
+    </div>
+  </header>
+
+  <div id="banners"></div>
+
+  <main class="grid">
+    <section class="card" id="card-clock">
+      <h2>Time</h2>
+      <div id="clocks"></div>
+    </section>
+
+    <section class="card" id="card-weather">
+      <h2>Weather <span id="weather-place" class="muted"></span></h2>
+      <div id="weather">Loading...</div>
+    </section>
+
+    <section class="card" id="card-tickers">
+      <h2>Tickers <button id="btn-refresh" class="ghost small">Refresh</button></h2>
+      <div id="tickers">Loading...</div>
+      <p class="muted small" id="tickers-status"></p>
+    </section>
+
+    <section class="card" id="card-timer">
+      <h2>Timer</h2>
+      <div id="timer-display" class="big">00:00</div>
+      <div class="row">
+        <input id="timer-min" type="number" min="1" max="1440" value="25" aria-label="Minutes">
+        <span class="muted">min</span>
+        <button id="timer-start">Start</button>
+        <button id="timer-reset" class="ghost">Reset</button>
+      </div>
+      <div class="row presets">
+        <button class="ghost small" data-min="5">5</button>
+        <button class="ghost small" data-min="10">10</button>
+        <button class="ghost small" data-min="25">25</button>
+        <button class="ghost small" data-min="45">45</button>
+      </div>
+    </section>
+
+    <section class="card" id="card-events">
+      <h2>Countdowns</h2>
+      <ul id="events" class="list"></ul>
+      <form id="event-form" class="row wrap">
+        <input id="event-label" type="text" placeholder="Label" required maxlength="40">
+        <input id="event-at" type="datetime-local" required>
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section class="card" id="card-tasks">
+      <h2>Tasks &amp; reminders</h2>
+      <ul id="tasks" class="list"></ul>
+      <form id="task-form" class="row wrap">
+        <input id="task-text" type="text" placeholder="remind me to pay rent tomorrow urgent" required maxlength="120">
+        <input id="task-due" type="datetime-local" aria-label="Due (optional)">
+        <label class="check"><input id="task-urgent" type="checkbox"> urgent</label>
+        <button type="submit">Add</button>
+      </form>
+      <p class="muted small">Understands: today, tomorrow, weekdays, "in 2 hours", "at 17:30", "urgent" (German too). Reminders ring only while Fred is open.</p>
+    </section>
+
+    <section class="card" id="card-shop">
+      <h2>Shopping list <button id="shop-clear" class="ghost small" type="button">Clear checked</button></h2>
+      <ul id="shop" class="list"></ul>
+      <form id="shop-form" class="row">
+        <input id="shop-text" type="text" placeholder="Add item" required maxlength="60">
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section class="card" id="card-calc">
+      <h2>Calculator</h2>
+      <input id="calc-expr" type="text" inputmode="none" autocomplete="off" placeholder="200+10%" aria-label="Expression">
+      <div id="calc-result" class="big">0</div>
+      <div id="calc-keys" class="keys"></div>
+    </section>
+
+    <section class="card" id="card-fx">
+      <h2>Currency <span id="fx-date" class="muted"></span></h2>
+      <div class="row wrap">
+        <input id="fx-amount" type="number" step="any" value="100" aria-label="Amount">
+        <select id="fx-from" aria-label="From"></select>
+        <button id="fx-swap" class="ghost" aria-label="Swap">&#8646;</button>
+        <select id="fx-to" aria-label="To"></select>
+      </div>
+      <div id="fx-result" class="big">-</div>
+      <p class="muted small" id="fx-status"></p>
+    </section>
+  </main>
+
+  <dialog id="dlg-settings">
+    <form method="dialog" id="settings-form">
+      <h2>Settings</h2>
+
+      <label>Weather location
+        <span class="row">
+          <input id="set-place" type="text" placeholder="City name">
+          <button type="button" id="set-place-btn" class="ghost">Find</button>
+        </span>
+        <span class="muted small" id="set-place-status"></span>
+      </label>
+
+      <label>Tickers (comma separated)
+        <input id="set-tickers" type="text" placeholder="c:BTC, c:ETH, AAPL">
+        <span class="muted small">Crypto: prefix c: (Binance, USDT). Stocks: plain symbol, needs the Finnhub key below.</span>
+      </label>
+
+      <label>Finnhub API key (stocks)
+        <input id="set-key" type="password" autocomplete="off" placeholder="Stored only in this browser">
+        <span class="muted small">Free key at finnhub.io. Never put it in the code or the repo.</span>
+      </label>
+
+      <label>Clocks (one per line: Label=Time zone)
+        <textarea id="set-zones" rows="3"></textarea>
+      </label>
+
+      <div class="row end">
+        <button type="button" id="set-cancel" class="ghost">Cancel</button>
+        <button id="set-save" value="ok">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
