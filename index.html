@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <header>
@@ -107,14 +107,14 @@
     </section>
 
     <section class="card" id="card-calc">
-      <h2>Calculator</h2>
-      <input id="calc-expr" type="text" autocomplete="off" placeholder="200+10%" aria-label="Expression">
+      <h2>Calculator &amp; currency</h2>
+      <div class="row">
+        <input id="calc-expr" type="text" autocomplete="off" placeholder="200+10%" aria-label="Expression">
+        <button id="calc-reset" class="ghost" type="button">Reset</button>
+      </div>
       <div id="calc-result" class="big">0</div>
-      <p class="muted small">Type a calculation. The result updates while you type. Enter keeps the result. Works with + - * / ( ) %</p>
-    </section>
-
-    <section class="card" id="card-fx">
-      <h2>Currency <span id="fx-date" class="muted"></span></h2>
+      <p class="muted small">Live result. Enter keeps it, Esc resets.</p>
+      <h3 class="sub">Currency <span id="fx-date" class="muted"></span></h3>
       <div class="row wrap">
         <input id="fx-amount" type="number" step="any" value="100" aria-label="Amount">
         <select id="fx-from" aria-label="From"></select>
@@ -194,7 +194,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=14"></script>
-  <script src="gcal.js?v=14"></script>
+  <script src="app.js?v=15"></script>
+  <script src="gcal.js?v=15"></script>
 </body>
 </html>

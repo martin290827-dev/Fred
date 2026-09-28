@@ -905,9 +905,19 @@ function calcEnter() {
   calcUpdate();
 }
 
+function calcReset() {
+  $('calc-expr').value = '';
+  calcUpdate();
+  $('calc-expr').focus();
+}
+
 function initCalc() {
   $('calc-expr').addEventListener('input', calcUpdate);
-  $('calc-expr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); calcEnter(); } });
+  $('calc-expr').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); calcEnter(); }
+    if (e.key === 'Escape') calcReset();
+  });
+  $('calc-reset').addEventListener('click', calcReset);
 }
 
 /* ---------- Settings ---------- */
