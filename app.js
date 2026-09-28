@@ -39,7 +39,6 @@ const DEFAULT_ZONES = [{ label: 'UTC', tz: 'UTC' }];
 let place = store.get('place', null);
 let tickers = store.get('tickers', []);
 let zones = store.get('zones', DEFAULT_ZONES);
-let events = store.get('events', []).map((e) => Object.assign({}, e, { at: String(e.at).slice(0, 10) })); // dates only
 let finnhubKey = store.get('finnhubKey', '');
 let twelveKey = store.get('twelveKey', '');
 let place2 = store.get('place2', null);
@@ -458,63 +457,23 @@ function fmtDaysLeft(dateStr) {
   return d < 0 ? 'passed' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days';
 }
 
-let editingEventId = null;
-
-// Events = Fred's own events plus all-day events from Google Calendar (read only).
+// Events come from Google Calendar only (all-day and multi-day items). Nothing is typed in here.
 function eventList() {
-  return events.concat(typeof gGoogleEvents === 'function' ? gGoogleEvents() : []);
-}
-
-// The end date field stays hidden until asked for.
-function showEventEnd(show) {
-  $('event-to-wrap').hidden = !show;
-  $('event-to-btn').hidden = show;
-  $('event-at-lbl').textContent = show ? 'From' : 'Date';
-}
-
-function resetEventForm() {
-  editingEventId = null;
-  $('event-form').reset();
-  showEventEnd(false);
-  $('event-save').textContent = 'Add';
-  $('event-cancel').hidden = true;
-}
-
-function editEvent(ev) {
-  editingEventId = ev.id;
-  $('event-label').value = ev.label;
-  $('event-at').value = ev.at;
-  $('event-to').value = ev.to || '';
-  showEventEnd(!!ev.to);
-  $('event-save').textContent = 'Save';
-  $('event-cancel').hidden = false;
-  $('event-label').focus();
+  return typeof gGoogleEvents === 'function' ? gGoogleEvents() : [];
 }
 
 function renderEvents() {
   const ul = $('events');
   ul.replaceChildren();
   const sorted = eventList().filter((e) => dayDiff(e.to || e.at) >= -30).sort((a, b) => a.at.localeCompare(b.at));
-  if (!sorted.length) ul.append(el('li', { class: 'muted' }, 'No events.'));
+  if (!sorted.length) {
+    const on = typeof gHasToken === 'function' && gHasToken();
+    ul.append(el('li', { class: 'muted' }, on ? 'No events.' : 'Connect Google Calendar to see your events.'));
+  }
   for (const e of sorted) {
-    if (e.google) {
-      ul.append(el('li', null,
-        el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e) + ' \u00b7 Google')),
-        el('span', { 'data-id': e.id })));
-      continue;
-    }
     ul.append(el('li', null,
-      el('span', { class: 'grow' }, e.label, el('br'),
-        el('span', { class: 'muted small' }, fmtEventDates(e) + (e.gid ? ' \u00b7 in Google Calendar' : ''))),
-      el('span', { 'data-id': e.id }),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => editEvent(e) }, 'Edit'),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => {
-        events = events.filter((x) => x.id !== e.id);
-        store.set('events', events);
-        if (editingEventId === e.id) resetEventForm();
-        gcalDeleteEvent(e);
-        renderEvents();
-      } }, 'Delete')));
+      el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e))),
+      el('span', { 'data-id': e.id })));
   }
   tickEvents();
 }
@@ -527,7 +486,7 @@ function tickEvents() {
   updateNextUp();
 }
 
-// Header pill: the nearest upcoming item from Fred's own events and from Google Calendar (when connected).
+// Header pill: the nearest upcoming item from Google Calendar (when connected).
 function updateNextUp() {
   const cands = [];
   for (const e of eventList()) {
@@ -796,9 +755,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'events', 'shop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
-const ARRAY_KEYS = ['tickers', 'zones', 'events', 'shop'];
+const ARRAY_KEYS = ['tickers', 'zones', 'shop'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -956,23 +915,6 @@ function init() {
   document.querySelectorAll('.presets button').forEach((b) =>
     b.addEventListener('click', () => { $('timer-min').value = b.dataset.min; }));
 
-  $('event-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const label = $('event-label').value.trim();
-    const at = $('event-at').value;
-    const to = $('event-to').value > at ? $('event-to').value : ''; // an end date must be after the start
-    let ev = events.find((x) => x.id === editingEventId);
-    if (ev) { ev.label = label; ev.at = at; }
-    else { ev = { id: uid(), label, at }; events.push(ev); }
-    if (to) ev.to = to; else delete ev.to;
-    store.set('events', events);
-    resetEventForm();
-    renderEvents();
-    gcalMirrorEvent(ev);
-  });
-  $('event-cancel').addEventListener('click', resetEventForm);
-  $('event-to-btn').addEventListener('click', () => { showEventEnd(true); $('event-to').focus(); });
-  $('event-at').addEventListener('change', () => { $('event-to').min = $('event-at').value; });
 
   $('shop-form').addEventListener('submit', (e) => {
     e.preventDefault();

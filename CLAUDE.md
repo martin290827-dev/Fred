@@ -16,7 +16,7 @@ Personal dashboard PWA. Hosted on GitHub Pages (static only, public repo).
 - sw.js: offline cache.
 
 ## Current features
-Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second weather place (click to switch), events (date only, synced to Google Calendar), card order and hiding (Layout button), settings backup as a file (Download / Load), timer, multi time zone clock, weather (Open-Meteo), tickers (Binance for crypto with prefix `c:`, Finnhub for stocks), Google Calendar view ("Tasks & reminders": timed appointments; all-day and multi-day items show under Events), shopping list (edit), calculator (input field only, no keypad), day/night mode (button + device setting), countdowns, EUR/USD/MXN/GBP/CHF/PHP converter.
+Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second weather place (click to switch), events (read from Google Calendar, nothing typed in), card order and hiding (Layout button), settings backup as a file (Download / Load), timer, multi time zone clock, weather (Open-Meteo), tickers (Binance for crypto with prefix `c:`, Finnhub for stocks), Google Calendar view ("Tasks & reminders": timed appointments; all-day and multi-day items show under Events), shopping list (edit), calculator (input field only, no keypad), day/night mode (button + device setting), countdowns, EUR/USD/MXN/GBP/CHF/PHP converter.
 
 ## Ideas for later
 - Strategy signal panel (for example price versus 200-day average)

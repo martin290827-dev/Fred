@@ -100,11 +100,10 @@ function gLastDay(e) {
   return startOfDay(new Date(e.end.getTime() - 1));
 }
 
-// All-day and multi-day events from Google (except the ones already in Fred's own list), shaped like Fred's own events.
+// All-day and multi-day events from Google, shaped for the Events card.
 // The end date is kept for counting down, but only the start date is shown.
 function gGoogleEvents() {
-  const mine = new Set(events.map((e) => e.gid).filter(Boolean));
-  return gAgenda.filter((e) => (e.allDay || e.multi) && !e.recurring && !mine.has(e.id)).map((e) => {
+  return gAgenda.filter((e) => (e.allDay || e.multi) && !e.recurring).map((e) => {
     const last = gLastDay(e);
     const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true };
     if (last > startOfDay(e.start)) ev.to = toDateStr(last);
@@ -156,33 +155,6 @@ function gDisconnect() {
   gStatus('Disconnected.');
   renderCalendar();
   updateNextUp();
-}
-
-/* ---- Fred -> Google: events (all day) ---- */
-const gEvPath = (id) => 'calendars/primary/events/' + encodeURIComponent(id);
-const gIsGone = (e) => e && (e.status === 404 || e.status === 410);
-
-async function gcalMirrorEvent(ev) {
-  if (!gHasToken()) return;
-  const body = { summary: ev.label, description: 'Created by Fred', start: { date: ev.at }, end: { date: toDateStr(addDays(new Date((ev.to || ev.at) + 'T00:00'), 1)) } }; // Google's end date is exclusive
-  try {
-    if (ev.gid) {
-      try { await gApi('PATCH', gEvPath(ev.gid), body); } catch (e) { if (!gIsGone(e)) throw e; ev.gid = null; }
-    }
-    if (!ev.gid) { const r = await gApi('POST', 'calendars/primary/events', body); ev.gid = r.id; }
-    store.set('events', events);
-    renderEvents();
-    gRefresh();
-  } catch (e) { banner('Google Calendar: ' + e.message, true); }
-}
-
-async function gcalDeleteEvent(ev) {
-  if (!ev.gid || !gHasToken()) return;
-  try { await gApi('DELETE', gEvPath(ev.gid)); gRefresh(); } catch (e) { if (!gIsGone(e)) banner('Google Calendar: ' + e.message, true); }
-}
-
-async function gcalPushLocalEvents() {
-  for (const ev of events.filter((x) => !x.gid)) await gcalMirrorEvent(ev);
 }
 
 function setGoogleSettings(clientId) {

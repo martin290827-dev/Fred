@@ -289,11 +289,3 @@ dialog h3 { margin: 18px 0 4px; font-size: 0.85rem; letter-spacing: 0.06em; text
 .mini input { width: auto; }
 
 /* ---- compact event form: label on top, dates side by side, buttons below ---- */
-#event-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin: 6px 0 0; }
-#event-label { grid-column: 1 / -1; width: 100%; }
-#event-form .mini { flex-direction: column; align-items: stretch; gap: 2px; }
-#event-form .mini input { width: 100%; }
-#event-form .mini[hidden], #event-to-btn[hidden] { display: none; }
-#event-to-btn { align-self: end; justify-self: start; }
-#event-save { grid-column: 1; }
-#event-cancel { grid-column: 2; }

@@ -17,5 +17,5 @@ Fred braucht dafür eine eigene "Client-ID". Sie ist kein Geheimnis, wird aber n
 
 Hinweise:
 - Google gibt Zugriff nur für eine Stunde. Danach in der Karte "Calendar" einmal **Connect** klicken.
-- Fred liest Termine der nächsten 30 Tage und schreibt nur Einträge, die du selbst in Fred anlegst (Events, Aufgaben mit Uhrzeit).
+- Fred liest deine Termine und schreibt nichts in den Kalender. "Tasks & reminders" zeigt Termine mit Uhrzeit (30 Tage), "Events" zeigt ganztägige und mehrtägige Termine (ein Jahr).
 - Erinnerungen: Aufgaben mit Uhrzeit werden als Kalendereintrag mit Pop-up-Erinnerung angelegt. Die Erinnerung sendet Google, auch wenn Fred geschlossen ist (Google-Kalender-App am Handy nötig).
