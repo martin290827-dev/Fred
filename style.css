@@ -8,6 +8,44 @@
   --up: #3ddc97;
   --down: #ff6b6b;
   --warn: #ffb84d;
+  --field: #0f1a24;
+  --bar: #14202c;
+  --on-accent: #06202f;
+  color-scheme: dark;
+}
+
+/* Day mode: chosen with the button, or automatically from the device setting */
+:root[data-theme="light"] {
+  --bg: #f3f6f9;
+  --card: #ffffff;
+  --line: #d3dde6;
+  --text: #14212d;
+  --muted: #566b7d;
+  --accent: #0b7fc7;
+  --up: #0d8a55;
+  --down: #d03a3a;
+  --warn: #ffc25c;
+  --field: #f3f6f9;
+  --bar: #e9eff5;
+  --on-accent: #ffffff;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f6f9;
+    --card: #ffffff;
+    --line: #d3dde6;
+    --text: #14212d;
+    --muted: #566b7d;
+    --accent: #0b7fc7;
+    --up: #0d8a55;
+    --down: #d03a3a;
+    --warn: #ffc25c;
+    --field: #f3f6f9;
+    --bar: #e9eff5;
+    --on-accent: #ffffff;
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -25,12 +63,40 @@ header {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  /* line the bar up with the card grid (max width 1200px) */
+  padding: 14px max(16px, calc((100vw - 1200px) / 2 + 16px));
   border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--bar), var(--bg));
 }
-header h1 { margin: 0; font-size: 1.3rem; }
-.nextup { color: var(--muted); font-size: 0.9rem; text-align: right; }
-.hright { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+header h1::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.hright { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+.hbtns { display: flex; gap: 8px; }
+.nextup {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 
 .grid {
   display: grid;
@@ -74,7 +140,7 @@ header h1 { margin: 0; font-size: 1.3rem; }
 input, select, textarea, button {
   font: inherit;
   color: var(--text);
-  background: #0f1a24;
+  background: var(--field);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 7px 10px;
@@ -88,7 +154,7 @@ input[type="text"], input[type="password"], textarea { width: 100%; }
 button {
   cursor: pointer;
   background: var(--accent);
-  color: #06202f;
+  color: var(--on-accent);
   border-color: var(--accent);
   font-weight: 600;
 }
@@ -133,7 +199,7 @@ dialog {
   width: min(520px, calc(100vw - 32px));
   padding: 16px;
 }
-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
 dialog h2 { margin-top: 0; }
 dialog label { display: block; margin: 12px 0; }
 dialog label > span.row { display: flex; }
@@ -152,9 +218,16 @@ dialog label > span.row { display: flex; }
 
 
 .today { font-size: 1.3rem; font-weight: 700; text-align: center; white-space: nowrap; }
+
 @media (max-width: 700px) {
-  header { grid-template-columns: 1fr auto; }
-  .today { white-space: normal; text-align: right; font-size: 1.1rem; }
-  .hright { grid-column: 1 / -1; justify-content: space-between; }
-  .nextup { text-align: left; }
+  header {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "title btn" "date date" "next next";
+    row-gap: 8px;
+  }
+  header h1 { grid-area: title; }
+  .hright { display: contents; }
+  .hbtns { grid-area: btn; }
+  .today { grid-area: date; white-space: normal; }
+  .nextup { grid-area: next; text-align: center; }
 }

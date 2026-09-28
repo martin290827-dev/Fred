@@ -303,7 +303,7 @@ function tickEvents() {
 }
 
 /* ---------- 9) Currency converter (Frankfurter, ECB rates, no key) ---------- */
-const CURRENCIES = ['EUR', 'USD', 'MXN', 'GBP', 'CHF'];
+const CURRENCIES = ['EUR', 'USD', 'MXN', 'GBP', 'CHF', 'PHP'];
 let fx = store.get('fx', null); // { date, rates }
 
 async function loadFx() {
@@ -646,6 +646,29 @@ function saveSettings() {
   loadQuotes();
 }
 
+/* ---------- Day / night mode ---------- */
+// Saved choice wins; without a choice the device setting decides.
+function effectiveTheme() {
+  const saved = store.get('theme', null);
+  if (saved) return saved;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyTheme() {
+  const saved = store.get('theme', null);
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  else document.documentElement.removeAttribute('data-theme');
+  const now = effectiveTheme();
+  $('btn-theme').textContent = now === 'dark' ? 'Day' : 'Night'; // the mode you switch to
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', now === 'dark' ? '#0f1720' : '#f3f6f9');
+}
+
+function toggleTheme() {
+  store.set('theme', effectiveTheme() === 'dark' ? 'light' : 'dark');
+  applyTheme();
+}
+
 /* ---------- Wiring ---------- */
 function init() {
   renderClocks();
@@ -679,6 +702,9 @@ function init() {
   });
   $('shop-clear').addEventListener('click', () => { shop = shop.filter((x) => !x.done); store.set('shop', shop); renderShop(); });
 
+  $('btn-theme').addEventListener('click', toggleTheme);
+  applyTheme();
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
   $('btn-refresh').addEventListener('click', loadQuotes);
   $('btn-settings').addEventListener('click', openSettings);
   $('set-cancel').addEventListener('click', () => $('dlg-settings').close());

@@ -7,7 +7,11 @@
   <title>Fred</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
+  <script>
+    /* set the saved day/night choice before the first paint, so there is no flash */
+    try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <header>
@@ -15,7 +19,10 @@
     <div id="today" class="today"></div>
     <div class="hright">
       <div id="nextup" class="nextup">No upcoming events</div>
-      <button id="btn-settings" class="ghost" aria-label="Settings">Settings</button>
+      <div class="hbtns">
+        <button id="btn-theme" class="ghost" type="button" aria-label="Switch day or night mode">Day</button>
+        <button id="btn-settings" class="ghost" aria-label="Settings">Settings</button>
+      </div>
     </div>
   </header>
 
@@ -139,6 +146,6 @@
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

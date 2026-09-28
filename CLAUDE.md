@@ -9,10 +9,10 @@ Personal dashboard PWA. Hosted on GitHub Pages (static only, public repo).
 - All internet calls happen from the browser. Only use APIs that allow CORS.
 - Keep the code simple and readable. Small functions, short comments.
 - One feature per session. Do not refactor unrelated code.
-- After changing app files, bump `CACHE` in `sw.js`.
+- After changing app files, bump `CACHE` in `sw.js` AND the `?v=` number on style.css and app.js in index.html (GitHub Pages caches files for 10 minutes).
 
 ## Current features
-Timer, multi time zone clock, weather (Open-Meteo), tickers (Binance for crypto with prefix `c:`, Finnhub for stocks), tasks and reminders (smart text input, only ring while open), shopping list, calculator, countdowns, EUR/USD/MXN converter.
+Timer, multi time zone clock, weather (Open-Meteo), tickers (Binance for crypto with prefix `c:`, Finnhub for stocks), tasks and reminders (smart text input, only ring while open), shopping list, calculator, day/night mode (button + device setting), countdowns, EUR/USD/MXN/GBP/CHF/PHP converter.
 
 ## Ideas for later
 - Real calendar for "next up" (Google Calendar via OAuth)
