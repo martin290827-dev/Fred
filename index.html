@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <header>
@@ -70,8 +70,9 @@
       <ul id="events" class="list"></ul>
       <form id="event-form" class="row wrap">
         <input id="event-label" type="text" placeholder="Label" required maxlength="40">
-        <label class="mini">From <input id="event-at" type="date" required></label>
-        <label class="mini">Until (optional) <input id="event-to" type="date"></label>
+        <label class="mini"><span id="event-at-lbl">Date</span> <input id="event-at" type="date" required></label>
+        <label class="mini" id="event-to-wrap" hidden>Until <input id="event-to" type="date"></label>
+        <button type="button" id="event-to-btn" class="ghost small">+ End date</button>
         <button type="submit" id="event-save">Add</button>
         <button type="button" id="event-cancel" class="ghost" hidden>Cancel</button>
       </form>
@@ -90,7 +91,8 @@
         <input id="task-text" type="text" placeholder="remind me to pay rent tomorrow urgent" required maxlength="120">
         <input id="task-due" type="datetime-local" aria-label="Due (optional)">
         <label class="check"><input id="task-urgent" type="checkbox"> urgent</label>
-        <button type="submit">Add</button>
+        <button type="submit" id="task-save">Add</button>
+        <button type="button" id="task-cancel" class="ghost" hidden>Cancel</button>
       </form>
       <p class="muted small">Understands: today, tomorrow, weekdays, "in 2 hours", "at 17:30", "urgent" (German too). Reminders ring only while Fred is open.</p>
     </section>
@@ -192,7 +194,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=13"></script>
-  <script src="gcal.js?v=13"></script>
+  <script src="app.js?v=14"></script>
+  <script src="gcal.js?v=14"></script>
 </body>
 </html>

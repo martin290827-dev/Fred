@@ -157,12 +157,16 @@ function renderWeatherMain(box, w) {
           (w.daily.precipitation_probability_max[i] ?? '?') + '%'))));
 }
 
-// Small line for the second place. Click it to make it the main place.
+// Second place as a quiet block below the main one. Click it to make it the main place.
 function renderWeatherAlt(box, p, w) {
-  box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: 'Click to show this place as the main one', onclick: swapPlaces },
-    el('span', { class: 'wx-alt-name' }, '⇄ ' + p.name),
-    el('span', null, Math.round(w.current.temperature_2m) + '°C, ' + (WMO[w.current.weather_code] || '?') + ', ' +
-      Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°')));
+  const desc = (WMO[w.current.weather_code] || '?') + ' · ' +
+    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°';
+  box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: p.name + ' – click to show as the main place', onclick: swapPlaces },
+    el('span', { class: 'wx-alt-text' },
+      el('span', { class: 'wx-alt-name' }, p.name.split(',')[0]),
+      el('span', { class: 'wx-alt-desc' }, desc)),
+    el('span', { class: 'wx-alt-temp' }, Math.round(w.current.temperature_2m) + '°C'),
+    el('span', { class: 'wx-alt-swap', 'aria-hidden': 'true' }, '⇄')));
 }
 
 function swapPlaces() {
@@ -251,10 +255,11 @@ async function loadQuotes() {
 
 /* ---------- Sparklines: 30 daily closes, cached for 6 hours ---------- */
 const SPARK_TTL = 6 * 3600 * 1000;
-const SPARK_RETRY = 30 * 60 * 1000;
+const SPARK_RETRY = 10 * 60 * 1000;
 let sparkCache = store.get('spark', {});
-const sparkFail = {};
+const sparkFail = {}; // sym -> { msg, retryAt }
 let sparkBusy = false;
+let sparkAgain = false;
 
 async function fetchSeries(sym) {
   if (sym.startsWith('c:')) {
@@ -318,27 +323,54 @@ function sparkSVG(values, name) {
   return svg;
 }
 
+// Draw one slot: a chart, or a quiet dash whose tooltip says why there is no chart.
+function paintSlot(slot, sym, series, why) {
+  if (series && series.length > 1) slot.replaceChildren(sparkSVG(series, tickerLabel(sym)));
+  else if (why) slot.replaceChildren(el('span', { class: 'muted', title: why }, '–'));
+}
+
+function slotsFor(sym) {
+  return [...document.querySelectorAll('#tickers .sparkslot')].filter((s) => s.getAttribute('data-sym') === sym);
+}
+
 async function paintSparks() {
-  if (sparkBusy) return;
+  if (sparkBusy) { sparkAgain = true; return; } // the slots were rebuilt meanwhile: run once more
   sparkBusy = true;
   try {
-    let budget = 6; // at most 6 new downloads per pass, the rest follows on the next refresh
-    for (const slot of document.querySelectorAll('#tickers .sparkslot')) {
-      const sym = slot.getAttribute('data-sym');
-      let c = sparkCache[sym];
-      const fresh = c && Date.now() - c.t < SPARK_TTL;
-      if (!fresh && budget > 0 && !(sparkFail[sym] && Date.now() - sparkFail[sym] < SPARK_RETRY)) {
-        budget--;
-        try {
-          const v = await fetchSeries(sym);
-          c = { t: Date.now(), v };
-          sparkCache[sym] = c;
-          store.set('spark', sparkCache);
-        } catch { sparkFail[sym] = Date.now(); }
-      }
-      if (c && c.v.length > 1 && slot.isConnected) slot.replaceChildren(sparkSVG(c.v, tickerLabel(sym)));
+    const syms = [...new Set([...document.querySelectorAll('#tickers .sparkslot')].map((s) => s.getAttribute('data-sym')))];
+    // 1) Instantly draw everything we already know (cache, or the reason it is missing).
+    for (const sym of syms) {
+      const c = sparkCache[sym];
+      const why = sparkFail[sym] && sparkFail[sym].msg;
+      slotsFor(sym).forEach((s) => paintSlot(s, sym, c && c.v, why));
     }
-  } finally { sparkBusy = false; }
+    // 2) Download what is missing or old. Stocks: max 5 per pass (Twelve Data free plan: 8 per minute).
+    let stockBudget = 5;
+    let rateLimited = false;
+    for (const sym of syms) {
+      const c = sparkCache[sym];
+      const f = sparkFail[sym];
+      if (c && Date.now() - c.t < SPARK_TTL) continue;
+      if (f && Date.now() < f.retryAt) continue;
+      if (!sym.startsWith('c:')) { if (stockBudget <= 0) { rateLimited = true; continue; } stockBudget--; }
+      try {
+        const v = await fetchSeries(sym);
+        sparkCache[sym] = { t: Date.now(), v };
+        delete sparkFail[sym];
+        store.set('spark', sparkCache);
+        slotsFor(sym).forEach((s) => paintSlot(s, sym, v, ''));
+      } catch (e) {
+        const limit = /limit|credits|429|too many/i.test(e.message);
+        if (limit) rateLimited = true;
+        sparkFail[sym] = { msg: e.message, retryAt: Date.now() + (limit ? 65 * 1000 : SPARK_RETRY) };
+        slotsFor(sym).forEach((s) => paintSlot(s, sym, c && c.v, e.message));
+      }
+    }
+    if (rateLimited) setTimeout(paintSparks, 66 * 1000); // try the rest after the per-minute limit resets
+  } finally {
+    sparkBusy = false;
+    if (sparkAgain) { sparkAgain = false; paintSparks(); }
+  }
 }
 
 /* ---------- 1) Timer (stores the end time, so it stays correct in background tabs) ---------- */
@@ -429,9 +461,22 @@ function fmtDaysLeft(dateStr) {
 
 let editingEventId = null;
 
+// Events = Fred's own events plus all-day events from Google Calendar (read only).
+function eventList() {
+  return events.concat(typeof gGoogleEvents === 'function' ? gGoogleEvents() : []);
+}
+
+// The end date field stays hidden until asked for.
+function showEventEnd(show) {
+  $('event-to-wrap').hidden = !show;
+  $('event-to-btn').hidden = show;
+  $('event-at-lbl').textContent = show ? 'From' : 'Date';
+}
+
 function resetEventForm() {
   editingEventId = null;
   $('event-form').reset();
+  showEventEnd(false);
   $('event-save').textContent = 'Add';
   $('event-cancel').hidden = true;
 }
@@ -441,6 +486,7 @@ function editEvent(ev) {
   $('event-label').value = ev.label;
   $('event-at').value = ev.at;
   $('event-to').value = ev.to || '';
+  showEventEnd(!!ev.to);
   $('event-save').textContent = 'Save';
   $('event-cancel').hidden = false;
   $('event-label').focus();
@@ -449,9 +495,15 @@ function editEvent(ev) {
 function renderEvents() {
   const ul = $('events');
   ul.replaceChildren();
-  const sorted = [...events].sort((a, b) => a.at.localeCompare(b.at));
+  const sorted = eventList().filter((e) => dayDiff(e.to || e.at) >= -30).sort((a, b) => a.at.localeCompare(b.at));
   if (!sorted.length) ul.append(el('li', { class: 'muted' }, 'No events.'));
   for (const e of sorted) {
+    if (e.google) {
+      ul.append(el('li', null,
+        el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e) + ' \u00b7 Google')),
+        el('span', { 'data-id': e.id })));
+      continue;
+    }
     ul.append(el('li', null,
       el('span', { class: 'grow' }, e.label, el('br'),
         el('span', { class: 'muted small' }, fmtEventDates(e) + (e.gid ? ' \u00b7 in Google Calendar' : ''))),
@@ -470,7 +522,7 @@ function renderEvents() {
 
 function tickEvents() {
   document.querySelectorAll('#events [data-id]').forEach((n) => {
-    const e = events.find((x) => x.id === n.getAttribute('data-id'));
+    const e = eventList().find((x) => x.id === n.getAttribute('data-id'));
     n.textContent = e ? fmtEventWhen(e) : '';
   });
   updateNextUp();
@@ -479,7 +531,7 @@ function tickEvents() {
 // Header pill: the nearest upcoming item from Fred's own events and from Google Calendar (when connected).
 function updateNextUp() {
   const cands = [];
-  for (const e of events) {
+  for (const e of eventList()) {
     if (dayDiff(e.to || e.at) < 0) continue; // over
     const running = e.to && dayDiff(e.at) <= 0; // a multi-day event that has started
     cands.push({
@@ -643,6 +695,26 @@ function isOverdue(t) {
 
 function saveTasks() { store.set('tasks', tasks); }
 
+let editingTaskId = null;
+
+function resetTaskForm() {
+  editingTaskId = null;
+  $('task-form').reset();
+  $('task-save').textContent = 'Add';
+  $('task-cancel').hidden = true;
+}
+
+// Load a task into the form. Saving replaces it (and its calendar reminder).
+function editTask(t) {
+  editingTaskId = t.id;
+  $('task-text').value = t.text;
+  $('task-due').value = t.due || '';
+  $('task-urgent').checked = !!t.urgent;
+  $('task-save').textContent = 'Save';
+  $('task-cancel').hidden = false;
+  $('task-text').focus();
+}
+
 function renderTasks() {
   const ul = $('tasks');
   ul.replaceChildren();
@@ -662,8 +734,10 @@ function renderTasks() {
       el('span', { class: 'grow' },
         t.urgent ? el('span', { class: 'badge' }, 'URGENT') : '',
         el('span', { class: 't' }, t.text), el('br'), meta),
+      el('button', { type: 'button', class: 'ghost small', onclick: () => editTask(t) }, 'Edit'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => {
         gcalSyncTask(Object.assign({}, t, { done: true }));
+        if (editingTaskId === t.id) resetTaskForm();
         tasks = tasks.filter((x) => x.id !== t.id); saveTasks(); renderTasks();
       } }, 'Delete')));
   }
@@ -685,18 +759,27 @@ function checkReminders() {
 function addTask(e) {
   e.preventDefault();
   const p = parseTask($('task-text').value);
+  const old = tasks.find((x) => x.id === editingTaskId);
   let due = p.due;
   let allDay = p.allDay;
   const manual = $('task-due').value;
-  if (manual) { due = new Date(manual); allDay = false; }
-  const t = {
-    id: uid(), text: p.text, urgent: p.urgent || $('task-urgent').checked, done: false,
-    due: due ? toLocalISO(due) : null, allDay, notified: false,
+  const unchanged = old && manual === old.due; // editing: the date field still holds the old value
+  if (manual && !(unchanged && p.due)) { due = new Date(manual); allDay = unchanged && old.allDay; }
+  const fields = {
+    text: p.text, urgent: p.urgent || $('task-urgent').checked,
+    due: due ? toLocalISO(due) : null, allDay: !!allDay, notified: false,
   };
-  if (t.due && new Date(t.due) <= new Date()) t.notified = true; // already past when created: no instant alarm
-  tasks.push(t);
+  let t;
+  if (old) {
+    gcalSyncTask(Object.assign({}, old, { done: true })); // remove the old calendar reminder
+    t = Object.assign(old, fields, { gid: null });
+  } else {
+    t = Object.assign({ id: uid(), done: false }, fields);
+    tasks.push(t);
+  }
+  if (t.due && new Date(t.due) <= new Date()) t.notified = true; // already past: no instant alarm
   saveTasks();
-  e.target.reset();
+  resetTaskForm();
   askNotificationPermission();
   renderTasks();
   gcalSyncTask(t);
@@ -705,20 +788,46 @@ function addTask(e) {
 /* ---------- 8) Shopping list (manual) ---------- */
 let shop = store.get('shop', []);
 
+let editingShopId = null;
+
 function renderShop() {
   const ul = $('shop');
   ul.replaceChildren();
   if (!shop.length) ul.append(el('li', { class: 'muted' }, 'List is empty.'));
   for (const it of shop) {
+    if (editingShopId === it.id) { ul.append(shopEditRow(it)); continue; }
     const box = el('input', { type: 'checkbox', 'aria-label': 'Got it' });
     box.checked = it.done;
     box.addEventListener('change', () => { it.done = box.checked; store.set('shop', shop); renderShop(); });
     ul.append(el('li', { class: it.done ? 'done' : '' },
       box, el('span', { class: 'grow t' }, it.text),
+      el('button', { type: 'button', class: 'ghost small', onclick: () => { editingShopId = it.id; renderShop(); } }, 'Edit'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => {
         shop = shop.filter((x) => x.id !== it.id); store.set('shop', shop); renderShop();
       } }, 'Delete')));
   }
+}
+
+// One item as a text field: Enter or Save keeps the change, Escape or Cancel drops it.
+function shopEditRow(it) {
+  const input = el('input', { type: 'text', maxlength: '60', 'aria-label': 'Item' });
+  input.value = it.text;
+  const save = () => {
+    const v = input.value.trim();
+    if (v) it.text = v;
+    editingShopId = null;
+    store.set('shop', shop);
+    renderShop();
+  };
+  const cancel = () => { editingShopId = null; renderShop(); };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+    if (e.key === 'Escape') cancel();
+  });
+  requestAnimationFrame(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
+  return el('li', null, el('span', { class: 'grow' }, input),
+    el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
+    el('button', { type: 'button', class: 'ghost small', onclick: cancel }, 'Cancel'));
 }
 
 /* ---------- 10) Calculator (own parser, no eval) ---------- */
@@ -1033,9 +1142,11 @@ function init() {
     gcalMirrorEvent(ev);
   });
   $('event-cancel').addEventListener('click', resetEventForm);
+  $('event-to-btn').addEventListener('click', () => { showEventEnd(true); $('event-to').focus(); });
   $('event-at').addEventListener('change', () => { $('event-to').min = $('event-at').value; });
 
   $('task-form').addEventListener('submit', addTask);
+  $('task-cancel').addEventListener('click', resetTaskForm);
   $('shop-form').addEventListener('submit', (e) => {
     e.preventDefault();
     shop.push({ id: uid(), text: $('shop-text').value.trim(), done: false });

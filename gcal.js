@@ -78,18 +78,30 @@ async function gRefresh() {
       .map((i) => ({
         id: i.id,
         title: i.summary || '(no title)',
+        fred: /Reminder created by Fred/.test(i.description || ''), // task reminder: lives under Tasks, not here
         allDay: !!i.start.date,
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
       .filter((e) => !e.end || e.end > now);
-    gNext = gAgenda.find((e) => e.allDay || e.start >= now) || null;
+    gNext = gAgenda.find((e) => !e.allDay && !e.fred && e.start >= now) || null; // all-day items are listed under Events
     gStatus('Updated ' + now.toLocaleTimeString('en-GB'));
   } catch (e) {
     gStatus(e.message);
   }
   renderCalendar();
-  updateNextUp();
+  renderEvents();
+}
+
+// All-day events from Google (except the ones already in Fred's own list), shaped like Fred's own events.
+function gGoogleEvents() {
+  const mine = new Set(events.map((e) => e.gid).filter(Boolean));
+  return gAgenda.filter((e) => e.allDay && !mine.has(e.id)).map((e) => {
+    const last = e.end ? addDays(e.end, -1) : e.start; // Google's end date is exclusive
+    const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true };
+    if (last > e.start) ev.to = toDateStr(last);
+    return ev;
+  });
 }
 
 function renderCalendar() {
@@ -104,8 +116,9 @@ function renderCalendar() {
   btn.hidden = false;
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
   if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
-  if (!gAgenda.length) { ul.append(el('li', { class: 'muted' }, 'No events in the next 30 days.')); return; }
-  for (const ev of gAgenda) {
+  const list = gAgenda.filter((e) => !e.allDay && !e.fred); // appointments with a time
+  if (!list.length) { ul.append(el('li', { class: 'muted' }, 'No appointments in the next 30 days.')); return; }
+  for (const ev of list) {
     ul.append(el('li', null,
       el('span', { class: 'grow' }, ev.title),
       el('span', { class: 'muted small' }, fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay }))));
