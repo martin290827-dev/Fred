@@ -69,9 +69,9 @@ async function gRefresh() {
   if (!gHasToken()) { renderCalendar(); return; }
   try {
     const now = new Date();
-    const q = 'calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=25' +
+    const q = 'calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250' + // a full year ahead, so far-away trips show up under Events
       '&timeMin=' + encodeURIComponent(startOfDay(now).toISOString()) +
-      '&timeMax=' + encodeURIComponent(addDays(now, 30).toISOString());
+      '&timeMax=' + encodeURIComponent(addDays(now, 365).toISOString());
     const r = await gApi('GET', q);
     gAgenda = (r.items || [])
       .filter((i) => i.status !== 'cancelled' && i.start)
@@ -79,6 +79,7 @@ async function gRefresh() {
         id: i.id,
         title: i.summary || '(no title)',
         allDay: !!i.start.date,
+        recurring: !!i.recurringEventId, // repeating items stay out of Events
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
@@ -103,7 +104,7 @@ function gLastDay(e) {
 // The end date is kept for counting down, but only the start date is shown.
 function gGoogleEvents() {
   const mine = new Set(events.map((e) => e.gid).filter(Boolean));
-  return gAgenda.filter((e) => (e.allDay || e.multi) && !mine.has(e.id)).map((e) => {
+  return gAgenda.filter((e) => (e.allDay || e.multi) && !e.recurring && !mine.has(e.id)).map((e) => {
     const last = gLastDay(e);
     const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true };
     if (last > startOfDay(e.start)) ev.to = toDateStr(last);
@@ -123,7 +124,8 @@ function renderCalendar() {
   btn.hidden = false;
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
   if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
-  const list = gAgenda.filter((e) => !e.allDay && !e.multi); // one-day items with a time
+  const limit = addDays(new Date(), 30).getTime();
+  const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit).slice(0, 25); // one-day items with a time, next 30 days
   if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
   for (const ev of list) {
     ul.append(el('li', null,
