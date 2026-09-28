@@ -450,7 +450,7 @@ function fmtEventWhen(e) {
 function fmtEventDates(e) {
   const f = (d, withYear) => new Date(d + 'T00:00').toLocaleDateString('en-GB',
     withYear ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' });
-  if (!e.to) return f(e.at, true);
+  if (!e.to || e.google) return f(e.at, true); // Google items: start date only
   return f(e.at, e.at.slice(0, 4) !== e.to.slice(0, 4)) + ' \u2013 ' + f(e.to, true);
 }
 

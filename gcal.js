@@ -84,7 +84,8 @@ async function gRefresh() {
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
       .filter((e) => !e.end || e.end > now);
-    gNext = gAgenda.find((e) => !e.allDay && !e.fred && e.start >= now) || null; // all-day items are listed under Events
+    gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); }); // timed, but lasts a day or more (an overnight event stays a normal appointment)
+    gNext = gAgenda.find((e) => !e.allDay && !e.multi && !e.fred && e.start >= now) || null; // all-day and multi-day items are listed under Events
     gStatus('Updated ' + now.toLocaleTimeString('en-GB'));
   } catch (e) {
     gStatus(e.message);
@@ -93,13 +94,20 @@ async function gRefresh() {
   renderEvents();
 }
 
-// All-day events from Google (except the ones already in Fred's own list), shaped like Fred's own events.
+// Last day of an item. Google's end is exclusive: all-day ends at midnight after the last day.
+function gLastDay(e) {
+  if (!e.end) return startOfDay(e.start);
+  return startOfDay(new Date(e.end.getTime() - 1));
+}
+
+// All-day and multi-day events from Google (except the ones already in Fred's own list), shaped like Fred's own events.
+// The end date is kept for counting down, but only the start date is shown.
 function gGoogleEvents() {
   const mine = new Set(events.map((e) => e.gid).filter(Boolean));
-  return gAgenda.filter((e) => e.allDay && !mine.has(e.id)).map((e) => {
-    const last = e.end ? addDays(e.end, -1) : e.start; // Google's end date is exclusive
+  return gAgenda.filter((e) => (e.allDay || e.multi) && !mine.has(e.id)).map((e) => {
+    const last = gLastDay(e);
     const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true };
-    if (last > e.start) ev.to = toDateStr(last);
+    if (last > startOfDay(e.start)) ev.to = toDateStr(last);
     return ev;
   });
 }
@@ -116,7 +124,7 @@ function renderCalendar() {
   btn.hidden = false;
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
   if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
-  const list = gAgenda.filter((e) => !e.allDay && !e.fred); // appointments with a time
+  const list = gAgenda.filter((e) => !e.allDay && !e.multi && !e.fred); // one-day appointments with a time
   if (!list.length) { ul.append(el('li', { class: 'muted' }, 'No appointments in the next 30 days.')); return; }
   for (const ev of list) {
     ul.append(el('li', null,
