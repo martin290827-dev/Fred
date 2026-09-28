@@ -39,15 +39,19 @@ const DEFAULT_ZONES = [{ label: 'UTC', tz: 'UTC' }];
 let place = store.get('place', null);
 let tickers = store.get('tickers', []);
 let zones = store.get('zones', DEFAULT_ZONES);
-let events = store.get('events', []);
+let events = store.get('events', []).map((e) => Object.assign({}, e, { at: String(e.at).slice(0, 10) })); // dates only
 let finnhubKey = store.get('finnhubKey', '');
+let twelveKey = store.get('twelveKey', '');
+let place2 = store.get('place2', null);
+let googleClientId = store.get('googleClientId', '');
+let gSyncTasks = store.get('gSync', false);
 
 /* ---------- Banners and notifications ---------- */
-function banner(text) {
+function banner(text, silent) {
   const b = el('div', { class: 'banner' }, el('span', null, text),
     el('button', { type: 'button', onclick: () => b.remove() }, 'Dismiss'));
   $('banners').append(b);
-  notify(text);
+  if (!silent) notify(text);
 }
 
 function notify(text) {
@@ -82,7 +86,7 @@ function beep() {
 
 async function getJSON(url) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(res.status + ' ' + url);
+  if (!res.ok) throw new Error(res.status + ' ' + new URL(url).hostname); // never put the URL (it can hold a key) in a message
   return res.json();
 }
 
@@ -130,31 +134,58 @@ const WMO = {
   95: 'Thunderstorm', 96: 'Thunderstorm, hail', 99: 'Thunderstorm, hail',
 };
 
+async function fetchWeather(p) {
+  return getJSON('https://api.open-meteo.com/v1/forecast?latitude=' + p.lat + '&longitude=' + p.lon +
+    '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+    '&timezone=auto&forecast_days=2');
+}
+
+function renderWeatherMain(box, w) {
+  box.replaceChildren(
+    el('div', { class: 'wx-now' },
+      el('div', { class: 'big' }, Math.round(w.current.temperature_2m) + '°C'),
+      el('div', null, WMO[w.current.weather_code] || 'Unknown',
+        el('br'),
+        el('span', { class: 'muted small' },
+          'Feels ' + Math.round(w.current.apparent_temperature) + '°, wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
+    ...['Today', 'Tomorrow'].map((label, i) =>
+      el('div', { class: 'wx-day' },
+        el('span', null, label + ': ' + (WMO[w.daily.weather_code[i]] || '?')),
+        el('span', null,
+          Math.round(w.daily.temperature_2m_min[i]) + '° / ' + Math.round(w.daily.temperature_2m_max[i]) + '°, rain ' +
+          (w.daily.precipitation_probability_max[i] ?? '?') + '%'))));
+}
+
+// Small line for the second place. Click it to make it the main place.
+function renderWeatherAlt(box, p, w) {
+  box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: 'Click to show this place as the main one', onclick: swapPlaces },
+    el('span', { class: 'wx-alt-name' }, '⇄ ' + p.name),
+    el('span', null, Math.round(w.current.temperature_2m) + '°C, ' + (WMO[w.current.weather_code] || '?') + ', ' +
+      Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°')));
+}
+
+function swapPlaces() {
+  const t = place;
+  place = place2;
+  place2 = t;
+  store.set('place', place);
+  store.set('place2', place2);
+  loadWeather();
+}
+
 async function loadWeather() {
   const box = $('weather');
+  const alt = $('weather2');
+  alt.replaceChildren();
   if (!place) { $('weather-place').textContent = ''; box.textContent = 'Set your location in Settings.'; return; }
   $('weather-place').textContent = place.name;
-  try {
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + place.lat + '&longitude=' + place.lon +
-      '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m' +
-      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
-      '&timezone=auto&forecast_days=2';
-    const w = await getJSON(url);
-    box.replaceChildren(
-      el('div', { class: 'wx-now' },
-        el('div', { class: 'big' }, Math.round(w.current.temperature_2m) + '\u00b0C'),
-        el('div', null, WMO[w.current.weather_code] || 'Unknown',
-          el('br'),
-          el('span', { class: 'muted small' },
-            'Feels ' + Math.round(w.current.apparent_temperature) + '\u00b0, wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
-      ...['Today', 'Tomorrow'].map((label, i) =>
-        el('div', { class: 'wx-day' },
-          el('span', null, label + ': ' + (WMO[w.daily.weather_code[i]] || '?')),
-          el('span', null,
-            Math.round(w.daily.temperature_2m_min[i]) + '\u00b0 / ' + Math.round(w.daily.temperature_2m_max[i]) + '\u00b0, rain ' +
-            (w.daily.precipitation_probability_max[i] ?? '?') + '%'))));
-  } catch (e) {
-    box.textContent = 'Weather not available. ' + e.message;
+  const [main, second] = await Promise.allSettled([fetchWeather(place), place2 ? fetchWeather(place2) : Promise.resolve(null)]);
+  if (main.status === 'fulfilled') renderWeatherMain(box, main.value);
+  else box.textContent = 'Weather not available. ' + main.reason.message;
+  if (place2) {
+    if (second.status === 'fulfilled') renderWeatherAlt(alt, place2, second.value);
+    else alt.textContent = 'Second place not available.';
   }
 }
 
@@ -186,6 +217,8 @@ function fmtPrice(p) {
   return p.toPrecision(3);
 }
 
+function tickerLabel(s) { return s.startsWith('c:') ? s.slice(2).toUpperCase() : s.toUpperCase(); }
+
 async function loadQuotes() {
   const syms = [...new Set(tickers)];
   const results = await Promise.allSettled(syms.map(fetchQuote));
@@ -200,18 +233,112 @@ async function loadQuotes() {
   if (!tickers.length) box.textContent = 'No tickers. Add some in Settings.';
   for (const s of tickers) {
     const q = lastQuotes[s];
-    const label = s.startsWith('c:') ? s.slice(2).toUpperCase() : s.toUpperCase();
+    const slot = el('span', { class: 'sparkslot', 'data-sym': s });
     if (errors[s] && !q) {
-      box.append(el('div', { class: 'tick' }, el('span', null, label), el('span', { class: 'muted' }, errors[s])));
+      box.append(el('div', { class: 'tick' }, el('span', null, tickerLabel(s)), slot, el('span', { class: 'muted tprice' }, errors[s])));
       continue;
     }
     const cls = q.pct >= 0 ? 'up' : 'down';
     box.append(el('div', { class: 'tick' },
-      el('span', null, label),
-      el('span', null, '$' + fmtPrice(q.price) + '  ',
+      el('span', null, tickerLabel(s)),
+      slot,
+      el('span', { class: 'tprice' }, '$' + fmtPrice(q.price) + '  ',
         el('span', { class: cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%'))));
   }
   $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB') + '. Stocks may be delayed.';
+  paintSparks();
+}
+
+/* ---------- Sparklines: 30 daily closes, cached for 6 hours ---------- */
+const SPARK_TTL = 6 * 3600 * 1000;
+const SPARK_RETRY = 30 * 60 * 1000;
+let sparkCache = store.get('spark', {});
+const sparkFail = {};
+let sparkBusy = false;
+
+async function fetchSeries(sym) {
+  if (sym.startsWith('c:')) {
+    const pair = sym.slice(2).toUpperCase() + 'USDT';
+    const r = await getJSON('https://data-api.binance.vision/api/v3/klines?symbol=' + pair + '&interval=1d&limit=30');
+    return r.map((k) => parseFloat(k[4]));
+  }
+  if (twelveKey) {
+    const r = await getJSON('https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(sym) +
+      '&interval=1day&outputsize=30&apikey=' + encodeURIComponent(twelveKey));
+    if (r.status === 'error' || !r.values) throw new Error(r.message || 'no data');
+    return r.values.map((v) => parseFloat(v.close)).reverse();
+  }
+  // Finnhub stock candles are a paid feature on most accounts. Try once, remember a refusal.
+  if (finnhubKey && !store.get('candleBlocked', false)) {
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      const r = await getJSON('https://finnhub.io/api/v1/stock/candle?symbol=' + encodeURIComponent(sym) +
+        '&resolution=D&from=' + (now - 45 * 86400) + '&to=' + now + '&token=' + encodeURIComponent(finnhubKey));
+      if (r.s === 'ok' && r.c && r.c.length > 1) return r.c.slice(-30);
+    } catch (e) {
+      if (/^(401|403)/.test(e.message)) store.set('candleBlocked', true);
+    }
+  }
+  throw new Error('no chart source for stocks (add a Twelve Data key in Settings)');
+}
+
+// Calm line in the muted ink, one accent dot on the latest value. Colour is never the only carrier:
+// the price and percent next to it say the same, and the title names first, last and range.
+function sparkSVG(values, name) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 90;
+  const H = 28;
+  const P = 4;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = (max - min) || 1;
+  const pts = values.map((v, i) => [P + (i * (W - 2 * P)) / Math.max(values.length - 1, 1), H - P - ((v - min) / span) * (H - 2 * P)]);
+  const first = values[0];
+  const last = values[values.length - 1];
+  const pct = ((last - first) / first) * 100;
+  const text = name + ': ' + values.length + '-day trend, ' + fmtPrice(first) + ' to ' + fmtPrice(last) +
+    ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%), range ' + fmtPrice(min) + ' to ' + fmtPrice(max);
+
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('class', 'spark');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', text);
+  const title = document.createElementNS(NS, 'title');
+  title.textContent = text;
+  const line = document.createElementNS(NS, 'polyline');
+  line.setAttribute('points', pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+  const dot = document.createElementNS(NS, 'circle');
+  dot.setAttribute('cx', pts[pts.length - 1][0].toFixed(1));
+  dot.setAttribute('cy', pts[pts.length - 1][1].toFixed(1));
+  dot.setAttribute('r', '3.5');
+  svg.append(title, line, dot);
+  return svg;
+}
+
+async function paintSparks() {
+  if (sparkBusy) return;
+  sparkBusy = true;
+  try {
+    let budget = 6; // at most 6 new downloads per pass, the rest follows on the next refresh
+    for (const slot of document.querySelectorAll('#tickers .sparkslot')) {
+      const sym = slot.getAttribute('data-sym');
+      let c = sparkCache[sym];
+      const fresh = c && Date.now() - c.t < SPARK_TTL;
+      if (!fresh && budget > 0 && !(sparkFail[sym] && Date.now() - sparkFail[sym] < SPARK_RETRY)) {
+        budget--;
+        try {
+          const v = await fetchSeries(sym);
+          c = { t: Date.now(), v };
+          sparkCache[sym] = c;
+          store.set('spark', sparkCache);
+        } catch { sparkFail[sym] = Date.now(); }
+      }
+      if (c && c.v.length > 1 && slot.isConnected) slot.replaceChildren(sparkSVG(c.v, tickerLabel(sym)));
+    }
+  } finally { sparkBusy = false; }
 }
 
 /* ---------- 1) Timer (stores the end time, so it stays correct in background tabs) ---------- */
@@ -260,7 +387,7 @@ function resetTimer() {
   $('timer-start').textContent = 'Start';
 }
 
-/* ---------- 8) Countdowns and "next up" ---------- */
+/* ---------- Events (date only) and "next up" ---------- */
 function fmtRemaining(ms) {
   if (ms <= 0) return 'passed';
   const mins = Math.floor(ms / 60000);
@@ -269,6 +396,16 @@ function fmtRemaining(ms) {
   const m = mins % 60;
   if (d >= 1) return d + 'd ' + h + 'h';
   return h + 'h ' + m + 'm';
+}
+
+function toDateStr(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function dayDiff(dateStr) { return Math.round((new Date(dateStr + 'T00:00') - startOfDay(new Date())) / 86400000); }
+function fmtDaysLeft(dateStr) {
+  const d = dayDiff(dateStr);
+  return d < 0 ? 'passed' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days';
 }
 
 let editingEventId = null;
@@ -292,19 +429,20 @@ function editEvent(ev) {
 function renderEvents() {
   const ul = $('events');
   ul.replaceChildren();
-  const sorted = [...events].sort((a, b) => new Date(a.at) - new Date(b.at));
-  if (!sorted.length) ul.append(el('li', { class: 'muted' }, 'No countdowns.'));
+  const sorted = [...events].sort((a, b) => a.at.localeCompare(b.at));
+  if (!sorted.length) ul.append(el('li', { class: 'muted' }, 'No events.'));
   for (const e of sorted) {
-    const span = el('span', { 'data-at': e.at });
+    const when = new Date(e.at + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     ul.append(el('li', null,
       el('span', { class: 'grow' }, e.label, el('br'),
-        el('span', { class: 'muted small' }, new Date(e.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))),
-      span,
+        el('span', { class: 'muted small' }, when + (e.gid ? ' · in Google Calendar' : ''))),
+      el('span', { 'data-at': e.at }),
       el('button', { type: 'button', class: 'ghost small', onclick: () => editEvent(e) }, 'Edit'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => {
         events = events.filter((x) => x.id !== e.id);
         store.set('events', events);
         if (editingEventId === e.id) resetEventForm();
+        gcalDeleteEvent(e);
         renderEvents();
       } }, 'Delete')));
   }
@@ -312,16 +450,25 @@ function renderEvents() {
 }
 
 function tickEvents() {
-  const now = Date.now();
-  document.querySelectorAll('#events [data-at]').forEach((n) => {
-    n.textContent = fmtRemaining(new Date(n.getAttribute('data-at')) - now);
-  });
-  // "Next up": nearest future countdown. A real calendar needs Google OAuth (later step).
-  const next = events
-    .map((e) => ({ ...e, ms: new Date(e.at) - now }))
-    .filter((e) => e.ms > 0)
-    .sort((a, b) => a.ms - b.ms)[0];
-  $('nextup').textContent = next ? 'Next: ' + next.label + ' in ' + fmtRemaining(next.ms) : 'No upcoming events';
+  document.querySelectorAll('#events [data-at]').forEach((n) => { n.textContent = fmtDaysLeft(n.getAttribute('data-at')); });
+  updateNextUp();
+}
+
+// Header pill: the nearest upcoming item from Fred's own events and from Google Calendar (when connected).
+function updateNextUp() {
+  const cands = [];
+  for (const e of events) {
+    if (dayDiff(e.at) >= 0) cands.push({ label: e.label, key: new Date(e.at + 'T00:00').getTime(), when: fmtDue({ due: e.at + 'T00:00', allDay: true }) });
+  }
+  if (typeof gNext !== 'undefined' && gNext) {
+    cands.push({
+      label: gNext.title,
+      key: gNext.allDay ? startOfDay(gNext.start).getTime() : gNext.start.getTime(),
+      when: fmtDue({ due: toLocalISO(gNext.start), allDay: gNext.allDay }),
+    });
+  }
+  cands.sort((a, b) => a.key - b.key);
+  $('nextup').textContent = cands.length ? 'Next: ' + cands[0].label + ' · ' + cands[0].when : 'No upcoming events';
 }
 
 /* ---------- 9) Currency converter (Frankfurter, ECB rates, no key) ---------- */
@@ -478,7 +625,7 @@ function renderTasks() {
   for (const t of sorted) {
     const box = el('input', { type: 'checkbox', 'aria-label': 'Done' });
     box.checked = t.done;
-    box.addEventListener('change', () => { t.done = box.checked; saveTasks(); renderTasks(); });
+    box.addEventListener('change', () => { t.done = box.checked; saveTasks(); renderTasks(); gcalSyncTask(t); });
     const meta = t.due
       ? el('span', { class: 'small ' + (isOverdue(t) ? 'down' : 'muted') }, (isOverdue(t) ? 'overdue: ' : '') + fmtDue(t))
       : '';
@@ -488,6 +635,7 @@ function renderTasks() {
         t.urgent ? el('span', { class: 'badge' }, 'URGENT') : '',
         el('span', { class: 't' }, t.text), el('br'), meta),
       el('button', { type: 'button', class: 'ghost small', onclick: () => {
+        gcalSyncTask(Object.assign({}, t, { done: true }));
         tasks = tasks.filter((x) => x.id !== t.id); saveTasks(); renderTasks();
       } }, 'Delete')));
   }
@@ -523,6 +671,7 @@ function addTask(e) {
   e.target.reset();
   askNotificationPermission();
   renderTasks();
+  gcalSyncTask(t);
 }
 
 /* ---------- 8) Shopping list (manual) ---------- */
@@ -626,25 +775,41 @@ function initCalc() {
 
 /* ---------- Settings ---------- */
 let pendingPlace = null;
+let pendingPlace2 = null;
 
 function openSettings() {
   pendingPlace = null;
+  pendingPlace2 = null;
   $('set-place').value = place ? place.name : '';
   $('set-place-status').textContent = '';
+  $('set-place2').value = place2 ? place2.name : '';
+  $('set-place2-status').textContent = '';
   $('set-tickers').value = tickers.join(', ');
   $('set-key').value = finnhubKey;
+  $('set-twelve').value = twelveKey;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
+  $('set-gclient').value = googleClientId;
+  $('set-gsync').checked = gSyncTasks;
+  $('g-status').textContent = gHasToken() ? 'Connected.' : '';
+  $('bk-status').textContent = '';
   $('dlg-settings').showModal();
 }
 
 function saveSettings() {
   if (pendingPlace) { place = pendingPlace; store.set('place', place); }
+  if (pendingPlace2) place2 = pendingPlace2;
+  else if (!$('set-place2').value.trim()) place2 = null;
+  store.set('place2', place2);
 
   tickers = $('set-tickers').value.split(',').map((s) => s.trim()).filter(Boolean);
   store.set('tickers', tickers);
 
   finnhubKey = $('set-key').value.trim();
   store.set('finnhubKey', finnhubKey);
+  twelveKey = $('set-twelve').value.trim();
+  store.set('twelveKey', twelveKey);
+  sparkCache = {}; // new key or symbols: draw the charts again
+  store.set('spark', sparkCache);
 
   const parsed = [];
   for (const line of $('set-zones').value.split('\n')) {
@@ -656,9 +821,53 @@ function saveSettings() {
   }
   if (parsed.length) { zones = parsed; store.set('zones', zones); }
 
+  setGoogleSettings($('set-gclient').value.trim(), $('set-gsync').checked);
+
   renderClocks();
   loadWeather();
   loadQuotes();
+}
+
+/* ---------- Backup: download and upload the settings as a file ---------- */
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'events', 'tasks', 'shop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'gSync'];
+const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
+const ARRAY_KEYS = ['tickers', 'zones', 'events', 'tasks', 'shop'];
+
+function exportSettings() {
+  const withKeys = $('bk-keys').checked;
+  const data = {};
+  for (const k of BACKUP_KEYS) {
+    if (!withKeys && SECRET_KEYS.includes(k)) continue;
+    const v = store.get(k, undefined);
+    if (v !== undefined) data[k] = v;
+  }
+  const blob = new Blob([JSON.stringify({ app: 'fred', version: 1, exported: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = el('a', { href: url, download: 'fred-settings-' + toDateStr(new Date()) + '.json' });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  $('bk-status').textContent = 'Saved ' + Object.keys(data).length + ' items to your Downloads folder.';
+}
+
+async function importSettings(file) {
+  const st = $('bk-status');
+  try {
+    const j = JSON.parse(await file.text());
+    if (!j || j.app !== 'fred' || typeof j.data !== 'object' || j.data === null) throw new Error('This is not a Fred settings file.');
+    let n = 0;
+    for (const k of BACKUP_KEYS) {
+      if (!(k in j.data)) continue;
+      if (ARRAY_KEYS.includes(k) && !Array.isArray(j.data[k])) continue;
+      store.set(k, j.data[k]);
+      n++;
+    }
+    st.textContent = 'Imported ' + n + ' items. Reloading...';
+    setTimeout(() => location.reload(), 700);
+  } catch (e) {
+    st.textContent = 'Import failed: ' + e.message;
+  }
 }
 
 /* ---------- Day / night mode ---------- */
@@ -684,6 +893,75 @@ function toggleTheme() {
   applyTheme();
 }
 
+/* ---------- Layout: order and hide cards ---------- */
+let layout = store.get('layout', { order: [], hidden: [] });
+
+function cardEls() { return [...document.querySelectorAll('main.grid > .card')]; }
+function cardTitle(c) { const h = c.querySelector('h2'); return h ? h.firstChild.textContent.trim() : c.id; }
+
+function currentOrder() {
+  const ids = cardEls().map((c) => c.id);
+  const known = layout.order.filter((id) => ids.includes(id));
+  return known.concat(ids.filter((id) => !known.includes(id)));
+}
+
+function applyLayout() {
+  const order = currentOrder();
+  layout.order = order;
+  order.forEach((id, i) => {
+    const c = $(id);
+    c.style.order = i;
+    c.hidden = layout.hidden.includes(id);
+  });
+  renderLayoutBar();
+}
+
+function saveLayout() { store.set('layout', layout); applyLayout(); }
+
+function moveCard(id, dir) {
+  const order = currentOrder();
+  const visible = order.filter((x) => !layout.hidden.includes(x));
+  const i = visible.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= visible.length) return;
+  const a = order.indexOf(id);
+  const b = order.indexOf(visible[j]);
+  [order[a], order[b]] = [order[b], order[a]];
+  layout.order = order;
+  saveLayout();
+}
+
+function hideCard(id) { if (!layout.hidden.includes(id)) layout.hidden.push(id); saveLayout(); }
+function showCard(id) { layout.hidden = layout.hidden.filter((x) => x !== id); saveLayout(); }
+
+function renderLayoutBar() {
+  const hiddenIds = layout.hidden.filter((id) => $(id));
+  $('layoutbar').replaceChildren(
+    el('span', { class: 'muted small' }, 'Layout: move cards with the arrows, remove them with Hide.'),
+    ...(hiddenIds.length
+      ? [el('span', { class: 'muted small' }, 'Hidden:'),
+        ...hiddenIds.map((id) => el('button', { type: 'button', class: 'chip', onclick: () => showCard(id) }, '+ ' + cardTitle($(id))))]
+      : []),
+    el('button', { type: 'button', class: 'ghost small', onclick: () => { layout = { order: [], hidden: [] }; saveLayout(); } }, 'Reset'),
+    el('button', { type: 'button', class: 'small', onclick: toggleLayoutMode }, 'Done'));
+}
+
+function toggleLayoutMode() {
+  const on = document.body.classList.toggle('editing');
+  $('layoutbar').hidden = !on;
+  $('btn-layout').textContent = on ? 'Done' : 'Layout';
+}
+
+function initLayout() {
+  for (const c of cardEls()) {
+    c.prepend(el('div', { class: 'cardtools' },
+      el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Move earlier', onclick: () => moveCard(c.id, -1) }, '‹ Earlier'),
+      el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Move later', onclick: () => moveCard(c.id, 1) }, 'Later ›'),
+      el('button', { type: 'button', class: 'ghost small', onclick: () => hideCard(c.id) }, 'Hide')));
+  }
+  applyLayout();
+}
+
 /* ---------- Wiring ---------- */
 function init() {
   renderClocks();
@@ -692,6 +970,8 @@ function init() {
   initCalc();
   renderTasks();
   renderShop();
+  initLayout();
+  gcalInit();
   tickTimer();
 
   $('timer-start').addEventListener('click', startTimer);
@@ -703,12 +983,13 @@ function init() {
     e.preventDefault();
     const label = $('event-label').value.trim();
     const at = $('event-at').value;
-    const existing = events.find((x) => x.id === editingEventId);
-    if (existing) { existing.label = label; existing.at = at; }
-    else events.push({ id: uid(), label, at });
+    let ev = events.find((x) => x.id === editingEventId);
+    if (ev) { ev.label = label; ev.at = at; }
+    else { ev = { id: uid(), label, at }; events.push(ev); }
     store.set('events', events);
     resetEventForm();
     renderEvents();
+    gcalMirrorEvent(ev);
   });
   $('event-cancel').addEventListener('click', resetEventForm);
 
@@ -726,6 +1007,7 @@ function init() {
   applyTheme();
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
   $('btn-refresh').addEventListener('click', loadQuotes);
+  $('btn-layout').addEventListener('click', toggleLayoutMode);
   $('btn-settings').addEventListener('click', openSettings);
   $('set-cancel').addEventListener('click', () => $('dlg-settings').close());
   $('set-place-btn').addEventListener('click', async () => {
@@ -739,6 +1021,20 @@ function init() {
       status.textContent = e.message;
     }
   });
+  $('set-place2-btn').addEventListener('click', async () => {
+    const status = $('set-place2-status');
+    status.textContent = 'Searching...';
+    try {
+      pendingPlace2 = await geocode($('set-place2').value.trim());
+      status.textContent = 'Found: ' + pendingPlace2.name;
+    } catch (e) {
+      pendingPlace2 = null;
+      status.textContent = e.message;
+    }
+  });
+  $('bk-export').addEventListener('click', exportSettings);
+  $('bk-import').addEventListener('click', () => $('bk-file').click());
+  $('bk-file').addEventListener('change', (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); });
   $('dlg-settings').addEventListener('close', () => {
     if ($('dlg-settings').returnValue === 'ok') saveSettings();
     $('dlg-settings').returnValue = '';
@@ -761,4 +1057,4 @@ function init() {
   }
 }
 
-init();
+document.addEventListener('DOMContentLoaded', init); // after gcal.js has been loaded as well

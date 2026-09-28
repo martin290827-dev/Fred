@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
   <header>
@@ -21,11 +21,13 @@
       <div id="nextup" class="nextup">No upcoming events</div>
       <div class="hbtns">
         <button id="btn-theme" class="ghost" type="button" aria-label="Switch day or night mode">Day</button>
+        <button id="btn-layout" class="ghost" type="button" aria-label="Rearrange or hide cards">Layout</button>
         <button id="btn-settings" class="ghost" aria-label="Settings">Settings</button>
       </div>
     </div>
   </header>
 
+  <div id="layoutbar" class="layoutbar" hidden></div>
   <div id="banners"></div>
 
   <main class="grid">
@@ -37,6 +39,7 @@
     <section class="card" id="card-weather">
       <h2>Weather <span id="weather-place" class="muted"></span></h2>
       <div id="weather">Loading...</div>
+      <div id="weather2" class="wx2"></div>
     </section>
 
     <section class="card" id="card-tickers">
@@ -63,14 +66,20 @@
     </section>
 
     <section class="card" id="card-events">
-      <h2>Countdowns</h2>
+      <h2>Events</h2>
       <ul id="events" class="list"></ul>
       <form id="event-form" class="row wrap">
         <input id="event-label" type="text" placeholder="Label" required maxlength="40">
-        <input id="event-at" type="datetime-local" required>
+        <input id="event-at" type="date" required>
         <button type="submit" id="event-save">Add</button>
         <button type="button" id="event-cancel" class="ghost" hidden>Cancel</button>
       </form>
+    </section>
+
+    <section class="card" id="card-cal">
+      <h2>Calendar <button id="cal-btn" class="ghost small" type="button">Connect</button></h2>
+      <ul id="cal-list" class="list"></ul>
+      <p class="muted small" id="cal-status"></p>
     </section>
 
     <section class="card" id="card-tasks">
@@ -126,19 +135,54 @@
         <span class="muted small" id="set-place-status"></span>
       </label>
 
+      <label>Second weather location (optional, shown small, click it to switch)
+        <span class="row">
+          <input id="set-place2" type="text" placeholder="City name, empty = none">
+          <button type="button" id="set-place2-btn" class="ghost">Find</button>
+        </span>
+        <span class="muted small" id="set-place2-status"></span>
+      </label>
+
       <label>Tickers (comma separated)
         <input id="set-tickers" type="text" placeholder="c:BTC, c:ETH, AAPL">
         <span class="muted small">Crypto: prefix c: (Binance, USDT). Stocks: plain symbol, needs the Finnhub key below.</span>
       </label>
 
-      <label>Finnhub API key (stocks)
+      <label>Finnhub API key (stock prices)
         <input id="set-key" type="password" autocomplete="off" placeholder="Stored only in this browser">
         <span class="muted small">Free key at finnhub.io. Never put it in the code or the repo.</span>
+      </label>
+
+      <label>Twelve Data API key (optional, for stock charts)
+        <input id="set-twelve" type="password" autocomplete="off" placeholder="Stored only in this browser">
+        <span class="muted small">Free key at twelvedata.com. Without it, only crypto shows a chart.</span>
       </label>
 
       <label>Clocks (one per line: Label=Time zone)
         <textarea id="set-zones" rows="3"></textarea>
       </label>
+
+      <h3>Google Calendar</h3>
+      <label>Google Client ID
+        <input id="set-gclient" type="text" autocomplete="off" placeholder="123456-abc.apps.googleusercontent.com">
+        <span class="muted small">Your own OAuth Client ID. It is not a secret, but it stays in this browser only. Setup steps are in the README.</span>
+      </label>
+      <label class="check"><input id="set-gsync" type="checkbox"> Put tasks with a due time into Google Calendar (Google sends the reminder, also when Fred is closed)</label>
+      <div class="row wrap">
+        <button type="button" id="g-connect" class="ghost">Connect</button>
+        <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
+        <span class="muted small" id="g-status"></span>
+      </div>
+
+      <h3>Backup</h3>
+      <p class="muted small">Everything you entered lives only in this browser. Download it as a file, and load it again after clearing the browser data or on another device.</p>
+      <label class="check"><input id="bk-keys" type="checkbox" checked> Include API keys and Client ID (keep the file private)</label>
+      <div class="row wrap">
+        <button type="button" id="bk-export" class="ghost">Download settings</button>
+        <button type="button" id="bk-import" class="ghost">Load settings from file</button>
+        <input id="bk-file" type="file" accept="application/json,.json" hidden>
+        <span class="muted small" id="bk-status"></span>
+      </div>
 
       <div class="row end">
         <button type="button" id="set-cancel" class="ghost">Cancel</button>
@@ -147,6 +191,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
+  <script src="gcal.js?v=12"></script>
 </body>
 </html>

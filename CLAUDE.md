@@ -9,12 +9,15 @@ Personal dashboard PWA. Hosted on GitHub Pages (static only, public repo).
 - All internet calls happen from the browser. Only use APIs that allow CORS.
 - Keep the code simple and readable. Small functions, short comments.
 - One feature per session. Do not refactor unrelated code.
-- After changing app files, bump `CACHE` in `sw.js` AND the `?v=` number on style.css and app.js in index.html (GitHub Pages caches files for 10 minutes).
+- After changing app files, bump `CACHE` in `sw.js` AND the `?v=` number on style.css, app.js and gcal.js (and in `SHELL` in sw.js) in index.html (GitHub Pages caches files for 10 minutes).
+
+## Files
+- index.html, style.css: page and styles. app.js: everything else. gcal.js: Google Calendar (loaded after app.js; `init()` runs on DOMContentLoaded).
+- sw.js: offline cache.
 
 ## Current features
-Timer, multi time zone clock, weather (Open-Meteo), tickers (Binance for crypto with prefix `c:`, Finnhub for stocks), tasks and reminders (smart text input, only ring while open), shopping list, calculator (input field only, no keypad), day/night mode (button + device setting), countdowns, EUR/USD/MXN/GBP/CHF/PHP converter.
+Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second weather place (click to switch), events (date only, synced to Google Calendar), Google Calendar agenda and reminders (tasks with a time become calendar events), card order and hiding (Layout button), settings backup as a file (Download / Load), timer, multi time zone clock, weather (Open-Meteo), tickers (Binance for crypto with prefix `c:`, Finnhub for stocks), tasks and reminders (smart text input, only ring while open), shopping list, calculator (input field only, no keypad), day/night mode (button + device setting), countdowns, EUR/USD/MXN/GBP/CHF/PHP converter.
 
 ## Ideas for later
-- Real calendar for "next up" (Google Calendar via OAuth)
-- Push alerts when closed (Cloudflare Worker or GitHub Actions cron)
-- Sparkline charts, strategy signal panel
+- Strategy signal panel (for example price versus 200-day average)
+- Edit for tasks and shopping list
