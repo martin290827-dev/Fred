@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
   <header>
@@ -79,22 +79,9 @@
     </section>
 
     <section class="card" id="card-cal">
-      <h2>Calendar <button id="cal-btn" class="ghost small" type="button">Connect</button></h2>
+      <h2>Tasks &amp; reminders <button id="cal-btn" class="ghost small" type="button">Connect</button></h2>
       <ul id="cal-list" class="list"></ul>
       <p class="muted small" id="cal-status"></p>
-    </section>
-
-    <section class="card" id="card-tasks">
-      <h2>Tasks &amp; reminders</h2>
-      <ul id="tasks" class="list"></ul>
-      <form id="task-form" class="row wrap">
-        <input id="task-text" type="text" placeholder="remind me to pay rent tomorrow urgent" required maxlength="120">
-        <input id="task-due" type="datetime-local" aria-label="Due (optional)">
-        <label class="check"><input id="task-urgent" type="checkbox"> urgent</label>
-        <button type="submit" id="task-save">Add</button>
-        <button type="button" id="task-cancel" class="ghost" hidden>Cancel</button>
-      </form>
-      <p class="muted small">Understands: today, tomorrow, weekdays, "in 2 hours", "at 17:30", "urgent" (German too). Reminders ring only while Fred is open.</p>
     </section>
 
     <section class="card" id="card-shop">
@@ -170,7 +157,6 @@
         <input id="set-gclient" type="text" autocomplete="off" placeholder="123456-abc.apps.googleusercontent.com">
         <span class="muted small">Your own OAuth Client ID. It is not a secret, but it stays in this browser only. Setup steps are in the README.</span>
       </label>
-      <label class="check"><input id="set-gsync" type="checkbox"> Put tasks with a due time into Google Calendar (Google sends the reminder, also when Fred is closed)</label>
       <div class="row wrap">
         <button type="button" id="g-connect" class="ghost">Connect</button>
         <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
@@ -194,7 +180,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=16"></script>
-  <script src="gcal.js?v=16"></script>
+  <script src="app.js?v=17"></script>
+  <script src="gcal.js?v=17"></script>
 </body>
 </html>

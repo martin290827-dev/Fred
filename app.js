@@ -44,7 +44,6 @@ let finnhubKey = store.get('finnhubKey', '');
 let twelveKey = store.get('twelveKey', '');
 let place2 = store.get('place2', null);
 let googleClientId = store.get('googleClientId', '');
-let gSyncTasks = store.get('gSync', false);
 
 /* ---------- Banners and notifications ---------- */
 function banner(text, silent) {
@@ -590,93 +589,13 @@ function initFx() {
   });
 }
 
-/* ---------- 7+9) Tasks and reminders (one list; a due time makes it a reminder) ---------- */
-let tasks = store.get('tasks', []);
-
-const WEEKDAYS = {
-  sunday: 0, sonntag: 0, monday: 1, montag: 1, tuesday: 2, dienstag: 2, wednesday: 3, mittwoch: 3,
-  thursday: 4, donnerstag: 4, friday: 5, freitag: 5, saturday: 6, samstag: 6,
-};
-
+/* ---------- Date helpers ---------- */
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+
 function toLocalISO(d) {
   const p = (n) => String(n).padStart(2, '0');
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
-}
-
-// Turns "remind me to pay rent tomorrow urgent" into { text: 'pay rent', urgent: true, due: <tomorrow 09:00>, allDay: true }.
-// Understands English and German: today/heute, tomorrow/morgen, day after tomorrow/uebermorgen, weekdays,
-// "in 2 hours / in 2 Stunden", "at 17:30 / um 17:30 / at 5pm", urgent/dringend/asap.
-function parseTask(raw, now = new Date()) {
-  // \b does not work next to umlauts, so write them as ue/ae first
-  let text = ' ' + raw.trim().replace(/\u00fcbermorgen/gi, 'uebermorgen').replace(/f\u00fcr/gi, 'fuer').replace(/n\u00e4chsten/gi, 'naechsten') + ' ';
-  let urgent = false;
-  let date = null;
-  let hasTime = false;
-
-  text = text.replace(/^\s*(remind me( to)?|erinnere mich( daran)?,?( zu)?|erinner mich( daran)?,?( zu)?)\s+/i, ' ');
-
-  if (/\b(urgent|asap|dringend|wichtig)\b|!\s*$/i.test(text)) {
-    urgent = true;
-    text = text.replace(/\b(urgent|asap|dringend|wichtig)\b/gi, ' ').replace(/!+\s*$/, ' ');
-  }
-
-  const rel = text.match(/\b(?:in|en)\s+(\d+)\s*(minutes?|mins?|minuten|hours?|hrs?|h|stunden|stunde|std|days?|tagen|tage|tag)\b/i);
-  if (rel) {
-    const n = parseInt(rel[1], 10);
-    const u = rel[2][0].toLowerCase();
-    text = text.replace(rel[0], ' ');
-    if (u === 'm') { date = new Date(now.getTime() + n * 60000); hasTime = true; }
-    else if (u === 'h' || u === 's') { date = new Date(now.getTime() + n * 3600000); hasTime = true; }
-    else { date = addDays(startOfDay(now), n); }
-  }
-
-  if (!date) {
-    const dm = text.match(/(?:\b(?:on|by|due|am|bis|until|for|für)\s+)?\b(day after tomorrow|übermorgen|uebermorgen|tomorrow|morgen|today|tonight|heute)\b/i);
-    if (dm) {
-      const w = dm[1].toLowerCase();
-      const off = /after|bermorgen/.test(w) ? 2 : (w === 'tomorrow' || w === 'morgen') ? 1 : 0;
-      date = addDays(startOfDay(now), off);
-      text = text.replace(dm[0], ' ');
-    } else {
-      const wm = text.match(/(?:\b(?:on|by|due|next|am|bis|until|nächsten|naechsten)\s+)?\b(sunday|sonntag|monday|montag|tuesday|dienstag|wednesday|mittwoch|thursday|donnerstag|friday|freitag|saturday|samstag)\b/i);
-      if (wm) {
-        let diff = (WEEKDAYS[wm[1].toLowerCase()] - now.getDay() + 7) % 7;
-        if (diff === 0) diff = 7;
-        date = addDays(startOfDay(now), diff);
-        text = text.replace(wm[0], ' ');
-      }
-    }
-  }
-
-  if (!hasTime) {
-    let hh = null;
-    let mm = 0;
-    let ap = '';
-    const t1 = text.match(/(?:\b(?:at|um)\s+)?\b(\d{1,2}):(\d{2})\s*(am|pm)?\b/i);
-    const t2 = t1 ? null : text.match(/\b(?:at|um)\s+(\d{1,2})\s*(am|pm|uhr)?\b/i);
-    if (t1) { hh = +t1[1]; mm = +t1[2]; ap = t1[3] || ''; }
-    else if (t2) { hh = +t2[1]; ap = t2[2] || ''; }
-    if (hh !== null) {
-      if (/pm/i.test(ap) && hh < 12) hh += 12;
-      if (/am/i.test(ap) && hh === 12) hh = 0;
-      if (hh <= 23 && mm <= 59) {
-        text = text.replace((t1 || t2)[0], ' ');
-        const dayGiven = !!date;
-        date = date ? new Date(date) : startOfDay(now);
-        date.setHours(hh, mm, 0, 0);
-        hasTime = true;
-        if (!dayGiven && date <= now) date = addDays(date, 1);
-      }
-    }
-  }
-
-  if (date && !hasTime) date.setHours(9, 0, 0, 0); // date only: remind at 09:00
-
-  text = text.replace(/\s{2,}/g, ' ').replace(/^[\s,.\-:]+|[\s,.\-:]+$/g, '').trim();
-  if (!text) text = raw.trim();
-  return { text, urgent, due: date, allDay: !!date && !hasTime };
 }
 
 function fmtDue(t) {
@@ -685,104 +604,6 @@ function fmtDue(t) {
   const day = diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : diff === -1 ? 'yesterday'
     : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   return t.allDay ? day : day + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
-
-function isOverdue(t) {
-  if (t.done || !t.due) return false;
-  const d = new Date(t.due);
-  return (t.allDay ? addDays(startOfDay(d), 1) : d) <= new Date();
-}
-
-function saveTasks() { store.set('tasks', tasks); }
-
-let editingTaskId = null;
-
-function resetTaskForm() {
-  editingTaskId = null;
-  $('task-form').reset();
-  $('task-save').textContent = 'Add';
-  $('task-cancel').hidden = true;
-}
-
-// Load a task into the form. Saving replaces it (and its calendar reminder).
-function editTask(t) {
-  editingTaskId = t.id;
-  $('task-text').value = t.text;
-  $('task-due').value = t.due || '';
-  $('task-urgent').checked = !!t.urgent;
-  $('task-save').textContent = 'Save';
-  $('task-cancel').hidden = false;
-  $('task-text').focus();
-}
-
-function renderTasks() {
-  const ul = $('tasks');
-  ul.replaceChildren();
-  const sorted = [...tasks].sort((a, b) =>
-    (a.done - b.done) || (b.urgent - a.urgent) ||
-    ((a.due ? new Date(a.due) : Infinity) - (b.due ? new Date(b.due) : Infinity)));
-  if (!sorted.length) ul.append(el('li', { class: 'muted' }, 'No tasks.'));
-  for (const t of sorted) {
-    const box = el('input', { type: 'checkbox', 'aria-label': 'Done' });
-    box.checked = t.done;
-    box.addEventListener('change', () => { t.done = box.checked; saveTasks(); renderTasks(); gcalSyncTask(t); });
-    const meta = t.due
-      ? el('span', { class: 'small ' + (isOverdue(t) ? 'down' : 'muted') }, (isOverdue(t) ? 'overdue: ' : '') + fmtDue(t))
-      : '';
-    ul.append(el('li', { class: t.done ? 'done' : '' },
-      box,
-      el('span', { class: 'grow' },
-        t.urgent ? el('span', { class: 'badge' }, 'URGENT') : '',
-        el('span', { class: 't' }, t.text), el('br'), meta),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => editTask(t) }, 'Edit'),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => {
-        gcalSyncTask(Object.assign({}, t, { done: true }));
-        if (editingTaskId === t.id) resetTaskForm();
-        tasks = tasks.filter((x) => x.id !== t.id); saveTasks(); renderTasks();
-      } }, 'Delete')));
-  }
-}
-
-function checkReminders() {
-  const now = new Date();
-  let changed = false;
-  for (const t of tasks) {
-    if (t.done || t.notified || !t.due || new Date(t.due) > now) continue;
-    t.notified = true;
-    changed = true;
-    banner((t.urgent ? 'URGENT: ' : 'Reminder: ') + t.text);
-  }
-  if (changed) saveTasks();
-  renderTasks();
-}
-
-function addTask(e) {
-  e.preventDefault();
-  const p = parseTask($('task-text').value);
-  const old = tasks.find((x) => x.id === editingTaskId);
-  let due = p.due;
-  let allDay = p.allDay;
-  const manual = $('task-due').value;
-  const unchanged = old && manual === old.due; // editing: the date field still holds the old value
-  if (manual && !(unchanged && p.due)) { due = new Date(manual); allDay = unchanged && old.allDay; }
-  const fields = {
-    text: p.text, urgent: p.urgent || $('task-urgent').checked,
-    due: due ? toLocalISO(due) : null, allDay: !!allDay, notified: false,
-  };
-  let t;
-  if (old) {
-    gcalSyncTask(Object.assign({}, old, { done: true })); // remove the old calendar reminder
-    t = Object.assign(old, fields, { gid: null });
-  } else {
-    t = Object.assign({ id: uid(), done: false }, fields);
-    tasks.push(t);
-  }
-  if (t.due && new Date(t.due) <= new Date()) t.notified = true; // already past: no instant alarm
-  saveTasks();
-  resetTaskForm();
-  askNotificationPermission();
-  renderTasks();
-  gcalSyncTask(t);
 }
 
 /* ---------- 8) Shopping list (manual) ---------- */
@@ -936,7 +757,6 @@ function openSettings() {
   $('set-twelve').value = twelveKey;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
   $('set-gclient').value = googleClientId;
-  $('set-gsync').checked = gSyncTasks;
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
   $('bk-status').textContent = '';
   $('dlg-settings').showModal();
@@ -968,7 +788,7 @@ function saveSettings() {
   }
   if (parsed.length) { zones = parsed; store.set('zones', zones); }
 
-  setGoogleSettings($('set-gclient').value.trim(), $('set-gsync').checked);
+  setGoogleSettings($('set-gclient').value.trim());
 
   renderClocks();
   loadWeather();
@@ -976,9 +796,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'events', 'tasks', 'shop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'gSync'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'events', 'shop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
-const ARRAY_KEYS = ['tickers', 'zones', 'events', 'tasks', 'shop'];
+const ARRAY_KEYS = ['tickers', 'zones', 'events', 'shop'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -1126,7 +946,6 @@ function init() {
   renderEvents();
   initFx();
   initCalc();
-  renderTasks();
   renderShop();
   initLayout();
   gcalInit();
@@ -1155,8 +974,6 @@ function init() {
   $('event-to-btn').addEventListener('click', () => { showEventEnd(true); $('event-to').focus(); });
   $('event-at').addEventListener('change', () => { $('event-to').min = $('event-at').value; });
 
-  $('task-form').addEventListener('submit', addTask);
-  $('task-cancel').addEventListener('click', resetTaskForm);
   $('shop-form').addEventListener('submit', (e) => {
     e.preventDefault();
     shop.push({ id: uid(), text: $('shop-text').value.trim(), done: false });
@@ -1205,7 +1022,6 @@ function init() {
 
   setInterval(() => { tickClocks(); tickTimer(); }, 250);
   setInterval(tickEvents, 30000);
-  setInterval(checkReminders, 30000);
   setInterval(loadQuotes, 60000);
   setInterval(loadWeather, 15 * 60000);
   setInterval(loadFx, 60 * 60000);
@@ -1213,7 +1029,6 @@ function init() {
   loadWeather();
   loadQuotes();
   loadFx();
-  checkReminders();
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

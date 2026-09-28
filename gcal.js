@@ -78,14 +78,13 @@ async function gRefresh() {
       .map((i) => ({
         id: i.id,
         title: i.summary || '(no title)',
-        fred: /Reminder created by Fred/.test(i.description || ''), // task reminder: lives under Tasks, not here
         allDay: !!i.start.date,
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
       .filter((e) => !e.end || e.end > now);
     gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); }); // timed, but lasts a day or more (an overnight event stays a normal appointment)
-    gNext = gAgenda.find((e) => !e.allDay && !e.multi && !e.fred && e.start >= now) || null; // all-day and multi-day items are listed under Events
+    gNext = gAgenda.find((e) => !e.allDay && !e.multi && e.start >= now) || null; // all-day and multi-day items are listed under Events
     gStatus('Updated ' + now.toLocaleTimeString('en-GB'));
   } catch (e) {
     gStatus(e.message);
@@ -124,8 +123,8 @@ function renderCalendar() {
   btn.hidden = false;
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
   if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
-  const list = gAgenda.filter((e) => !e.allDay && !e.multi && !e.fred); // one-day appointments with a time
-  if (!list.length) { ul.append(el('li', { class: 'muted' }, 'No appointments in the next 30 days.')); return; }
+  const list = gAgenda.filter((e) => !e.allDay && !e.multi); // one-day items with a time
+  if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
   for (const ev of list) {
     ul.append(el('li', null,
       el('span', { class: 'grow' }, ev.title),
@@ -157,7 +156,7 @@ function gDisconnect() {
   updateNextUp();
 }
 
-/* ---- Fred -> Google: events (all day) and task reminders ---- */
+/* ---- Fred -> Google: events (all day) ---- */
 const gEvPath = (id) => 'calendars/primary/events/' + encodeURIComponent(id);
 const gIsGone = (e) => e && (e.status === 404 || e.status === 410);
 
@@ -180,44 +179,14 @@ async function gcalDeleteEvent(ev) {
   try { await gApi('DELETE', gEvPath(ev.gid)); gRefresh(); } catch (e) { if (!gIsGone(e)) banner('Google Calendar: ' + e.message, true); }
 }
 
-// A task with a future due time becomes a calendar event with a popup reminder at that time.
-// Google then sends the reminder to your phone or computer, even when Fred is closed.
-async function gcalSyncTask(t) {
-  const want = gSyncTasks && gHasToken() && !t.done && t.due && new Date(t.due) > new Date();
-  try {
-    if (want && !t.gid) {
-      const start = new Date(t.due);
-      const r = await gApi('POST', 'calendars/primary/events', {
-        summary: (t.urgent ? 'URGENT: ' : '') + t.text,
-        description: 'Reminder created by Fred',
-        start: { dateTime: start.toISOString() },
-        end: { dateTime: new Date(start.getTime() + 15 * 60000).toISOString() },
-        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 0 }] },
-      });
-      t.gid = r.id;
-      saveTasks();
-      renderTasks();
-      gRefresh();
-    } else if (!want && t.gid) {
-      const id = t.gid;
-      t.gid = null;
-      saveTasks();
-      try { await gApi('DELETE', gEvPath(id)); } catch (e) { if (!gIsGone(e)) throw e; }
-      gRefresh();
-    }
-  } catch (e) { banner('Google Calendar: ' + e.message, true); }
-}
-
 async function gcalPushLocalEvents() {
   for (const ev of events.filter((x) => !x.gid)) await gcalMirrorEvent(ev);
 }
 
-function setGoogleSettings(clientId, syncTasks) {
+function setGoogleSettings(clientId) {
   const changed = clientId !== googleClientId;
   googleClientId = clientId;
-  gSyncTasks = syncTasks;
   store.set('googleClientId', googleClientId);
-  store.set('gSync', gSyncTasks);
   if (changed || !googleClientId) gDisconnect();
   renderCalendar();
 }
