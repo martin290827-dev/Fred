@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <header>
@@ -96,9 +96,9 @@
 
     <section class="card" id="card-calc">
       <h2>Calculator</h2>
-      <input id="calc-expr" type="text" inputmode="none" autocomplete="off" placeholder="200+10%" aria-label="Expression">
+      <input id="calc-expr" type="text" autocomplete="off" placeholder="200+10%" aria-label="Expression">
       <div id="calc-result" class="big">0</div>
-      <div id="calc-keys" class="keys"></div>
+      <p class="muted small">Type a calculation. The result updates while you type. Enter keeps the result. Works with + - * / ( ) %</p>
     </section>
 
     <section class="card" id="card-fx">
@@ -147,6 +147,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

@@ -613,22 +613,15 @@ function calcUpdate() {
   try { out.textContent = fmtCalc(calcEval(src)); } catch { out.textContent = '...'; }
 }
 
-function calcPress(k) {
+function calcEnter() {
   const inp = $('calc-expr');
-  if (k === 'C') inp.value = '';
-  else if (k === '⌫') inp.value = inp.value.slice(0, -1);
-  else if (k === '=') {
-    try { inp.value = String(parseFloat(calcEval(inp.value).toPrecision(12))); } catch { $('calc-result').textContent = 'Error'; return; }
-  } else inp.value += k;
+  try { inp.value = String(parseFloat(calcEval(inp.value).toPrecision(12))); } catch { $('calc-result').textContent = 'Error'; return; }
   calcUpdate();
 }
 
 function initCalc() {
-  const keys = ['C', '⌫', '(', ')', '7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '0', '.', '%', '+'];
-  for (const k of keys) $('calc-keys').append(el('button', { type: 'button', class: 'ghost', onclick: () => calcPress(k) }, k));
-  $('calc-keys').append(el('button', { type: 'button', class: 'eq', onclick: () => calcPress('=') }, '='));
   $('calc-expr').addEventListener('input', calcUpdate);
-  $('calc-expr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); calcPress('='); } });
+  $('calc-expr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); calcEnter(); } });
 }
 
 /* ---------- Settings ---------- */
