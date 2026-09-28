@@ -118,8 +118,15 @@ header h1::before {
   border-radius: 12px;
   padding: 14px 16px;
   min-width: 0;
+  /* every card has the same size; more rows scroll inside the card */
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+  overflow: hidden;
 }
+.card[hidden] { display: none; }
 .card h2 {
+  flex: none;
   margin: 0 0 10px;
   font-size: 0.85rem;
   letter-spacing: 0.06em;
@@ -153,8 +160,6 @@ input, select, textarea, button {
 }
 input[type="number"] { width: 90px; }
 input[type="text"], input[type="password"], textarea { width: 100%; }
-#event-label { flex: 1 1 110px; width: auto; }
-#event-at { flex: 1 1 170px; width: auto; }
 
 button {
   cursor: pointer;
@@ -267,3 +272,20 @@ body.editing .card { outline: 1px dashed var(--line); }
 /* ---- settings dialog ---- */
 dialog { max-height: calc(100vh - 32px); overflow: auto; }
 dialog h3 { margin: 18px 0 4px; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- fixed card size, scrolling inside ---- */
+.cardbody { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; scrollbar-width: thin; }
+.cardbody > * { flex: none; }
+.cardbody:has(> ul.list) { overflow: hidden; }
+.cardbody > ul.list { flex: 1 1 auto; min-height: 60px; overflow: auto; scrollbar-width: thin; }
+.cardtools { flex: none; }
+.mini { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); }
+.mini input { width: auto; }
+
+/* ---- compact event form: label on top, dates side by side, buttons below ---- */
+#event-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin: 6px 0 0; }
+#event-label { grid-column: 1 / -1; width: 100%; }
+#event-form .mini { flex-direction: column; align-items: stretch; gap: 2px; }
+#event-form .mini input { width: 100%; }
+#event-save { grid-column: 1; }
+#event-cancel { grid-column: 2; }

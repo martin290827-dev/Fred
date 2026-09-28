@@ -105,7 +105,7 @@ function renderCalendar() {
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
   if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
   if (!gAgenda.length) { ul.append(el('li', { class: 'muted' }, 'No events in the next 30 days.')); return; }
-  for (const ev of gAgenda.slice(0, 8)) {
+  for (const ev of gAgenda) {
     ul.append(el('li', null,
       el('span', { class: 'grow' }, ev.title),
       el('span', { class: 'muted small' }, fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay }))));
@@ -142,7 +142,7 @@ const gIsGone = (e) => e && (e.status === 404 || e.status === 410);
 
 async function gcalMirrorEvent(ev) {
   if (!gHasToken()) return;
-  const body = { summary: ev.label, description: 'Created by Fred', start: { date: ev.at }, end: { date: toDateStr(addDays(new Date(ev.at + 'T00:00'), 1)) } };
+  const body = { summary: ev.label, description: 'Created by Fred', start: { date: ev.at }, end: { date: toDateStr(addDays(new Date((ev.to || ev.at) + 'T00:00'), 1)) } }; // Google's end date is exclusive
   try {
     if (ev.gid) {
       try { await gApi('PATCH', gEvPath(ev.gid), body); } catch (e) { if (!gIsGone(e)) throw e; ev.gid = null; }

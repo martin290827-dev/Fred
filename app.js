@@ -403,6 +403,25 @@ function toDateStr(d) {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 }
 function dayDiff(dateStr) { return Math.round((new Date(dateStr + 'T00:00') - startOfDay(new Date())) / 86400000); }
+// Text for the right side of an event row: counts to the start, then the days left until the end.
+function fmtEventWhen(e) {
+  if (!e.to) return fmtDaysLeft(e.at);
+  const s = dayDiff(e.at);
+  const t = dayDiff(e.to);
+  if (t < 0) return 'passed';
+  if (s > 1) return 'in ' + s + ' days';
+  if (s === 1) return 'tomorrow';
+  if (s === 0) return 'starts today';
+  return t === 0 ? 'last day' : 'ongoing, ' + t + 'd left';
+}
+
+function fmtEventDates(e) {
+  const f = (d, withYear) => new Date(d + 'T00:00').toLocaleDateString('en-GB',
+    withYear ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' });
+  if (!e.to) return f(e.at, true);
+  return f(e.at, e.at.slice(0, 4) !== e.to.slice(0, 4)) + ' \u2013 ' + f(e.to, true);
+}
+
 function fmtDaysLeft(dateStr) {
   const d = dayDiff(dateStr);
   return d < 0 ? 'passed' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days';
@@ -421,6 +440,7 @@ function editEvent(ev) {
   editingEventId = ev.id;
   $('event-label').value = ev.label;
   $('event-at').value = ev.at;
+  $('event-to').value = ev.to || '';
   $('event-save').textContent = 'Save';
   $('event-cancel').hidden = false;
   $('event-label').focus();
@@ -432,11 +452,10 @@ function renderEvents() {
   const sorted = [...events].sort((a, b) => a.at.localeCompare(b.at));
   if (!sorted.length) ul.append(el('li', { class: 'muted' }, 'No events.'));
   for (const e of sorted) {
-    const when = new Date(e.at + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     ul.append(el('li', null,
       el('span', { class: 'grow' }, e.label, el('br'),
-        el('span', { class: 'muted small' }, when + (e.gid ? ' · in Google Calendar' : ''))),
-      el('span', { 'data-at': e.at }),
+        el('span', { class: 'muted small' }, fmtEventDates(e) + (e.gid ? ' \u00b7 in Google Calendar' : ''))),
+      el('span', { 'data-id': e.id }),
       el('button', { type: 'button', class: 'ghost small', onclick: () => editEvent(e) }, 'Edit'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => {
         events = events.filter((x) => x.id !== e.id);
@@ -450,7 +469,10 @@ function renderEvents() {
 }
 
 function tickEvents() {
-  document.querySelectorAll('#events [data-at]').forEach((n) => { n.textContent = fmtDaysLeft(n.getAttribute('data-at')); });
+  document.querySelectorAll('#events [data-id]').forEach((n) => {
+    const e = events.find((x) => x.id === n.getAttribute('data-id'));
+    n.textContent = e ? fmtEventWhen(e) : '';
+  });
   updateNextUp();
 }
 
@@ -458,7 +480,13 @@ function tickEvents() {
 function updateNextUp() {
   const cands = [];
   for (const e of events) {
-    if (dayDiff(e.at) >= 0) cands.push({ label: e.label, key: new Date(e.at + 'T00:00').getTime(), when: fmtDue({ due: e.at + 'T00:00', allDay: true }) });
+    if (dayDiff(e.to || e.at) < 0) continue; // over
+    const running = e.to && dayDiff(e.at) <= 0; // a multi-day event that has started
+    cands.push({
+      label: e.label,
+      key: Math.max(new Date(e.at + 'T00:00').getTime(), startOfDay(new Date()).getTime()),
+      when: running ? 'until ' + fmtDue({ due: e.to + 'T00:00', allDay: true }) : fmtDue({ due: e.at + 'T00:00', allDay: true }),
+    });
   }
   if (typeof gNext !== 'undefined' && gNext) {
     cands.push({
@@ -963,7 +991,18 @@ function initLayout() {
 }
 
 /* ---------- Wiring ---------- */
+// Every card: title stays, the rest sits in a scrolling body.
+function initCards() {
+  for (const card of document.querySelectorAll('main.grid > .card')) {
+    const h2 = card.querySelector('h2');
+    const body = el('div', { class: 'cardbody' });
+    while (h2.nextSibling) body.append(h2.nextSibling);
+    card.append(body);
+  }
+}
+
 function init() {
+  initCards();
   renderClocks();
   renderEvents();
   initFx();
@@ -983,15 +1022,18 @@ function init() {
     e.preventDefault();
     const label = $('event-label').value.trim();
     const at = $('event-at').value;
+    const to = $('event-to').value > at ? $('event-to').value : ''; // an end date must be after the start
     let ev = events.find((x) => x.id === editingEventId);
     if (ev) { ev.label = label; ev.at = at; }
     else { ev = { id: uid(), label, at }; events.push(ev); }
+    if (to) ev.to = to; else delete ev.to;
     store.set('events', events);
     resetEventForm();
     renderEvents();
     gcalMirrorEvent(ev);
   });
   $('event-cancel').addEventListener('click', resetEventForm);
+  $('event-at').addEventListener('change', () => { $('event-to').min = $('event-at').value; });
 
   $('task-form').addEventListener('submit', addTask);
   $('shop-form').addEventListener('submit', (e) => {
