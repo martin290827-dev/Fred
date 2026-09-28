@@ -271,6 +271,24 @@ function fmtRemaining(ms) {
   return h + 'h ' + m + 'm';
 }
 
+let editingEventId = null;
+
+function resetEventForm() {
+  editingEventId = null;
+  $('event-form').reset();
+  $('event-save').textContent = 'Add';
+  $('event-cancel').hidden = true;
+}
+
+function editEvent(ev) {
+  editingEventId = ev.id;
+  $('event-label').value = ev.label;
+  $('event-at').value = ev.at;
+  $('event-save').textContent = 'Save';
+  $('event-cancel').hidden = false;
+  $('event-label').focus();
+}
+
 function renderEvents() {
   const ul = $('events');
   ul.replaceChildren();
@@ -282,8 +300,12 @@ function renderEvents() {
       el('span', { class: 'grow' }, e.label, el('br'),
         el('span', { class: 'muted small' }, new Date(e.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))),
       span,
+      el('button', { type: 'button', class: 'ghost small', onclick: () => editEvent(e) }, 'Edit'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => {
-        events = events.filter((x) => x.id !== e.id); store.set('events', events); renderEvents();
+        events = events.filter((x) => x.id !== e.id);
+        store.set('events', events);
+        if (editingEventId === e.id) resetEventForm();
+        renderEvents();
       } }, 'Delete')));
   }
   tickEvents();
@@ -686,11 +708,16 @@ function init() {
 
   $('event-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    events.push({ id: uid(), label: $('event-label').value.trim(), at: $('event-at').value });
+    const label = $('event-label').value.trim();
+    const at = $('event-at').value;
+    const existing = events.find((x) => x.id === editingEventId);
+    if (existing) { existing.label = label; existing.at = at; }
+    else events.push({ id: uid(), label, at });
     store.set('events', events);
-    e.target.reset();
+    resetEventForm();
     renderEvents();
   });
+  $('event-cancel').addEventListener('click', resetEventForm);
 
   $('task-form').addEventListener('submit', addTask);
   $('shop-form').addEventListener('submit', (e) => {
