@@ -265,15 +265,15 @@ async function loadQuotes() {
     const q = lastQuotes[s];
     const slot = el('span', { class: 'sparkslot', 'data-sym': s });
     if (errors[s] && !q) {
-      box.append(el('div', { class: 'tick' }, el('span', null, tickerLabel(s)), slot, el('span', { class: 'muted tprice' }, errors[s])));
+      box.append(el('div', { class: 'tick' }, el('span', { class: 'tsym' }, tickerLabel(s)), slot, el('span', { class: 'muted tprice terr' }, errors[s])));
       continue;
     }
     const cls = q.pct >= 0 ? 'up' : 'down';
     box.append(el('div', { class: 'tick' },
-      el('span', null, tickerLabel(s)),
+      el('span', { class: 'tsym' }, tickerLabel(s)),
       slot,
-      el('span', { class: 'tprice' }, '$' + fmtPrice(q.price) + '  ',
-        el('span', { class: cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%'))));
+      el('span', { class: 'tprice' }, '$' + fmtPrice(q.price)),
+      el('span', { class: 'pct ' + cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%')));
   }
   $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB') + '. Stocks may be delayed.';
   paintSparks();
@@ -607,6 +607,24 @@ let shop = store.get('shop', []);
 
 let editingShopId = null;
 
+// Small outline icons (stroke = text colour). The label goes to aria-label and the tooltip.
+const ICONS = {
+  edit: 'M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+};
+function iconButton(name, label, onclick) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', ICONS[name]);
+  svg.append(path);
+  const b = el('button', { type: 'button', class: 'icon', 'aria-label': label, title: label, onclick });
+  b.append(svg);
+  return b;
+}
+
 function renderShop() {
   const ul = $('shop');
   ul.replaceChildren();
@@ -618,10 +636,10 @@ function renderShop() {
     box.addEventListener('change', () => { it.done = box.checked; store.set('shop', shop); renderShop(); });
     ul.append(el('li', { class: it.done ? 'done' : '' },
       box, el('span', { class: 'grow t' }, it.text),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => { editingShopId = it.id; renderShop(); } }, 'Edit'),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => {
+      iconButton('edit', 'Edit ' + it.text, () => { editingShopId = it.id; renderShop(); }),
+      iconButton('trash', 'Delete ' + it.text, () => {
         shop = shop.filter((x) => x.id !== it.id); store.set('shop', shop); renderShop();
-      } }, 'Delete')));
+      })));
   }
 }
 
@@ -846,9 +864,11 @@ function applyTheme() {
   if (saved) document.documentElement.setAttribute('data-theme', saved);
   else document.documentElement.removeAttribute('data-theme');
   const now = effectiveTheme();
-  $('btn-theme').textContent = now === 'dark' ? 'Day' : 'Night'; // the mode you switch to
+  const btn = $('btn-theme');
+  btn.dataset.to = now === 'dark' ? 'light' : 'dark'; // the mode you switch to (CSS shows sun or moon)
+  btn.querySelector('span').textContent = now === 'dark' ? 'Day' : 'Night';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', now === 'dark' ? '#0f1720' : '#f3f6f9');
+  if (meta) meta.setAttribute('content', now === 'dark' ? '#0b1117' : '#eef2f6');
 }
 
 function toggleTheme() {
