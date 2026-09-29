@@ -311,7 +311,7 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .wxi.sm { width: 20px; height: 20px; }
 .wxi-sun, .wxi-part { color: #ffcc00; }
 .wxi-rain, .wxi-storm, .wxi-snow { color: var(--accent); }
-.wx-now { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+.wx-now { display: flex; align-items: center; gap: 12px; margin: 4px 0 22px; }
 .wx-temp { font-size: 3rem; font-weight: 200; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .wx-cond { min-width: 0; }
 .wx-cond-t { font-weight: 600; font-size: 1.05rem; }
