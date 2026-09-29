@@ -387,7 +387,7 @@ function fmtPrice(p) {
 function tickerLabel(s) { return s.startsWith('c:') ? s.slice(2).toUpperCase() : s.toUpperCase(); }
 
 async function loadQuotes() {
-  const syms = [...new Set(tickers.concat(holdings.map((x) => x.sym)))]; // holdings need prices too
+  const syms = [...new Set(tickers)];
   const results = await Promise.allSettled(syms.map(fetchQuote));
   const errors = {};
   syms.forEach((s, i) => {
@@ -421,15 +421,27 @@ async function loadQuotes() {
 let holdings = store.get('holdings', []); // [{ sym, qty }], only in this browser
 let pfHidden = store.get('pfHidden', false);
 
-function parseHoldings(text) {
+// Settings: one amount field per ticker. Rebuilt while the ticker list is edited; typed amounts are kept.
+function buildPfInputs() {
+  const box = $('set-pf');
+  const typed = {};
+  box.querySelectorAll('input').forEach((i) => { typed[i.dataset.sym] = i.value; });
+  const syms = [...new Set($('set-tickers').value.split(',').map((s) => s.trim()).filter(Boolean))];
+  box.replaceChildren(...syms.map((s) => {
+    const inp = el('input', { type: 'text', inputmode: 'decimal', placeholder: '0', 'data-sym': s, 'aria-label': 'Amount of ' + tickerLabel(s) });
+    const old = holdings.find((x) => x.sym.toUpperCase() === s.toUpperCase());
+    inp.value = s in typed ? typed[s] : (old ? old.qty : '');
+    return el('label', { class: 'pf-field' }, el('span', null, tickerLabel(s)), inp);
+  }));
+  if (!syms.length) box.append(el('span', { class: 'muted small' }, 'Add tickers above first.'));
+}
+
+function readPfInputs() {
   const out = [];
-  for (const line of text.split('\n')) {
-    const i = line.indexOf('=');
-    if (i < 1) continue;
-    const sym = line.slice(0, i).trim();
-    const qty = parseFloat(line.slice(i + 1).trim().replace(',', '.'));
-    if (sym && qty > 0) out.push({ sym: sym.startsWith('c:') ? sym : sym.toUpperCase(), qty });
-  }
+  $('set-pf').querySelectorAll('input').forEach((i) => {
+    const qty = parseFloat(String(i.value).replace(',', '.'));
+    if (qty > 0) out.push({ sym: i.dataset.sym, qty });
+  });
   return out;
 }
 
@@ -437,7 +449,7 @@ function renderPortfolio() {
   const box = $('pf');
   $('pf-hide').textContent = pfHidden ? 'Show' : 'Hide';
   $('pf-hide').hidden = !holdings.length;
-  if (!holdings.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add your holdings in Settings (Ticker=Amount). They stay only in this browser.')); return; }
+  if (!holdings.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Enter how much you hold of your tickers in Settings. It stays only in this browser.')); return; }
   const usdPerEur = fx && fx.rates && fx.rates.USD;
   const cur = usdPerEur ? 'EUR' : 'USD';
   const conv = (usd) => (usdPerEur ? usd / usdPerEur : usd);
@@ -1058,7 +1070,7 @@ function openSettings() {
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
-  $('set-pf').value = holdings.map((x) => x.sym + '=' + x.qty).join('\n');
+  buildPfInputs();
   $('set-gclient').value = googleClientId;
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
   $('bk-status').textContent = '';
@@ -1099,7 +1111,7 @@ function saveSettings() {
   }
   if (parsed.length) { zones = parsed; store.set('zones', zones); }
 
-  holdings = parseHoldings($('set-pf').value);
+  holdings = readPfInputs();
   store.set('holdings', holdings);
 
   setGoogleSettings($('set-gclient').value.trim());
@@ -1267,6 +1279,7 @@ function init() {
   renderShop();
   initNotes();
   $('pf-hide').addEventListener('click', togglePortfolioHidden);
+  $('set-tickers').addEventListener('input', buildPfInputs);
   renderPortfolio();
   initLayout();
   gcalInit();

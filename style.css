@@ -321,6 +321,11 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .list li.earn .grow::before { content: "\25C6"; color: var(--accent); font-size: 0.7rem; margin-right: 6px; vertical-align: 1px; }
 
 /* ---------- portfolio ---------- */
+.set-block { margin: 12px 0; }
+.set-label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 6px; }
+.pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; margin-bottom: 4px; }
+dialog label.pf-field { display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 8px; margin: 0; font-weight: 600; font-size: 0.88rem; }
+.pf-field input { width: 100%; margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .pf-total { font-size: 2.4rem; font-weight: 300; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", Inter, Roboto, system-ui, sans-serif; }
 .pf-day { display: flex; align-items: center; gap: 8px; margin: 6px 0 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }

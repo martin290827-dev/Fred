@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
 </head>
 <body>
   <header>
@@ -194,10 +194,11 @@
         </span>
       </label>
 
-      <label>Portfolio (one per line: Ticker=Amount)
-        <textarea id="set-pf" rows="3" placeholder="c:BTC=0.25&#10;TSLA=10"></textarea>
-        <span class="muted small">Stored only in this browser. Uses the same ticker format as above.</span>
-      </label>
+      <div class="set-block">
+        <span class="set-label">Portfolio: how much you hold of each ticker</span>
+        <div id="set-pf" class="pf-grid"></div>
+        <span class="muted small">Leave empty for tickers you only watch. Stored only in this browser.</span>
+      </div>
 
       <label>Clocks (one per line: Label=Time zone)
         <textarea id="set-zones" rows="3"></textarea>
@@ -231,7 +232,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=36"></script>
-  <script src="gcal.js?v=36"></script>
+  <script src="app.js?v=37"></script>
+  <script src="gcal.js?v=37"></script>
 </body>
 </html>
