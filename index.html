@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=31">
+  <link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
   <header>
@@ -165,6 +165,14 @@
         <span class="muted small">Free key at twelvedata.com. Without it, only crypto shows a chart.</span>
       </label>
 
+      <label>Default currencies (converter)
+        <span class="row">
+          <select id="set-fx-from" aria-label="Default from currency"></select>
+          <span class="muted">to</span>
+          <select id="set-fx-to" aria-label="Default to currency"></select>
+        </span>
+      </label>
+
       <label>Clocks (one per line: Label=Time zone)
         <textarea id="set-zones" rows="3"></textarea>
       </label>
@@ -197,7 +205,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=31"></script>
-  <script src="gcal.js?v=31"></script>
+  <script src="app.js?v=32"></script>
+  <script src="gcal.js?v=32"></script>
 </body>
 </html>

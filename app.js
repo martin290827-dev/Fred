@@ -634,7 +634,9 @@ function tickEvents() {
 }
 
 /* ---------- 9) Currency converter (Frankfurter, ECB rates, no key) ---------- */
-const CURRENCIES = ['EUR', 'USD', 'MXN', 'GBP', 'CHF', 'PHP'];
+const CURRENCIES = ['USD', 'EUR', 'MXN', 'GBP', 'CHF', 'JPY', 'CNY', 'PHP'];
+// Default pair for the converter, set in Settings (starts as USD -> EUR).
+let fxDefault = store.get('fxDefault', { from: 'USD', to: 'EUR' });
 let fx = store.get('fx', null); // { date, rates }
 
 async function loadFx() {
@@ -665,8 +667,11 @@ function initFx() {
   for (const id of ['fx-from', 'fx-to']) {
     for (const c of CURRENCIES) $(id).append(el('option', { value: c }, c));
   }
-  $('fx-from').value = 'EUR';
-  $('fx-to').value = 'MXN';
+  for (const id of ['set-fx-from', 'set-fx-to']) {
+    for (const c of CURRENCIES) $(id).append(el('option', { value: c }, c));
+  }
+  $('fx-from').value = fxDefault.from;
+  $('fx-to').value = fxDefault.to;
   ['fx-amount', 'fx-from', 'fx-to'].forEach((id) => $(id).addEventListener('input', convert));
   $('fx-swap').addEventListener('click', () => {
     const a = $('fx-from').value; $('fx-from').value = $('fx-to').value; $('fx-to').value = a; convert();
@@ -875,6 +880,8 @@ function openSettings() {
   $('set-tickers').value = tickers.join(', ');
   $('set-key').value = finnhubKey;
   $('set-twelve').value = twelveKey;
+  $('set-fx-from').value = fxDefault.from;
+  $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
   $('set-gclient').value = googleClientId;
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
@@ -895,6 +902,14 @@ function saveSettings() {
   store.set('finnhubKey', finnhubKey);
   twelveKey = $('set-twelve').value.trim();
   store.set('twelveKey', twelveKey);
+  const fxNew = { from: $('set-fx-from').value, to: $('set-fx-to').value };
+  if (fxNew.from !== fxDefault.from || fxNew.to !== fxDefault.to) {
+    fxDefault = fxNew;
+    store.set('fxDefault', fxDefault);
+    $('fx-from').value = fxDefault.from;
+    $('fx-to').value = fxDefault.to;
+    convert();
+  }
   sparkCache = {}; // new key or symbols: draw the charts again
   store.set('spark', sparkCache);
 
@@ -916,7 +931,7 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
 const ARRAY_KEYS = ['tickers', 'zones', 'shop'];
 
