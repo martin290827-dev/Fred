@@ -112,6 +112,7 @@ function gGoogleEvents() {
 function renderCalendar() {
   const ul = $('cal-list');
   const btn = $('cal-btn');
+  const keepScroll = ul.scrollTop;
   ul.replaceChildren();
   if (!googleClientId) {
     btn.hidden = true;
@@ -122,13 +123,24 @@ function renderCalendar() {
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
   if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
   const limit = addDays(new Date(), 30).getTime();
-  const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit).slice(0, 25); // one-day items with a time, next 30 days
+  const now = new Date();
+  const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit && (!e.end || e.end > now)).slice(0, 25); // one-day items with a time, next 30 days
   if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
   for (const ev of list) {
-    ul.append(el('li', null,
+    const state = gState(ev, now);
+    ul.append(el('li', { class: state.cls },
       el('span', { class: 'grow' }, ev.title),
-      el('span', { class: 'muted small' }, fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay }))));
+      el('span', { class: state.cls ? 'small' : 'muted small' }, state.text || fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay }))));
   }
+  ul.scrollTop = keepScroll;
+}
+
+// 'now' while it runs, 'soon' in the last hour before it starts. Words carry the meaning, colour only helps.
+function gState(ev, now) {
+  const mins = Math.round((ev.start - now) / 60000);
+  if (mins <= 0) return { cls: 'now', text: 'now' + (ev.end ? ' \u00b7 until ' + ev.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '') };
+  if (mins <= 60) return { cls: 'soon', text: 'in ' + mins + ' min' };
+  return { cls: '', text: '' };
 }
 
 async function gConnect() {
@@ -175,4 +187,5 @@ function gcalInit() {
     gRequestToken('none').then(gRefresh).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
+  setInterval(renderCalendar, 60000); // keeps now / soon current between refreshes
 }

@@ -136,11 +136,38 @@ async function fetchWeather(p) {
   return getJSON('https://api.open-meteo.com/v1/forecast?latitude=' + p.lat + '&longitude=' + p.lon +
     '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m' +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+    '&hourly=temperature_2m,precipitation' +
     '&timezone=auto&forecast_days=2');
 }
 
+// Warnings for the next 12 hours: rain (or snow) and frost. Returns short texts, empty if all is calm.
+function weatherWarnings(w) {
+  const h = w.hourly;
+  if (!h || !h.time || !w.current || !w.current.time) return [];
+  const hourNow = w.current.time.slice(0, 13); // e.g. 2026-09-29T06 (place time, both from the same response)
+  const from = h.time.findIndex((t) => t.slice(0, 13) >= hourNow);
+  if (from < 0) return [];
+  const idx = h.time.map((_, i) => i).slice(from, from + 12);
+  const at = (i) => (h.time[i].slice(0, 13) === hourNow ? 'now' : 'from ' + h.time[i].slice(11, 16));
+  const out = [];
+  const wet = idx.filter((i) => h.precipitation[i] >= 0.2);
+  if (wet.length) {
+    const mm = wet.reduce((s, i) => s + h.precipitation[i], 0);
+    const cold = h.temperature_2m[wet[0]] <= 1;
+    out.push((cold ? 'Snow or sleet ' : 'Rain ') + at(wet[0]) + ', about ' + mm.toFixed(1) + ' mm in 12 h');
+  }
+  const icy = idx.filter((i) => h.temperature_2m[i] <= 0);
+  if (icy.length) {
+    const low = Math.min(...icy.map((i) => h.temperature_2m[i]));
+    out.push('Frost ' + at(icy[0]) + ', down to ' + Math.round(low) + '\u00b0');
+  }
+  return out;
+}
+
 function renderWeatherMain(box, w) {
+  const warn = weatherWarnings(w).map((t) => el('div', { class: 'wx-warn' }, '\u26a0 ' + t));
   box.replaceChildren(
+    ...warn,
     el('div', { class: 'wx-now' },
       el('div', { class: 'big' }, Math.round(w.current.temperature_2m) + '°C'),
       el('div', null, WMO[w.current.weather_code] || 'Unknown',
@@ -157,8 +184,9 @@ function renderWeatherMain(box, w) {
 
 // Second place as a quiet block below the main one. Click it to make it the main place.
 function renderWeatherAlt(box, p, w) {
+  const warn = weatherWarnings(w)[0];
   const desc = (WMO[w.current.weather_code] || '?') + ' · ' +
-    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°';
+    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°' + (warn ? ' · \u26a0 ' + warn.split(',')[0] : '');
   box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: p.name + ' – click to show as the main place', onclick: swapPlaces },
     el('span', { class: 'wx-alt-text' },
       el('span', { class: 'wx-alt-name' }, p.name.split(',')[0]),
@@ -417,6 +445,35 @@ function resetTimer() {
   $('timer-start').textContent = 'Start';
 }
 
+/* ---------- Stopwatch (keeps running across reloads: stores start time and the time before it) ---------- */
+let sw = store.get('sw', { acc: 0, start: null });
+
+function swElapsed() { return sw.acc + (sw.start ? Date.now() - sw.start : 0); }
+
+function fmtStopwatch(ms) {
+  const t = Math.floor(ms / 100); // tenths
+  const pad = (n) => String(n).padStart(2, '0');
+  const h = Math.floor(t / 36000);
+  return (h ? h + ':' : '') + pad(Math.floor((t % 36000) / 600)) + ':' + pad(Math.floor((t % 600) / 10)) + '.' + (t % 10);
+}
+
+function tickStopwatch() {
+  $('sw-display').textContent = fmtStopwatch(swElapsed());
+  $('sw-start').textContent = sw.start ? 'Stop' : (sw.acc ? 'Resume' : 'Start');
+}
+
+function toggleStopwatch() {
+  if (sw.start) { sw = { acc: swElapsed(), start: null }; } else { sw = { acc: sw.acc, start: Date.now() }; }
+  store.set('sw', sw);
+  tickStopwatch();
+}
+
+function resetStopwatch() {
+  sw = { acc: 0, start: null };
+  store.set('sw', sw);
+  tickStopwatch();
+}
+
 /* ---------- Events (date only, from Google Calendar) ---------- */
 function fmtRemaining(ms) {
   if (ms <= 0) return 'passed';
@@ -462,6 +519,9 @@ function eventList() {
   return typeof gGoogleEvents === 'function' ? gGoogleEvents() : [];
 }
 
+// Highlight an event that is today or already running.
+function isEventNow(e) { return dayDiff(e.at) <= 0 && dayDiff(e.to || e.at) >= 0; }
+
 function renderEvents() {
   const ul = $('events');
   ul.replaceChildren();
@@ -471,7 +531,7 @@ function renderEvents() {
     ul.append(el('li', { class: 'muted' }, on ? 'No events.' : 'Connect Google Calendar to see your events.'));
   }
   for (const e of sorted) {
-    ul.append(el('li', null,
+    ul.append(el('li', { class: isEventNow(e) ? 'now' : '' },
       el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e))),
       el('span', { 'data-id': e.id })));
   }
@@ -482,6 +542,7 @@ function tickEvents() {
   document.querySelectorAll('#events [data-id]').forEach((n) => {
     const e = eventList().find((x) => x.id === n.getAttribute('data-id'));
     n.textContent = e ? fmtEventWhen(e) : '';
+    if (n.parentElement) n.parentElement.classList.toggle('now', !!e && isEventNow(e)); // also right after midnight
   });
 }
 
@@ -888,6 +949,9 @@ function init() {
 
   $('timer-start').addEventListener('click', startTimer);
   $('timer-reset').addEventListener('click', resetTimer);
+  $('sw-start').addEventListener('click', toggleStopwatch);
+  $('sw-reset').addEventListener('click', resetStopwatch);
+  tickStopwatch();
   document.querySelectorAll('.presets button').forEach((b) =>
     b.addEventListener('click', () => { $('timer-min').value = b.dataset.min; }));
 
@@ -939,6 +1003,7 @@ function init() {
   });
 
   setInterval(() => { tickClocks(); tickTimer(); }, 250);
+  setInterval(() => { if (sw.start) tickStopwatch(); }, 100);
   setInterval(tickEvents, 30000);
   setInterval(loadQuotes, 60000);
   setInterval(loadWeather, 15 * 60000);

@@ -167,6 +167,10 @@ button:hover { filter: brightness(1.1); }
   border-bottom: 1px solid var(--line);
 }
 .list li:last-child { border-bottom: 0; }
+/* current items: tinted row with an accent bar; 'soon' gets a warm bar */
+.list li.now, .list li.soon { padding-left: 8px; border-radius: 6px; }
+.list li.now { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.list li.soon { box-shadow: inset 3px 0 0 var(--warn); }
 .list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
 .tick { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
@@ -177,6 +181,8 @@ button:hover { filter: brightness(1.1); }
 
 .wx-now { display: flex; align-items: baseline; gap: 12px; }
 .wx-now .big { margin: 0; }
+.wx-warn { margin-bottom: 8px; padding: 6px 10px; border-radius: 8px; border-left: 3px solid var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); font-weight: 600; font-size: 0.9rem; }
+#sw-display { font-size: 1.7rem; margin: 4px 0 8px; }
 .wx-day { display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid var(--line); }
 
 #banners { position: sticky; top: 0; z-index: 5; }
