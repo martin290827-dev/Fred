@@ -281,12 +281,28 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .list li.done .t { text-decoration: line-through; color: var(--muted); }
 
-/* ---------- clocks (World Clock style: light large digits) ---------- */
-.clock { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--line); }
+/* ---------- clocks (World Clock style: analog face, city, offset, light digits) ---------- */
+.clock {
+  display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 0.5px solid var(--line);
+}
 .clock:last-child { border-bottom: 0; }
-.clock > span:first-child { font-weight: 600; font-size: 1rem; }
-.clock .t { font-size: 2rem; font-weight: 300; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.clock:first-child .t { font-size: 2.35rem; }
+.face { width: 44px; height: 44px; display: block; }
+.face .dial { fill: #ffffff; stroke: var(--line-2); stroke-width: 1; }
+.face .mark { stroke: #1d1d1f; stroke-width: 1.1; stroke-linecap: round; opacity: 0.55; }
+.face .hand { stroke: #1d1d1f; stroke-linecap: round; }
+.face .hh { stroke-width: 2.4; }
+.face .mm { stroke-width: 1.7; }
+.face .ss { stroke: #ff9500; stroke-width: 0.9; }
+.face .pin { fill: #ff9500; }
+.face.night .dial { fill: #1c1c1e; stroke: #3a3a3c; }
+.face.night .mark, .face.night .hand:not(.ss) { stroke: #ffffff; }
+.cname { display: flex; flex-direction: column; min-width: 0; }
+.city { font-weight: 600; font-size: 1.02rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel { color: var(--muted); font-size: 0.8rem; }
+.clock .t { font-size: 2rem; font-weight: 300; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.clock .sec { font-size: 0.95rem; color: var(--muted); margin-left: 1px; }
+.clock:first-child .t { font-size: 2.3rem; }
 
 /* ---------- weather ---------- */
 .wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }

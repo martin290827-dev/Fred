@@ -89,11 +89,45 @@ async function getJSON(url) {
 }
 
 /* ---------- 2) Clocks (multi time zone) ---------- */
-function fmtTime(tz, now) {
-  return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now);
+
+// Clock parts of one time zone: y, m, d, h, min, s as numbers.
+function zoneParts(tz, now) {
+  const p = {};
+  for (const x of new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric',
+    day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(now)) p[x.type] = +x.value;
+  p.hour %= 24;
+  return p;
 }
-function fmtDate(tz, now) {
-  return new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' }).format(now);
+
+// "Today · +6 h" relative to this computer's own time.
+function zoneRelative(p, now) {
+  const zoneAsUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute);
+  const localAsUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+  const mins = Math.round((zoneAsUTC - localAsUTC) / 60000);
+  const dd = Math.round((Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  const day = dd === 0 ? 'Today' : dd === 1 ? 'Tomorrow' : dd === -1 ? 'Yesterday' : (dd > 0 ? '+' : '') + dd + ' days';
+  if (mins === 0) return day + ' · local time';
+  const h = Math.trunc(Math.abs(mins) / 60);
+  const m = Math.abs(mins) % 60;
+  return day + ' · ' + (mins > 0 ? '+' : '−') + h + (m ? ':' + String(m).padStart(2, '0') : '') + ' h';
+}
+
+// Small analog face: light by day (06-18), dark by night, orange second hand.
+function clockFace() {
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  const svg = mk('svg', { viewBox: '0 0 40 40', class: 'face', 'aria-hidden': 'true' });
+  svg.append(mk('circle', { cx: 20, cy: 20, r: 19, class: 'dial' }));
+  for (let i = 0; i < 12; i++) {
+    const a = (i * Math.PI) / 6;
+    const r1 = i % 3 ? 16 : 14.5;
+    svg.append(mk('line', { x1: 20 + Math.sin(a) * r1, y1: 20 - Math.cos(a) * r1, x2: 20 + Math.sin(a) * 17.5, y2: 20 - Math.cos(a) * 17.5, class: 'mark' }));
+  }
+  const hh = mk('line', { x1: 20, y1: 20, x2: 20, y2: 10.5, class: 'hand hh' });
+  const mm = mk('line', { x1: 20, y1: 20, x2: 20, y2: 6, class: 'hand mm' });
+  const ss = mk('line', { x1: 20, y1: 23, x2: 20, y2: 5, class: 'hand ss' });
+  svg.append(hh, mm, ss, mk('circle', { cx: 20, cy: 20, r: 1.6, class: 'pin' }));
+  return { svg, hh, mm, ss };
 }
 
 let clockNodes = [];
@@ -102,11 +136,15 @@ function renderClocks() {
   box.replaceChildren();
   clockNodes = [];
   for (const z of zones) {
-    const t = el('span', { class: 't' });
-    const d = el('span', { class: 'muted small' });
+    const face = clockFace();
+    const hm = el('span', { class: 'hm' });
+    const sec = el('span', { class: 'sec' });
+    const rel = el('span', { class: 'rel' });
     box.append(el('div', { class: 'clock' },
-      el('span', null, z.label, el('br'), d), t));
-    clockNodes.push({ tz: z.tz, t, d });
+      face.svg,
+      el('span', { class: 'cname' }, el('span', { class: 'city' }, z.label), rel),
+      el('span', { class: 't' }, hm, sec)));
+    clockNodes.push({ tz: z.tz, face, hm, sec, rel });
   }
   tickClocks();
 }
@@ -114,11 +152,19 @@ function tickClocks() {
   const now = new Date();
   const today = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   if ($('today').textContent !== today) $('today').textContent = today;
+  const pad = (n) => String(n).padStart(2, '0');
   for (const c of clockNodes) {
     try {
-      c.t.textContent = fmtTime(c.tz, now);
-      c.d.textContent = fmtDate(c.tz, now);
-    } catch { c.t.textContent = 'bad zone'; }
+      const p = zoneParts(c.tz, now);
+      const hm = pad(p.hour) + ':' + pad(p.minute);
+      if (c.hm.textContent !== hm) { c.hm.textContent = hm; c.rel.textContent = zoneRelative(p, now); }
+      c.sec.textContent = ':' + pad(p.second);
+      const rot = (n, deg) => n.setAttribute('transform', 'rotate(' + deg.toFixed(1) + ' 20 20)');
+      rot(c.face.hh, (p.hour % 12) * 30 + p.minute * 0.5);
+      rot(c.face.mm, p.minute * 6 + p.second * 0.1);
+      rot(c.face.ss, p.second * 6);
+      c.face.svg.classList.toggle('night', p.hour < 6 || p.hour >= 18);
+    } catch { c.hm.textContent = 'bad zone'; c.sec.textContent = ''; }
   }
 }
 
