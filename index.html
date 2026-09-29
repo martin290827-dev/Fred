@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
   <header>
@@ -37,9 +37,10 @@
   <div id="banners"></div>
 
   <main class="grid">
-    <section class="card" id="card-clock">
-      <h2>Time</h2>
-      <div id="clocks"></div>
+    <section class="card" id="card-cal">
+      <h2>Tasks &amp; reminders <button id="cal-btn" class="ghost small" type="button">Connect</button></h2>
+      <ul id="cal-list" class="list"></ul>
+      <p class="muted small" id="cal-status"></p>
     </section>
 
     <section class="card" id="card-weather">
@@ -52,6 +53,35 @@
       <h2>Tickers <button id="btn-refresh" class="ghost small">Refresh</button></h2>
       <div id="tickers">Loading...</div>
       <p class="muted small" id="tickers-status"></p>
+    </section>
+
+    <section class="card" id="card-events">
+      <h2>Events</h2>
+      <ul id="events" class="list"></ul>
+    </section>
+
+    <section class="card" id="card-clock">
+      <h2>Time</h2>
+      <div id="clocks"></div>
+    </section>
+
+    <section class="card" id="card-calc">
+      <h2>Calculator &amp; currency</h2>
+      <div class="row">
+        <input id="calc-expr" type="text" autocomplete="off" placeholder="200+10%" aria-label="Expression">
+        <button id="calc-reset" class="ghost" type="button">Reset</button>
+      </div>
+      <div id="calc-result" class="big">0</div>
+      <p class="muted small">Live result. Enter keeps it, Esc resets.</p>
+      <h3 class="sub">Currency <span id="fx-date" class="muted"></span></h3>
+      <div class="row wrap">
+        <input id="fx-amount" type="number" step="any" value="100" aria-label="Amount">
+        <select id="fx-from" aria-label="From"></select>
+        <button id="fx-swap" class="ghost" aria-label="Swap">&#8646;</button>
+        <select id="fx-to" aria-label="To"></select>
+      </div>
+      <div id="fx-result" class="big">-</div>
+      <p class="muted small" id="fx-status"></p>
     </section>
 
     <section class="card" id="card-timer">
@@ -77,17 +107,6 @@
       </div>
     </section>
 
-    <section class="card" id="card-events">
-      <h2>Events</h2>
-      <ul id="events" class="list"></ul>
-    </section>
-
-    <section class="card" id="card-cal">
-      <h2>Tasks &amp; reminders <button id="cal-btn" class="ghost small" type="button">Connect</button></h2>
-      <ul id="cal-list" class="list"></ul>
-      <p class="muted small" id="cal-status"></p>
-    </section>
-
     <section class="card" id="card-shop">
       <h2>Shopping list <button id="shop-clear" class="ghost small" type="button">Clear checked</button></h2>
       <ul id="shop" class="list"></ul>
@@ -95,25 +114,6 @@
         <input id="shop-text" type="text" placeholder="Add item" required maxlength="60">
         <button type="submit">Add</button>
       </form>
-    </section>
-
-    <section class="card" id="card-calc">
-      <h2>Calculator &amp; currency</h2>
-      <div class="row">
-        <input id="calc-expr" type="text" autocomplete="off" placeholder="200+10%" aria-label="Expression">
-        <button id="calc-reset" class="ghost" type="button">Reset</button>
-      </div>
-      <div id="calc-result" class="big">0</div>
-      <p class="muted small">Live result. Enter keeps it, Esc resets.</p>
-      <h3 class="sub">Currency <span id="fx-date" class="muted"></span></h3>
-      <div class="row wrap">
-        <input id="fx-amount" type="number" step="any" value="100" aria-label="Amount">
-        <select id="fx-from" aria-label="From"></select>
-        <button id="fx-swap" class="ghost" aria-label="Swap">&#8646;</button>
-        <select id="fx-to" aria-label="To"></select>
-      </div>
-      <div id="fx-result" class="big">-</div>
-      <p class="muted small" id="fx-status"></p>
     </section>
   </main>
 
@@ -184,7 +184,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=23"></script>
-  <script src="gcal.js?v=23"></script>
+  <script src="app.js?v=24"></script>
+  <script src="gcal.js?v=24"></script>
 </body>
 </html>
