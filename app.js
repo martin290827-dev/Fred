@@ -417,7 +417,7 @@ function resetTimer() {
   $('timer-start').textContent = 'Start';
 }
 
-/* ---------- Events (date only) and "next up" ---------- */
+/* ---------- Events (date only, from Google Calendar) ---------- */
 function fmtRemaining(ms) {
   if (ms <= 0) return 'passed';
   const mins = Math.floor(ms / 60000);
@@ -483,30 +483,6 @@ function tickEvents() {
     const e = eventList().find((x) => x.id === n.getAttribute('data-id'));
     n.textContent = e ? fmtEventWhen(e) : '';
   });
-  updateNextUp();
-}
-
-// Header pill: the nearest upcoming item from Google Calendar (when connected).
-function updateNextUp() {
-  const cands = [];
-  for (const e of eventList()) {
-    if (dayDiff(e.to || e.at) < 0) continue; // over
-    const running = e.to && dayDiff(e.at) <= 0; // a multi-day event that has started
-    cands.push({
-      label: e.label,
-      key: Math.max(new Date(e.at + 'T00:00').getTime(), startOfDay(new Date()).getTime()),
-      when: running ? 'until ' + fmtDue({ due: e.to + 'T00:00', allDay: true }) : fmtDue({ due: e.at + 'T00:00', allDay: true }),
-    });
-  }
-  if (typeof gNext !== 'undefined' && gNext) {
-    cands.push({
-      label: gNext.title,
-      key: gNext.allDay ? startOfDay(gNext.start).getTime() : gNext.start.getTime(),
-      when: fmtDue({ due: toLocalISO(gNext.start), allDay: gNext.allDay }),
-    });
-  }
-  cands.sort((a, b) => a.key - b.key);
-  $('nextup').textContent = cands.length ? 'Next: ' + cands[0].label + ' · ' + cands[0].when : 'No upcoming events';
 }
 
 /* ---------- 9) Currency converter (Frankfurter, ECB rates, no key) ---------- */

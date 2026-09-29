@@ -8,7 +8,6 @@ const G_API = 'https://www.googleapis.com/calendar/v3/';
 let gToken = null;
 let gExpiry = 0;
 let gAgenda = []; // upcoming events from Google Calendar
-let gNext = null; // next event, shown in the header
 
 function gHasToken() { return !!gToken && Date.now() < gExpiry - 30000; }
 
@@ -85,7 +84,6 @@ async function gRefresh() {
       }))
       .filter((e) => !e.end || e.end > now);
     gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); }); // timed, but lasts a day or more (an overnight event stays a normal appointment)
-    gNext = gAgenda.find((e) => !e.allDay && !e.multi && e.start >= now) || null; // all-day and multi-day items are listed under Events
     gStatus('Updated ' + now.toLocaleTimeString('en-GB'));
   } catch (e) {
     gStatus(e.message);
@@ -149,12 +147,11 @@ function gDisconnect() {
   gToken = null;
   gExpiry = 0;
   gAgenda = [];
-  gNext = null;
   store.set('gConnected', false);
   try { if (t && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(t, () => {}); } catch { /* ignore */ }
   gStatus('Disconnected.');
   renderCalendar();
-  updateNextUp();
+  renderEvents();
 }
 
 function setGoogleSettings(clientId) {

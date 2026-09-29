@@ -11,14 +11,13 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <header>
     <h1>Fred</h1>
     <div id="today" class="today"></div>
     <div class="hright">
-      <div id="nextup" class="nextup">No upcoming events</div>
       <div class="hbtns">
         <button id="btn-theme" class="ghost" type="button" aria-label="Switch day or night mode">Day</button>
         <button id="btn-layout" class="ghost" type="button" aria-label="Rearrange or hide cards">Layout</button>
@@ -172,7 +171,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=19"></script>
-  <script src="gcal.js?v=19"></script>
+  <script src="app.js?v=20"></script>
+  <script src="gcal.js?v=20"></script>
 </body>
 </html>
