@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=38">
+  <link rel="stylesheet" href="style.css?v=39">
 </head>
 <body>
   <header>
@@ -146,7 +146,7 @@
     </section>
 
     <section class="card" id="card-pf">
-      <h2>Portfolio <button id="pf-hide" class="ghost small" type="button">Hide</button></h2>
+      <h2>Portfolio <span class="muted">performance</span></h2>
       <div id="pf"></div>
     </section>
   </main>
@@ -226,7 +226,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=38"></script>
-  <script src="gcal.js?v=38"></script>
+  <script src="app.js?v=39"></script>
+  <script src="gcal.js?v=39"></script>
 </body>
 </html>

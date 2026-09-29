@@ -417,64 +417,49 @@ async function loadQuotes() {
   renderPortfolio();
 }
 
-/* ---------- Portfolio: holdings from Settings, valued with the ticker prices, shown in EUR ---------- */
-let holdings = store.get('holdings', []); // [{ sym, qty }], only in this browser
-let pfHidden = store.get('pfHidden', false);
+/* ---------- Portfolio: how the tickers perform, no amounts needed ----------
+   1 day from the live quote; 1 week and 1 month from the daily closes already loaded for the sparklines.
+   The top line is the plain average of all tickers (every ticker counts the same). */
+try { localStorage.removeItem('fred.holdings'); localStorage.removeItem('fred.pfHidden'); } catch { /* old data from an earlier version */ }
 
-// Every ticker is listed; type the amount you hold right in the row (empty = only watched).
+function changeBack(series, steps) {
+  if (!series || series.length <= steps) return null;
+  const last = series[series.length - 1];
+  const then = series[series.length - 1 - steps];
+  return then ? (last / then - 1) * 100 : null;
+}
+
 function renderPortfolio() {
   const box = $('pf');
-  if (box.contains(document.activeElement)) return; // do not redraw while you type an amount
-  $('pf-hide').textContent = pfHidden ? 'Show' : 'Hide';
   if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add tickers in Settings first.')); return; }
-  const usdPerEur = fx && fx.rates && fx.rates.USD;
-  const cur = usdPerEur ? 'EUR' : 'USD';
-  const conv = (usd) => (usdPerEur ? usd / usdPerEur : usd);
-  const money = (v) => (pfHidden ? '••••' : v.toLocaleString('en-GB', { style: 'currency', currency: cur, maximumFractionDigits: 0 }));
-  const sign = (v) => (v >= 0 ? '+' : '−');
-  let total = 0;
-  let day = 0;
   const rows = tickers.map((s) => {
-    const hd = holdings.find((x) => x.sym === s);
-    const qty = hd ? hd.qty : 0;
     const q = lastQuotes[s];
-    const value = qty && q ? conv(q.price * qty) : null;
-    if (value !== null) { total += value; day += value - value / (1 + (q.pct || 0) / 100); }
-    return { s, qty, value, noPrice: qty && !q };
+    const v = sparkCache[s] && sparkCache[s].v;
+    const crypto = s.startsWith('c:');
+    // crypto trades every day, stocks only on weekdays
+    return { s, d: q ? q.pct : null, w: changeBack(v, crypto ? 7 : 5), m: changeBack(v, crypto ? 29 : 21) };
   });
-  const dayPct = total - day ? (day / (total - day)) * 100 : 0;
-  const head = total
-    ? [el('div', { class: 'pf-total' }, money(total)),
-      el('div', { class: 'pf-day' },
-        el('span', { class: 'pct ' + (day >= 0 ? 'up' : 'down') }, sign(dayPct) + Math.abs(dayPct).toFixed(2) + '%'),
-        el('span', { class: 'muted' }, (pfHidden ? '' : sign(day) + money(Math.abs(day)) + ' ') + 'today'))]
-    : [el('p', { class: 'muted pf-hint' }, 'Type how much you hold next to each ticker. Stored only in this browser.')];
-  box.replaceChildren(...head, el('div', { class: 'pf-list' }, ...rows.map((r) => el('div', { class: 'pf-row' + (r.qty ? '' : ' watch') },
-    el('span', { class: 'tsym' }, tickerLabel(r.s)),
-    pfHidden ? el('span', { class: 'muted small pf-qty-hidden' }, r.qty ? '••' : '') : qtyInput(r.s, r.qty),
-    el('span', { class: 'pf-val' }, r.noPrice ? 'no price' : r.value === null ? '–' : money(r.value)),
-    el('span', { class: 'muted small pf-share' }, r.value === null || !total ? '' : Math.round((r.value / total) * 100) + '%')))));
-}
-
-function qtyInput(sym, qty) {
-  const inp = el('input', { type: 'text', inputmode: 'decimal', class: 'pf-qty', placeholder: 'amount', 'aria-label': 'Amount of ' + tickerLabel(sym) });
-  inp.value = qty || '';
-  const save = () => {
-    const v = parseFloat(inp.value.replace(',', '.'));
-    holdings = holdings.filter((x) => x.sym !== sym);
-    if (v > 0) holdings.push({ sym, qty: v });
-    store.set('holdings', holdings);
-  };
-  inp.addEventListener('change', () => { save(); inp.blur(); renderPortfolio(); });
-  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
-  inp.addEventListener('blur', () => setTimeout(renderPortfolio, 0));
-  return inp;
-}
-
-function togglePortfolioHidden() {
-  pfHidden = !pfHidden;
-  store.set('pfHidden', pfHidden);
-  renderPortfolio();
+  const pctCell = (x) => (x === null || x === undefined || isNaN(x)
+    ? el('span', { class: 'muted pf-c' }, '–')
+    : el('span', { class: 'pf-c ' + (x >= 0 ? 'up' : 'down') }, (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1) + '%'));
+  const withDay = rows.filter((r) => r.d !== null);
+  const head = [];
+  if (withDay.length) {
+    const avg = withDay.reduce((sum, r) => sum + r.d, 0) / withDay.length;
+    const up = withDay.filter((r) => r.d >= 0).length;
+    const sorted = [...withDay].sort((x, y) => y.d - x.d);
+    head.push(
+      el('div', { class: 'pf-top' },
+        el('span', { class: 'pf-avg ' + (avg >= 0 ? 'up' : 'down') }, (avg >= 0 ? '+' : '−') + Math.abs(avg).toFixed(2) + '%'),
+        el('span', { class: 'muted small' }, 'today, average of ' + withDay.length + ' tickers')),
+      el('div', { class: 'pf-sub muted small' },
+        up + ' up · ' + (withDay.length - up) + ' down · best ' + tickerLabel(sorted[0].s) +
+        ' · worst ' + tickerLabel(sorted[sorted.length - 1].s)));
+  }
+  box.replaceChildren(...head,
+    el('div', { class: 'pf-row pf-headrow muted small' }, el('span', null, ''), el('span', null, '1D'), el('span', null, '1W'), el('span', null, '1M')),
+    el('div', { class: 'pf-list' }, ...rows.map((r) => el('div', { class: 'pf-row' },
+      el('span', { class: 'tsym' }, tickerLabel(r.s)), pctCell(r.d), pctCell(r.w), pctCell(r.m)))));
 }
 
 /* ---------- Sparklines: 30 daily closes, cached for 6 hours ---------- */
@@ -591,6 +576,7 @@ async function paintSparks() {
       }
     }
     if (rateLimited) setTimeout(paintSparks, 66 * 1000); // try the rest after the per-minute limit resets
+    renderPortfolio(); // week and month numbers come from the same daily closes
   } finally {
     sparkBusy = false;
     if (sparkAgain) { sparkAgain = false; paintSparks(); }
@@ -1098,8 +1084,6 @@ function saveSettings() {
   }
   if (parsed.length) { zones = parsed; store.set('zones', zones); }
 
-  holdings = holdings.filter((x) => tickers.includes(x.sym)); // removed tickers leave the portfolio too
-  store.set('holdings', holdings);
 
   setGoogleSettings($('set-gclient').value.trim());
   earn.t = 0;
@@ -1111,9 +1095,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'holdings', 'pfHidden', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
-const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'holdings'];
+const ARRAY_KEYS = ['tickers', 'zones', 'shop'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -1265,7 +1249,6 @@ function init() {
   initCalc();
   renderShop();
   initNotes();
-  $('pf-hide').addEventListener('click', togglePortfolioHidden);
   renderPortfolio();
   initLayout();
   gcalInit();
