@@ -414,52 +414,92 @@ async function loadQuotes() {
   }
   $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB') + '. Stocks may be delayed.';
   paintSparks();
-  renderPortfolio();
+  if (news.t) renderNews(); // keeps the movers order current
 }
 
-/* ---------- Portfolio: how the tickers perform, no amounts needed ----------
-   1 day from the live quote; 1 week and 1 month from the daily closes already loaded for the sparklines.
-   The top line is the plain average of all tickers (every ticker counts the same). */
-try { localStorage.removeItem('fred.holdings'); localStorage.removeItem('fred.pfHidden'); } catch { /* old data from an earlier version */ }
+/* ---------- Market news for the tickers (Finnhub, free with the same key) ----------
+   Stocks: company news of the last 2 days. Crypto: Finnhub's crypto feed, matched to each coin by name.
+   Only headlines with source and time; Fred does not guess why a price moved. */
+try { localStorage.removeItem('fred.holdings'); localStorage.removeItem('fred.pfHidden'); } catch { /* data of an old version */ }
 
-function changeBack(series, steps) {
-  if (!series || series.length <= steps) return null;
-  const last = series[series.length - 1];
-  const then = series[series.length - 1 - steps];
-  return then ? (last / then - 1) * 100 : null;
+const NEWS_TTL = 15 * 60000;
+const COIN_WORDS = {
+  BTC: 'bitcoin|btc', ETH: 'ethereum|ether\\b|eth\\b', SOL: 'solana|\\bsol\\b', XRP: 'xrp|ripple', DOGE: 'dogecoin|doge',
+  ADA: 'cardano|\\bada\\b', BNB: 'bnb|binance coin', AVAX: 'avalanche|avax', DOT: 'polkadot', LINK: 'chainlink', LTC: 'litecoin',
+};
+let news = { t: 0, key: '', groups: {} };
+let newsBusy = false;
+
+function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : null; }
+
+function agoText(unixSec) {
+  const m = Math.max(1, Math.round((Date.now() / 1000 - unixSec) / 60));
+  return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
 }
 
-function renderPortfolio() {
-  const box = $('pf');
+function pickNews(list) {
+  const seen = new Set();
+  return list.filter((n) => n.headline && safeUrl(n.url) && !seen.has(n.headline) && seen.add(n.headline))
+    .sort((x, y) => y.datetime - x.datetime).slice(0, 3)
+    .map((n) => ({ title: n.headline, url: n.url, source: n.source || '', at: n.datetime }));
+}
+
+async function loadNews(force) {
+  const key = tickers.join(',');
+  if (!finnhubKey || !tickers.length) { renderNews(); return; }
+  if (!force && news.key === key && Date.now() - news.t < NEWS_TTL) { renderNews(); return; }
+  if (newsBusy) return;
+  newsBusy = true;
+  const groups = {};
+  const from = toDateStr(addDays(new Date(), -2));
+  const to = toDateStr(new Date());
+  const tok = '&token=' + encodeURIComponent(finnhubKey);
+  try {
+    for (const s of tickers.filter((x) => !x.startsWith('c:'))) {
+      try {
+        const r = await getJSON('https://finnhub.io/api/v1/company-news?symbol=' + encodeURIComponent(s) + '&from=' + from + '&to=' + to + tok);
+        groups[s] = pickNews(Array.isArray(r) ? r : []);
+      } catch { groups[s] = null; }
+    }
+    const coins = tickers.filter((x) => x.startsWith('c:'));
+    if (coins.length) {
+      let feed = [];
+      try { const r = await getJSON('https://finnhub.io/api/v1/news?category=crypto' + tok); feed = Array.isArray(r) ? r : []; } catch { feed = null; }
+      for (const s of coins) {
+        const code = tickerLabel(s);
+        const re = new RegExp(COIN_WORDS[code] || '\\b' + code.toLowerCase() + '\\b', 'i');
+        groups[s] = feed === null ? null : pickNews(feed.filter((n) => re.test((n.headline || '') + ' ' + (n.summary || ''))));
+      }
+      groups['crypto'] = feed === null ? null : pickNews(feed);
+    }
+    news = { t: Date.now(), key, groups };
+  } finally { newsBusy = false; }
+  renderNews();
+}
+
+function renderNews() {
+  const box = $('news');
+  if (!finnhubKey) { box.replaceChildren(el('p', { class: 'muted' }, 'Add a Finnhub key in Settings to see news for your tickers.')); return; }
   if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add tickers in Settings first.')); return; }
-  const rows = tickers.map((s) => {
+  if (!news.t) { box.replaceChildren(el('p', { class: 'muted' }, 'Loading news...')); return; }
+  // biggest movers of the day first
+  const move = (s) => (lastQuotes[s] ? Math.abs(lastQuotes[s].pct || 0) : -1);
+  const order = [...tickers].sort((x, y) => move(y) - move(x));
+  if (news.groups.crypto) order.push('crypto');
+  box.replaceChildren(...order.map((s) => {
     const q = lastQuotes[s];
-    const v = sparkCache[s] && sparkCache[s].v;
-    const crypto = s.startsWith('c:');
-    // crypto trades every day, stocks only on weekdays
-    return { s, d: q ? q.pct : null, w: changeBack(v, crypto ? 7 : 5), m: changeBack(v, crypto ? 29 : 21) };
-  });
-  const pctCell = (x) => (x === null || x === undefined || isNaN(x)
-    ? el('span', { class: 'muted pf-c' }, '–')
-    : el('span', { class: 'pf-c ' + (x >= 0 ? 'up' : 'down') }, (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1) + '%'));
-  const withDay = rows.filter((r) => r.d !== null);
-  const head = [];
-  if (withDay.length) {
-    const avg = withDay.reduce((sum, r) => sum + r.d, 0) / withDay.length;
-    const up = withDay.filter((r) => r.d >= 0).length;
-    const sorted = [...withDay].sort((x, y) => y.d - x.d);
-    head.push(
-      el('div', { class: 'pf-top' },
-        el('span', { class: 'pf-avg ' + (avg >= 0 ? 'up' : 'down') }, (avg >= 0 ? '+' : '−') + Math.abs(avg).toFixed(2) + '%'),
-        el('span', { class: 'muted small' }, 'today, average of ' + withDay.length + ' tickers')),
-      el('div', { class: 'pf-sub muted small' },
-        up + ' up · ' + (withDay.length - up) + ' down · best ' + tickerLabel(sorted[0].s) +
-        ' · worst ' + tickerLabel(sorted[sorted.length - 1].s)));
-  }
-  box.replaceChildren(...head,
-    el('div', { class: 'pf-row pf-headrow muted small' }, el('span', null, ''), el('span', null, '1D'), el('span', null, '1W'), el('span', null, '1M')),
-    el('div', { class: 'pf-list' }, ...rows.map((r) => el('div', { class: 'pf-row' },
-      el('span', { class: 'tsym' }, tickerLabel(r.s)), pctCell(r.d), pctCell(r.w), pctCell(r.m)))));
+    const items = news.groups[s];
+    const head = el('div', { class: 'news-head' },
+      el('span', { class: 'tsym' }, s === 'crypto' ? 'Crypto market' : tickerLabel(s)),
+      q ? el('span', { class: 'pct ' + (q.pct >= 0 ? 'up' : 'down') }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%') : '');
+    const body = items === null ? [el('p', { class: 'muted small' }, 'News not available right now.')]
+      : !items || !items.length ? [el('p', { class: 'muted small' }, 'No headlines in the last 2 days.')]
+        : items.map((n) => el('a', { class: 'news-item', href: n.url, target: '_blank', rel: 'noopener noreferrer' },
+          el('span', { class: 'news-title' }, n.title),
+          el('span', { class: 'muted small' }, (n.source ? n.source + ' · ' : '') + agoText(n.at))));
+    return el('div', { class: 'news-group' }, head, ...body);
+  }));
+  $('news-status').textContent = 'Updated ' + new Date(news.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' · Finnhub';
 }
 
 /* ---------- Sparklines: 30 daily closes, cached for 6 hours ---------- */
@@ -576,7 +616,6 @@ async function paintSparks() {
       }
     }
     if (rateLimited) setTimeout(paintSparks, 66 * 1000); // try the rest after the per-minute limit resets
-    renderPortfolio(); // week and month numbers come from the same daily closes
   } finally {
     sparkBusy = false;
     if (sparkAgain) { sparkAgain = false; paintSparks(); }
@@ -809,7 +848,6 @@ async function loadFx() {
     $('fx-status').textContent = fx ? 'Offline, showing saved rates.' : 'Rates not available.';
   }
   convert();
-  renderPortfolio(); // values in EUR need the rate
 }
 
 function convert() {
@@ -1088,6 +1126,7 @@ function saveSettings() {
   setGoogleSettings($('set-gclient').value.trim());
   earn.t = 0;
   loadEarnings();
+  loadNews(true);
 
   renderClocks();
   loadWeather();
@@ -1227,6 +1266,14 @@ function initLayout() {
       el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Move later', onclick: () => moveCard(c.id, 1) }, 'Later ›'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => hideCard(c.id) }, 'Hide')));
   }
+  // one-time change of the saved order: Shopping List and Calculator & Currency swap places
+  if (!store.get('mig.swapCalcShop', false)) {
+    const o = layout.order;
+    const i = o.indexOf('card-calc');
+    const j = o.indexOf('card-shop');
+    if (i >= 0 && j >= 0) { o[i] = 'card-shop'; o[j] = 'card-calc'; store.set('layout', layout); }
+    store.set('mig.swapCalcShop', true);
+  }
   applyLayout();
 }
 
@@ -1249,7 +1296,8 @@ function init() {
   initCalc();
   renderShop();
   initNotes();
-  renderPortfolio();
+  renderNews();
+  $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();
   gcalInit();
   tickTimer();
@@ -1323,6 +1371,8 @@ function init() {
   loadFx();
   loadEarnings();
   setInterval(loadEarnings, 6 * 3600000);
+  loadNews();
+  setInterval(loadNews, NEWS_TTL);
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
