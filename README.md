@@ -1,4 +1,6 @@
 # Fred
+
+*At your service.*
 Fred is my Buttler, who help me with all kind of things
 
 ## Google Kalender einrichten (einmalig, ca. 10 Minuten)
