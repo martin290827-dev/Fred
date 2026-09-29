@@ -306,15 +306,16 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 
 /* ---------- weather ---------- */
 .wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }
-.wxi.lg { width: 42px; height: 42px; }
+.wxi.lg { width: 48px; height: 48px; }
 .wxi.md { width: 28px; height: 28px; }
 .wxi.sm { width: 20px; height: 20px; }
 .wxi-sun, .wxi-part { color: #ffcc00; }
 .wxi-rain, .wxi-storm, .wxi-snow { color: var(--accent); }
-.wx-now { display: flex; align-items: center; gap: 12px; margin: 4px 0 22px; }
-.wx-temp { font-size: 3rem; font-weight: 200; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wx-now { display: flex; align-items: center; gap: 14px; margin: 0 0 12px; }
+.wx-temp { font-size: 3.5rem; font-weight: 200; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .wx-cond { min-width: 0; }
-.wx-cond-t { font-weight: 600; font-size: 1.05rem; }
+.wx-cond-t { font-weight: 600; font-size: 1.3rem; letter-spacing: -0.01em; }
+.wx-cond .small { font-size: 0.92rem; white-space: nowrap; }
 .wx-days { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wx-tile { background: var(--card-2); border-radius: 14px; padding: 8px 11px; min-width: 0; }
 .wx-tile-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
@@ -323,13 +324,13 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .wx-tile .small { line-height: 1.35; }
 .wx-tile .wx-rain { color: var(--accent); font-weight: 600; }
 .wx-warn {
-  margin-bottom: 10px; padding: 7px 12px; border-radius: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 8px; padding: 6px 12px; border-radius: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   background: color-mix(in srgb, var(--warn) 16%, transparent);
   color: var(--text); font-weight: 600; font-size: 0.85rem;
 }
 .wx-warn.rain { background: var(--accent-soft); }
 /* second place sits at the bottom of the card, clearly apart from the main place */
-.wx2 { margin-top: auto; padding-top: 12px; }
+.wx2 { margin-top: auto; padding-top: 10px; }
 .wx2:empty { display: none; }
 .wx-alt {
   width: 100%; display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px;

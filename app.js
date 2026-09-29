@@ -263,8 +263,8 @@ function renderWeatherMain(box, w) {
       el('div', { class: 'wx-temp' }, Math.round(w.current.temperature_2m) + '°'),
       el('div', { class: 'wx-cond' },
         el('div', { class: 'wx-cond-t' }, WMO[w.current.weather_code] || 'Unknown'),
-        el('div', { class: 'muted small' },
-          'Feels ' + Math.round(w.current.apparent_temperature) + '° · wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
+        el('div', { class: 'muted small' }, 'Feels ' + Math.round(w.current.apparent_temperature) + '\u00b0'),
+        el('div', { class: 'muted small' }, 'Wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
     el('div', { class: 'wx-days' }, day('Today', 0), day('Tomorrow', 1)));
 }
 
