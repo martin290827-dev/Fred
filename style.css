@@ -481,6 +481,7 @@ button.danger { background: var(--down); color: #fff; }
 
 /* ---------- notes ---------- */
 .cardbody:has(> #notes) { overflow: hidden; }
+#notes-status { margin-right: 4px; }
 #notes {
   flex: 1 1 auto; min-height: 120px; resize: none; width: 100%;
   font-size: 0.95rem; line-height: 1.55; padding: 12px 14px; border-radius: 14px;

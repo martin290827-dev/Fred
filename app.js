@@ -978,6 +978,23 @@ function initNotes() {
   });
   // save at once when leaving the page, so nothing typed is lost
   window.addEventListener('beforeunload', () => { if (notesTimer) store.set('notes', box.value); });
+  $('notes-share').addEventListener('click', shareNote);
+}
+
+// Share button: opens the system share sheet (iPhone / Mac: pick "Notes" to save it in Apple Notes).
+// Only the selected text is shared if something is selected. Without a share sheet the text is copied.
+async function shareNote() {
+  const box = $('notes');
+  const sel = box.value.slice(box.selectionStart, box.selectionEnd).trim();
+  const text = sel || box.value.trim();
+  const st = $('notes-status');
+  if (!text) { st.textContent = 'Nothing to share'; return; }
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Note from Fred', text }); st.textContent = 'Shared'; return; }
+    catch (e) { if (e && e.name === 'AbortError') return; } // closed without sharing
+  }
+  try { await navigator.clipboard.writeText(text); st.textContent = 'Copied \u2013 paste it in Notes'; }
+  catch { st.textContent = 'Sharing not supported here'; }
 }
 
 /* ---------- 10) Calculator (own parser, no eval) ---------- */
