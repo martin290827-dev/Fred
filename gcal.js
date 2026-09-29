@@ -78,7 +78,7 @@ async function gRefresh() {
         id: i.id,
         title: i.summary || '(no title)',
         allDay: !!i.start.date,
-        recurring: !!i.recurringEventId, // repeating items stay out of Events
+        series: i.recurringEventId || null, // repeating items (birthdays, ...) share this id
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
@@ -101,7 +101,14 @@ function gLastDay(e) {
 // All-day and multi-day events from Google, shaped for the Events card.
 // The end date is kept for counting down, but only the start date is shown.
 function gGoogleEvents() {
-  return gAgenda.filter((e) => (e.allDay || e.multi) && !e.recurring).map((e) => {
+  const seen = new Set(); // repeating items: only the next date of each series
+  return gAgenda.filter((e) => {
+    if (!(e.allDay || e.multi)) return false;
+    if (!e.series) return true;
+    if (seen.has(e.series)) return false;
+    seen.add(e.series);
+    return true;
+  }).map((e) => {
     const last = gLastDay(e);
     const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true };
     if (last > startOfDay(e.start)) ev.to = toDateStr(last);
