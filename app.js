@@ -979,6 +979,27 @@ function initNotes() {
   // save at once when leaving the page, so nothing typed is lost
   window.addEventListener('beforeunload', () => { if (notesTimer) store.set('notes', box.value); });
   $('notes-share').addEventListener('click', shareNote);
+  $('notes-clear').addEventListener('click', clearNote);
+}
+
+// Clear button: empties the note at once; "Undo" brings it back for 10 seconds.
+let notesUndo = null;
+function clearNote() {
+  const box = $('notes');
+  if (!box.value) return;
+  const before = box.value;
+  box.value = '';
+  store.set('notes', '');
+  const st = $('notes-status');
+  const undo = el('button', { type: 'button', class: 'linkbtn', onclick: () => {
+    box.value = before;
+    store.set('notes', before);
+    st.textContent = 'Restored';
+    clearTimeout(notesUndo);
+  } }, 'Undo');
+  st.replaceChildren('Cleared \u00b7 ', undo);
+  clearTimeout(notesUndo);
+  notesUndo = setTimeout(() => { if (st.contains(undo)) st.textContent = ''; }, 10000);
 }
 
 // Share button: opens the system share sheet (iPhone / Mac: pick "Notes" to save it in Apple Notes).

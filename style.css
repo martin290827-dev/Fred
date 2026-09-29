@@ -482,6 +482,8 @@ button.danger { background: var(--down); color: #fff; }
 /* ---------- notes ---------- */
 .cardbody:has(> #notes) { overflow: hidden; }
 #notes-status { margin-right: 4px; }
+button.linkbtn { background: none; padding: 0; border-radius: 0; color: var(--accent); font-weight: 600; font-size: inherit; }
+button.linkbtn:hover { text-decoration: underline; opacity: 1; }
 #notes {
   flex: 1 1 auto; min-height: 120px; resize: none; width: 100%;
   font-size: 0.95rem; line-height: 1.55; padding: 12px 14px; border-radius: 14px;
