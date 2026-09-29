@@ -5,6 +5,7 @@
 
 const G_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const G_API = 'https://www.googleapis.com/calendar/v3/';
+const G_BIRTHDAYS = 'addressbook#contacts@group.v.calendar.google.com'; // Google's contact birthdays
 let gToken = null;
 let gExpiry = 0;
 let gAgenda = []; // upcoming events from Google Calendar
@@ -84,7 +85,15 @@ async function gRefresh() {
       '&timeMin=' + encodeURIComponent(startOfDay(now).toISOString()) +
       '&timeMax=' + encodeURIComponent(addDays(now, 365).toISOString());
     const r = await gApi('GET', q);
-    gAgenda = (r.items || [])
+    // Google's own "Birthdays" calendar (from Google Contacts). Read only; ignored if it does not exist.
+    let bdays = [];
+    try {
+      const b = await gApi('GET', q.replace('calendars/primary/', 'calendars/' + encodeURIComponent(G_BIRTHDAYS) + '/'));
+      bdays = (b.items || []).map((i) => Object.assign({}, i, { eventType: 'birthday' }));
+    } catch { /* no birthday calendar: fine */ }
+    const seenBd = new Set((r.items || []).filter((i) => i.start && i.start.date).map((i) => (i.summary || '') + '|' + i.start.date));
+    bdays = bdays.filter((i) => i.start && !seenBd.has((i.summary || '') + '|' + i.start.date)); // no double entries
+    gAgenda = (r.items || []).concat(bdays)
       .filter((i) => i.status !== 'cancelled' && i.start)
       .map((i) => ({
         id: i.id,
@@ -96,7 +105,8 @@ async function gRefresh() {
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
-      .filter((e) => !e.end || e.end > now);
+      .filter((e) => !e.end || e.end > now)
+      .sort((x, y) => x.start - y.start);
     gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); }); // timed, but lasts a day or more (an overnight event stays a normal appointment)
     gStatus('Updated ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
   } catch (e) {
