@@ -313,6 +313,11 @@ button.icon:hover { background: var(--card-2); color: var(--text); filter: none;
 #card-calc .big { font-size: 1.8rem; margin: 6px 0 2px; }
 #fx-status:empty { display: none; }
 #shop-text { flex: 1; width: auto; }
+.cardbody:has(> #notes) { overflow: hidden; }
+#notes {
+  flex: 1 1 auto; min-height: 120px; resize: none; width: 100%;
+  font-size: 0.95rem; line-height: 1.5; padding: 10px 12px; background: var(--field);
+}
 .sub {
   margin: 12px 0 6px; padding-top: 12px; border-top: 1px solid var(--line);
   font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text);
@@ -385,6 +390,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 3px; }
   /* phone: cards only as tall as their content, long lists still scroll inside */
   .card { height: auto; max-height: 440px; }
   .cardbody > ul.list { min-height: 0; }
+  #card-notes { height: 320px; }
   #banners { top: 96px; }
 }
 

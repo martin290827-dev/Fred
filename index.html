@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <header>
@@ -115,6 +115,11 @@
         <button type="submit">Add</button>
       </form>
     </section>
+
+    <section class="card" id="card-notes">
+      <h2>Notes <span id="notes-status" class="muted small"></span></h2>
+      <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
+    </section>
   </main>
 
   <dialog id="dlg-settings">
@@ -184,7 +189,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=24"></script>
-  <script src="gcal.js?v=24"></script>
+  <script src="app.js?v=25"></script>
+  <script src="gcal.js?v=25"></script>
 </body>
 </html>

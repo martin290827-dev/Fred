@@ -665,6 +665,24 @@ function shopEditRow(it) {
     el('button', { type: 'button', class: 'ghost small', onclick: cancel }, 'Cancel'));
 }
 
+/* ---------- Notes (free text, saved in this browser while you type) ---------- */
+let notesTimer = null;
+
+function initNotes() {
+  const box = $('notes');
+  box.value = store.get('notes', '');
+  box.addEventListener('input', () => {
+    $('notes-status').textContent = 'Saving...';
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => {
+      store.set('notes', box.value);
+      $('notes-status').textContent = 'Saved';
+    }, 400);
+  });
+  // save at once when leaving the page, so nothing typed is lost
+  window.addEventListener('beforeunload', () => { if (notesTimer) store.set('notes', box.value); });
+}
+
 /* ---------- 10) Calculator (own parser, no eval) ---------- */
 function calcEval(src) {
   const s = src.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/,/g, '.').replace(/\s+/g, '');
@@ -810,7 +828,7 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
 const ARRAY_KEYS = ['tickers', 'zones', 'shop'];
 
@@ -963,6 +981,7 @@ function init() {
   initFx();
   initCalc();
   renderShop();
+  initNotes();
   initLayout();
   gcalInit();
   tickTimer();
