@@ -328,6 +328,32 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .mkt-state { color: var(--muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mkt.open .mkt-state { color: var(--text); }
 
+/* ---------- add / edit form for Google items ---------- */
+.hacts { display: inline-flex; align-items: center; gap: 6px; }
+.hacts [hidden] { display: none; }
+#cal-edit[hidden], #ev-edit[hidden] { display: none; }
+.gform { display: grid; gap: 8px; background: var(--card-2); border-radius: 14px; padding: 10px; margin-bottom: 10px; }
+.gform input, .gform select { background: var(--card); }
+.gform .grow-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gform > input[type="date"] { width: 100%; }
+.gform .time-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+.gform .time-row input { width: 100%; min-width: 0; }
+/* while a form is open, the card body scrolls so Save is always reachable */
+.cardbody:has(> #cal-edit:not([hidden])), .cardbody:has(> #ev-edit:not([hidden])) { overflow: auto; }
+.cardbody:has(> #cal-edit:not([hidden])) > ul.list, .cardbody:has(> #ev-edit:not([hidden])) > ul.list { flex: none; overflow: visible; }
+.gform .grow-row .mini { flex: 1 1 130px; flex-direction: column; align-items: stretch; gap: 3px; }
+.gform .grow-row .mini input { width: 100%; }
+.gform .scope { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gform .seg { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; }
+.gform .seg input { accent-color: var(--accent); margin: 0; width: auto; padding: 0; background: none; box-shadow: none; }
+.gform-btns { margin: 0; }
+.gform-msg:empty, .scope-hint:empty { display: none; }
+.gform-msg, .scope-hint { margin: 0; }
+.rep { color: var(--muted); font-size: 0.8em; }
+.list li.asking { background: color-mix(in srgb, var(--down) 10%, transparent); border-bottom-color: transparent; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+.list li.asking .grow { flex: 1 1 100%; font-weight: 600; }
+button.danger { background: var(--down); color: #fff; }
+
 /* ---------- reconnect row, earnings rows ---------- */
 .list li.reconnect { background: color-mix(in srgb, var(--warn) 14%, transparent); border-bottom-color: transparent; margin-bottom: 4px; }
 .list li.earn .grow::before { content: "\25C6"; color: var(--accent); font-size: 0.7rem; margin-right: 6px; vertical-align: 1px; }

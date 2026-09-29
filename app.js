@@ -819,9 +819,12 @@ function renderEvents() {
   }
   if (typeof gSessionEnded === 'function' && gSessionEnded()) ul.append(gReconnectRow());
   for (const e of sorted) {
-    ul.append(el('li', { class: (isEventNow(e) ? 'now' : '') + (e.earnings ? ' earn' : '') },
-      el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e) + (e.earnings ? ' \u00b7 Earnings' : ''))),
-      el('span', { 'data-id': e.id })));
+    const li = el('li', { class: (isEventNow(e) ? 'now' : '') + (e.earnings ? ' earn' : '') },
+      el('span', { class: 'grow' }, e.label, e.src && e.src.series ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : '', el('br'),
+        el('span', { class: 'muted small' }, fmtEventDates(e) + (e.earnings ? ' \u00b7 Earnings' : ''))),
+      el('span', { 'data-id': e.id }));
+    if (e.src && typeof gRowActions === 'function') gRowActions(li, e.src, 'event');
+    ul.append(li);
   }
   tickEvents();
 }

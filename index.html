@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=43">
+  <link rel="stylesheet" href="style.css?v=44">
 </head>
 <body>
   <header>
@@ -42,7 +42,8 @@
 
   <main class="grid">
     <section class="card" id="card-cal">
-      <h2>Tasks &amp; Reminders <button id="cal-btn" class="ghost small" type="button">Connect</button></h2>
+      <h2>Tasks &amp; Reminders <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
+      <div id="cal-edit" hidden></div>
       <ul id="cal-list" class="list"></ul>
       <p class="muted small" id="cal-status"></p>
     </section>
@@ -60,7 +61,8 @@
     </section>
 
     <section class="card" id="card-events">
-      <h2>Events</h2>
+      <h2>Events <span class="hacts"><button id="ev-add" class="hicon" type="button" aria-label="New event" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
+      <div id="ev-edit" hidden></div>
       <ul id="events" class="list"></ul>
     </section>
 
@@ -227,7 +229,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=43"></script>
-  <script src="gcal.js?v=43"></script>
+  <script src="app.js?v=44"></script>
+  <script src="gcal.js?v=44"></script>
 </body>
 </html>

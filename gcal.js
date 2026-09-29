@@ -91,6 +91,8 @@ async function gRefresh() {
         title: i.summary || '(no title)',
         allDay: !!i.start.date,
         series: i.recurringEventId || null, // repeating items (birthdays, ...) share this id
+        // birthdays from contacts and events of other people cannot be changed here
+        readOnly: i.eventType === 'birthday' || i.eventType === 'fromGmail' || (i.organizer && i.organizer.self === false && !i.guestsCanModify),
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
@@ -100,8 +102,7 @@ async function gRefresh() {
   } catch (e) {
     gStatus(e.message);
   }
-  renderCalendar();
-  renderEvents();
+  if (!gUiBusy()) { renderCalendar(); renderEvents(); }
 }
 
 // Last day of an item. Google's end is exclusive: all-day ends at midnight after the last day.
@@ -122,7 +123,7 @@ function gGoogleEvents() {
     return true;
   }).map((e) => {
     const last = gLastDay(e);
-    const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true };
+    const ev = { id: 'g:' + e.id, label: e.title, at: toDateStr(e.start), google: true, src: e };
     if (last > startOfDay(e.start)) ev.to = toDateStr(last);
     return ev;
   });
@@ -135,10 +136,14 @@ function renderCalendar() {
   ul.replaceChildren();
   if (!googleClientId) {
     btn.hidden = true;
+    $('cal-add').hidden = true;
+    $('ev-add').hidden = true;
     ul.append(el('li', { class: 'muted' }, 'Add your Google Client ID in Settings to see your calendar.'));
     return;
   }
   btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
+  $('cal-add').hidden = !gHasToken();
+  $('ev-add').hidden = !gHasToken();
   if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
   else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
   if (!gHasToken()) {
@@ -152,9 +157,11 @@ function renderCalendar() {
   if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
   for (const ev of list) {
     const state = gState(ev, now);
-    ul.append(el('li', { class: state.cls },
-      el('span', { class: 'grow' }, ev.title),
-      el('span', { class: state.cls ? 'small' : 'muted small' }, state.text || fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay }))));
+    const li = el('li', { class: state.cls },
+      el('span', { class: 'grow' }, ev.title, ev.series ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : ''),
+      el('span', { class: state.cls ? 'small' : 'muted small' }, state.text || fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay })));
+    gRowActions(li, ev, 'task');
+    ul.append(li);
   }
   ul.scrollTop = keepScroll;
 }
@@ -190,6 +197,9 @@ function gDisconnect() {
   renderEvents();
 }
 
+const gEvPath = (id) => 'calendars/primary/events/' + encodeURIComponent(id);
+const gIsGone = (e) => e && (e.status === 404 || e.status === 410);
+
 function setGoogleSettings(clientId) {
   const changed = clientId !== googleClientId;
   googleClientId = clientId;
@@ -211,5 +221,156 @@ function gcalInit() {
     gRequestToken('none').then(gRefresh).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
-  setInterval(renderCalendar, 60000); // keeps now / soon current between refreshes
+  setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
+  $('cal-add').addEventListener('click', () => gOpenEditor('task', null));
+  $('ev-add').addEventListener('click', () => gOpenEditor('event', null));
+}
+
+/* ---- Add, edit and delete in Google Calendar (Google is the only copy, Fred keeps none) ----
+   'task'  = appointment with a time (Tasks & Reminders card)
+   'event' = all-day, optionally several days (Events card)
+   Repeating items: change or delete only this one, or the whole series. */
+let gEditing = null;   // { kind, item } while the form is open
+let gAsking = null;    // id of the row that asks "Delete?"
+
+function gUiBusy() { return !!gEditing || !!gAsking; }
+
+function gEditable(ev) { return gHasToken() && ev && !ev.readOnly; }
+
+function gRowActions(li, ev, kind) {
+  if (!gEditable(ev)) return;
+  li.append(
+    iconButton('edit', 'Edit ' + ev.title, () => gOpenEditor(ev.multi ? 'titleonly' : kind, ev)),
+    iconButton('trash', 'Delete ' + ev.title, () => gAskDelete(li, ev)));
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const hhmm = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+const myZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function gOpenEditor(kind, item) {
+  gCloseEditor(false);
+  gEditing = { kind, item };
+  const box = $(kind === 'event' || (kind === 'titleonly' && item && (item.allDay || item.multi)) ? 'ev-edit' : 'cal-edit');
+  const f = el('form', { class: 'gform', autocomplete: 'off' });
+  const title = el('input', { type: 'text', name: 'title', placeholder: kind === 'event' ? 'Event' : 'Task or appointment', required: '', maxlength: '120', 'aria-label': 'Title' });
+  title.value = item ? item.title : '';
+  f.append(title);
+  const now = new Date();
+  if (kind === 'task') {
+    const start = item ? item.start : new Date(Math.ceil(now.getTime() / 3600000) * 3600000); // next full hour
+    const end = item && item.end ? item.end : new Date(start.getTime() + 3600000);
+    const date = el('input', { type: 'date', name: 'date', required: '', 'aria-label': 'Date' }); date.value = toDateStr(start);
+    const from = el('input', { type: 'time', name: 'from', required: '', 'aria-label': 'From' }); from.value = hhmm(start);
+    const to = el('input', { type: 'time', name: 'to', 'aria-label': 'Until' }); to.value = hhmm(end);
+    const rem = el('select', { name: 'rem', 'aria-label': 'Reminder' });
+    for (const [v, t] of (item ? [['keep', 'Reminder: keep']] : []).concat([['default', 'Reminder: calendar default'], ['0', 'Reminder: at start'], ['10', 'Reminder: 10 min before'], ['60', 'Reminder: 1 hour before'], ['none', 'No reminder']])) rem.append(el('option', { value: v }, t));
+    f.append(date, el('div', { class: 'time-row' }, from, el('span', { class: 'muted' }, '–'), to), rem);
+  } else if (kind === 'event') {
+    const first = item ? item.start : now;
+    const last = item ? gLastDay(item) : null;
+    const date = el('input', { type: 'date', name: 'date', required: '', 'aria-label': 'Date' }); date.value = toDateStr(first);
+    const to = el('input', { type: 'date', name: 'to', 'aria-label': 'Until (optional)' });
+    if (last && last > startOfDay(first)) to.value = toDateStr(last);
+    date.addEventListener('change', () => { to.min = date.value; });
+    f.append(el('div', { class: 'grow-row' }, el('label', { class: 'mini' }, 'From', date), el('label', { class: 'mini' }, 'Until (optional)', to)));
+  }
+  if (item && item.series) {
+    const one = el('input', { type: 'radio', name: 'scope', value: 'one' }); one.checked = true;
+    const all = el('input', { type: 'radio', name: 'scope', value: 'all' });
+    const hint = el('span', { class: 'muted small scope-hint' });
+    const upd = () => { hint.textContent = all.checked && kind !== 'task' ? 'For the whole series only the title changes.' : all.checked ? 'Title and time change for every date; the dates stay.' : ''; };
+    one.addEventListener('change', upd); all.addEventListener('change', upd);
+    f.append(el('div', { class: 'scope' }, el('span', { class: 'muted small' }, 'Repeats:'),
+      el('label', { class: 'seg' }, one, ' Only this'), el('label', { class: 'seg' }, all, ' All in series')), hint);
+  }
+  const msg = el('p', { class: 'muted small gform-msg' });
+  const save = el('button', { type: 'submit' }, item ? 'Save' : 'Add');
+  f.append(el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => gCloseEditor(true) }, 'Cancel'), save), msg);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    save.disabled = true;
+    msg.textContent = 'Saving...';
+    try {
+      await gSave(kind, item, new FormData(f));
+      gCloseEditor(true);
+      gStatus('Saved.');
+      await gRefresh();
+    } catch (err) { msg.textContent = err.message; save.disabled = false; }
+  });
+  f.addEventListener('keydown', (e) => { if (e.key === 'Escape') gCloseEditor(true); });
+  box.replaceChildren(f);
+  box.hidden = false;
+  title.focus();
+}
+
+function gCloseEditor(redraw) {
+  gEditing = null;
+  for (const id of ['cal-edit', 'ev-edit']) { const b = $(id); if (b) { b.replaceChildren(); b.hidden = true; } }
+  if (redraw) { renderCalendar(); renderEvents(); }
+}
+
+function gReminders(v) {
+  if (v === 'keep' || !v) return undefined;
+  if (v === 'default') return { useDefault: true };
+  if (v === 'none') return { useDefault: false, overrides: [] };
+  return { useDefault: false, overrides: [{ method: 'popup', minutes: parseInt(v, 10) }] };
+}
+
+async function gSave(kind, item, fd) {
+  const summary = String(fd.get('title') || '').trim();
+  if (!summary) throw new Error('Please enter a title.');
+  const whole = item && item.series && fd.get('scope') === 'all';
+  const target = whole ? item.series : item && item.id; // the series master or this one date
+  const body = { summary };
+  if (kind === 'task') {
+    const date = fd.get('date');
+    const from = fd.get('from');
+    let start = new Date(date + 'T' + from);
+    let end = fd.get('to') ? new Date(date + 'T' + fd.get('to')) : null;
+    if (end && end <= start) end = new Date(end.getTime() + 86400000); // ends after midnight
+    if (!end) end = new Date(start.getTime() + 30 * 60000);
+    if (whole) {
+      // keep the first date of the series, change only the time of day
+      const m = await gApi('GET', gEvPath(item.series));
+      const firstDay = m.start.dateTime ? toDateStr(new Date(m.start.dateTime)) : m.start.date;
+      const len = end - start;
+      start = new Date(firstDay + 'T' + from);
+      end = new Date(start.getTime() + len);
+    }
+    body.start = { dateTime: start.toISOString(), timeZone: myZone() };
+    body.end = { dateTime: end.toISOString(), timeZone: myZone() };
+    const r = gReminders(fd.get('rem'));
+    if (r) body.reminders = r;
+  } else if (kind === 'event' && !whole) {
+    const at = fd.get('date');
+    const to = fd.get('to') && fd.get('to') > at ? fd.get('to') : at;
+    body.start = { date: at };
+    body.end = { date: toDateStr(addDays(new Date(to + 'T00:00'), 1)) }; // Google's end date is exclusive
+  }
+  if (item) await gApi('PATCH', gEvPath(target), body);
+  else await gApi('POST', 'calendars/primary/events', body);
+}
+
+// Ask in the row itself (no pop-up). Repeating items: this date or the whole series.
+function gAskDelete(li, ev) {
+  gAsking = ev.id;
+  const done = () => { gAsking = null; renderCalendar(); renderEvents(); };
+  const del = async (id, what) => {
+    li.replaceChildren(el('span', { class: 'grow muted small' }, 'Deleting ' + what + '...'));
+    try {
+      await gApi('DELETE', gEvPath(id));
+      gStatus('Deleted.');
+    } catch (e) { if (!gIsGone(e)) gStatus('Could not delete: ' + e.message); }
+    gAsking = null;
+    await gRefresh();
+    renderCalendar(); renderEvents();
+  };
+  const btns = ev.series
+    ? [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'this date') }, 'Only this'),
+      el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.series, 'the series') }, 'All')]
+    : [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'it') }, 'Delete')];
+  li.className = 'asking';
+  li.replaceChildren(el('span', { class: 'grow' }, 'Delete “' + ev.title + '”?'), ...btns,
+    el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'));
 }
