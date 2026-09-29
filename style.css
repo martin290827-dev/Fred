@@ -166,11 +166,11 @@ header h1::before {
   flex: none;
   min-height: 26px;
   margin: 0 0 12px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -315,7 +315,7 @@ button.icon:hover { background: var(--card-2); color: var(--text); filter: none;
 #shop-text { flex: 1; width: auto; }
 .sub {
   margin: 12px 0 6px; padding-top: 12px; border-top: 1px solid var(--line);
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
+  font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text);
 }
 .sub .muted { font-size: 0.78rem; margin-left: 4px; }
 .check { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
