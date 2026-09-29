@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1117">
+  <meta name="theme-color" content="#000000">
   <title>Fred</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
   <header>
@@ -189,7 +189,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=26"></script>
-  <script src="gcal.js?v=26"></script>
+  <script src="app.js?v=27"></script>
+  <script src="gcal.js?v=27"></script>
 </body>
 </html>

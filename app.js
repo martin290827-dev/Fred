@@ -140,26 +140,33 @@ async function fetchWeather(p) {
     '&timezone=auto&forecast_days=2');
 }
 
-// Warnings for the next 12 hours: rain (or snow) and frost. Returns short texts, empty if all is calm.
+// Warnings: rain (or snow) for the rest of today, frost in the next 12 hours.
+// Nothing is returned when all is calm, so the card stays quiet on dry days.
 function weatherWarnings(w) {
   const h = w.hourly;
   if (!h || !h.time || !w.current || !w.current.time) return [];
   const hourNow = w.current.time.slice(0, 13); // e.g. 2026-09-29T06 (place time, both from the same response)
+  const today = hourNow.slice(0, 10);
   const from = h.time.findIndex((t) => t.slice(0, 13) >= hourNow);
   if (from < 0) return [];
-  const idx = h.time.map((_, i) => i).slice(from, from + 12);
-  const at = (i) => (h.time[i].slice(0, 13) === hourNow ? 'now' : 'from ' + h.time[i].slice(11, 16));
+  const rest = h.time.map((_, i) => i).slice(from).filter((i) => h.time[i].slice(0, 10) === today);
+  const next12 = h.time.map((_, i) => i).slice(from, from + 12);
+  const hhmm = (i) => h.time[i].slice(11, 16);
   const out = [];
-  const wet = idx.filter((i) => h.precipitation[i] >= 0.2);
+  const wet = rest.filter((i) => h.precipitation[i] >= 0.2);
   if (wet.length) {
     const mm = wet.reduce((s, i) => s + h.precipitation[i], 0);
     const cold = h.temperature_2m[wet[0]] <= 1;
-    out.push((cold ? 'Snow or sleet ' : 'Rain ') + at(wet[0]) + ', about ' + mm.toFixed(1) + ' mm in 12 h');
+    const last = wet[wet.length - 1];
+    const endH = String(Math.min(24, +hhmm(last).slice(0, 2) + 1)).padStart(2, '0') + ':00';
+    const start = h.time[wet[0]].slice(0, 13) === hourNow ? 'now' : hhmm(wet[0]);
+    out.push({ kind: 'rain', text: (cold ? 'Snow today ' : 'Rain today ') + start + '\u2013' + endH + ' \u00b7 ' + mm.toFixed(1) + ' mm' });
   }
-  const icy = idx.filter((i) => h.temperature_2m[i] <= 0);
+  const icy = next12.filter((i) => h.temperature_2m[i] <= 0);
   if (icy.length) {
     const low = Math.min(...icy.map((i) => h.temperature_2m[i]));
-    out.push('Frost ' + at(icy[0]) + ', down to ' + Math.round(low) + '\u00b0');
+    const start = h.time[icy[0]].slice(0, 13) === hourNow ? 'now' : 'from ' + hhmm(icy[0]);
+    out.push({ kind: 'frost', text: 'Frost ' + start + ', down to ' + Math.round(low) + '°' });
   }
   return out;
 }
@@ -195,12 +202,14 @@ function wxIcon(code, cls) {
 }
 
 function renderWeatherMain(box, w) {
-  const warn = weatherWarnings(w).map((t) => el('div', { class: 'wx-warn' }, '⚠ ' + t));
+  const warn = weatherWarnings(w).map((x) => el('div', { class: 'wx-warn ' + x.kind }, x.text));
   const day = (label, i) => el('div', { class: 'wx-tile' },
     el('div', { class: 'wx-tile-head' }, el('span', null, label), wxIcon(w.daily.weather_code[i], 'sm')),
     el('div', { class: 'wx-tile-temp' }, Math.round(w.daily.temperature_2m_max[i]) + '°',
       el('span', { class: 'muted' }, ' / ' + Math.round(w.daily.temperature_2m_min[i]) + '°')),
-    el('div', { class: 'muted small' }, (WMO[w.daily.weather_code[i]] || '?') + ' · rain ' + (w.daily.precipitation_probability_max[i] ?? '?') + '%'));
+    el('div', { class: 'muted small' }, WMO[w.daily.weather_code[i]] || '?',
+      // rain chance only when it matters; a dry day shows no rain info
+      (w.daily.precipitation_probability_max[i] ?? 0) >= 20 ? el('span', { class: 'wx-rain' }, ' · rain ' + w.daily.precipitation_probability_max[i] + '%') : ''));
   box.replaceChildren(
     ...warn,
     el('div', { class: 'wx-now' },
@@ -217,7 +226,7 @@ function renderWeatherMain(box, w) {
 function renderWeatherAlt(box, p, w) {
   const warn = weatherWarnings(w)[0];
   const desc = (WMO[w.current.weather_code] || '?') + ' · ' +
-    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°' + (warn ? ' · ⚠ ' + warn.split(',')[0] : '');
+    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°' + (warn ? ' · ' + warn.text.split(' \u00b7 ')[0].split(',')[0] : '');
   box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: p.name + ' – click to show as the main place', onclick: swapPlaces },
     wxIcon(w.current.weather_code, 'md'),
     el('span', { class: 'wx-alt-text' },
@@ -918,7 +927,7 @@ function applyTheme() {
   btn.dataset.to = now === 'dark' ? 'light' : 'dark'; // the mode you switch to (CSS shows sun or moon)
   btn.querySelector('span').textContent = now === 'dark' ? 'Day' : 'Night';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', now === 'dark' ? '#0b1117' : '#eef2f6');
+  if (meta) meta.setAttribute('content', now === 'dark' ? '#000000' : '#f2f2f7');
 }
 
 function toggleTheme() {
