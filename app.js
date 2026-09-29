@@ -164,34 +164,66 @@ function weatherWarnings(w) {
   return out;
 }
 
+// Simple outline weather icons (stroke = current colour). Grouped by WMO code.
+const CLOUD_HI = 'M7 14h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 7.1 3.5 3.5 0 0 0 7 14z';
+const WX_ICONS = {
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  part: '<circle cx="9" cy="8" r="3"/><path d="M9 2v1.3M3 8h1.3M4.8 3.8l.9.9M13.2 3.8l-.9.9"/><path d="M10 21h8a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 9.1 14.6 3.2 3.2 0 0 0 10 21z"/>',
+  cloud: '<path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.1 3.5 3.5 0 0 0 7 18z"/>',
+  fog: '<path d="M4 8h16M3 12h18M5 16h14M8 20h8"/>',
+  rain: '<path d="' + CLOUD_HI + '"/><path d="M9 17l-1 3M13 17l-1 3M17 17l-1 3"/>',
+  snow: '<path d="' + CLOUD_HI + '"/><path d="M9 18h.01M13 20h.01M17 18h.01M11 17h.01M15 17h.01"/>',
+  storm: '<path d="' + CLOUD_HI + '"/><path d="M13 14l-3 4h4l-3 4"/>',
+};
+function wxKind(code) {
+  if (code <= 1) return 'sun';
+  if (code === 2) return 'part';
+  if (code === 3) return 'cloud';
+  if (code === 45 || code === 48) return 'fog';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+  if (code >= 95) return 'storm';
+  return 'rain';
+}
+function wxIcon(code, cls) {
+  const kind = wxKind(code);
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('class', 'wxi wxi-' + kind + (cls ? ' ' + cls : ''));
+  s.innerHTML = WX_ICONS[kind]; // fixed strings from above, no outside data
+  return s;
+}
+
 function renderWeatherMain(box, w) {
-  const warn = weatherWarnings(w).map((t) => el('div', { class: 'wx-warn' }, '\u26a0 ' + t));
+  const warn = weatherWarnings(w).map((t) => el('div', { class: 'wx-warn' }, '⚠ ' + t));
+  const day = (label, i) => el('div', { class: 'wx-tile' },
+    el('div', { class: 'wx-tile-head' }, el('span', null, label), wxIcon(w.daily.weather_code[i], 'sm')),
+    el('div', { class: 'wx-tile-temp' }, Math.round(w.daily.temperature_2m_max[i]) + '°',
+      el('span', { class: 'muted' }, ' / ' + Math.round(w.daily.temperature_2m_min[i]) + '°')),
+    el('div', { class: 'muted small' }, (WMO[w.daily.weather_code[i]] || '?') + ' · rain ' + (w.daily.precipitation_probability_max[i] ?? '?') + '%'));
   box.replaceChildren(
     ...warn,
     el('div', { class: 'wx-now' },
-      el('div', { class: 'big' }, Math.round(w.current.temperature_2m) + '°C'),
-      el('div', null, WMO[w.current.weather_code] || 'Unknown',
-        el('br'),
-        el('span', { class: 'muted small' },
-          'Feels ' + Math.round(w.current.apparent_temperature) + '°, wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
-    ...['Today', 'Tomorrow'].map((label, i) =>
-      el('div', { class: 'wx-day' },
-        el('span', null, label + ': ' + (WMO[w.daily.weather_code[i]] || '?')),
-        el('span', null,
-          Math.round(w.daily.temperature_2m_min[i]) + '° / ' + Math.round(w.daily.temperature_2m_max[i]) + '°, rain ' +
-          (w.daily.precipitation_probability_max[i] ?? '?') + '%'))));
+      wxIcon(w.current.weather_code, 'lg'),
+      el('div', { class: 'wx-temp' }, Math.round(w.current.temperature_2m) + '°'),
+      el('div', { class: 'wx-cond' },
+        el('div', { class: 'wx-cond-t' }, WMO[w.current.weather_code] || 'Unknown'),
+        el('div', { class: 'muted small' },
+          'Feels ' + Math.round(w.current.apparent_temperature) + '° · wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
+    el('div', { class: 'wx-days' }, day('Today', 0), day('Tomorrow', 1)));
 }
 
-// Second place as a quiet block below the main one. Click it to make it the main place.
+// Second place as a quiet block at the bottom of the card. Click it to make it the main place.
 function renderWeatherAlt(box, p, w) {
   const warn = weatherWarnings(w)[0];
   const desc = (WMO[w.current.weather_code] || '?') + ' · ' +
-    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°' + (warn ? ' · \u26a0 ' + warn.split(',')[0] : '');
+    Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°' + (warn ? ' · ⚠ ' + warn.split(',')[0] : '');
   box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: p.name + ' – click to show as the main place', onclick: swapPlaces },
+    wxIcon(w.current.weather_code, 'md'),
     el('span', { class: 'wx-alt-text' },
       el('span', { class: 'wx-alt-name' }, p.name.split(',')[0]),
       el('span', { class: 'wx-alt-desc' }, desc)),
-    el('span', { class: 'wx-alt-temp' }, Math.round(w.current.temperature_2m) + '°C'),
+    el('span', { class: 'wx-alt-temp' }, Math.round(w.current.temperature_2m) + '°'),
     el('span', { class: 'wx-alt-swap', 'aria-hidden': 'true' }, '⇄')));
 }
 

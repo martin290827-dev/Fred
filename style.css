@@ -265,28 +265,41 @@ button.icon:hover { background: var(--card-2); color: var(--text); filter: none;
 .clock:first-child .t { font-size: 2.1rem; color: var(--text); }
 
 /* ---------- weather ---------- */
-.wx-now { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-.wx-now .big { margin: 0; font-size: 2.8rem; }
-.wx-day { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 0.92rem; }
-.wx-day > span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }
+.wxi.lg { width: 46px; height: 46px; }
+.wxi.md { width: 28px; height: 28px; }
+.wxi.sm { width: 20px; height: 20px; }
+.wxi-sun, .wxi-part { color: var(--warn); }
+.wxi-rain, .wxi-storm, .wxi-snow { color: var(--accent); }
+.wx-now { display: flex; align-items: center; gap: 12px; margin: 2px 0 14px; }
+.wx-temp { font-size: 3rem; font-weight: 650; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wx-cond { min-width: 0; }
+.wx-cond-t { font-weight: 600; font-size: 1.05rem; }
+.wx-days { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wx-tile { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; min-width: 0; }
+.wx-tile-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.wx-tile-temp { font-size: 1.25rem; font-weight: 650; margin: 2px 0 1px; font-variant-numeric: tabular-nums; }
+.wx-tile-temp .muted { font-size: 0.95rem; font-weight: 500; }
+.wx-tile .small { line-height: 1.35; }
 .wx-warn {
-  margin-bottom: 10px; padding: 7px 10px; border-radius: 10px;
+  margin-bottom: 12px; padding: 7px 10px; border-radius: 10px;
   border-left: 3px solid var(--warn);
   background: color-mix(in srgb, var(--warn) 14%, transparent);
   font-weight: 600; font-size: 0.85rem;
 }
-.wx2 { margin-top: 14px; }
+/* second place sits at the bottom of the card, clearly apart from the main place */
+.wx2 { margin-top: auto; padding-top: 16px; }
 .wx2:empty { display: none; }
 .wx-alt {
-  width: 100%; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
-  background: var(--card-2); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
-  padding: 10px 12px; font-weight: 400; text-align: left; cursor: pointer;
+  width: 100%; display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px;
+  background: transparent; color: var(--text); border: 1px dashed var(--line-2); border-radius: 12px;
+  padding: 9px 12px; font-weight: 400; text-align: left; cursor: pointer;
 }
-.wx-alt:hover { border-color: var(--accent); filter: none; }
-.wx-alt-text { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.wx-alt:hover { border-style: solid; border-color: var(--accent); background: var(--card-2); filter: none; }
+.wx-alt-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
 .wx-alt-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wx-alt-desc { color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wx-alt-temp { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wx-alt-desc { color: var(--muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-alt-temp { font-size: 1.35rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .wx-alt-swap { color: var(--muted); font-size: 0.9rem; }
 
 /* ---------- tickers with sparklines ---------- */
