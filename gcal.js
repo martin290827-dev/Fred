@@ -96,7 +96,7 @@ async function gRefresh() {
       }))
       .filter((e) => !e.end || e.end > now);
     gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); }); // timed, but lasts a day or more (an overnight event stays a normal appointment)
-    gStatus('Updated ' + now.toLocaleTimeString('en-GB'));
+    gStatus('Updated ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
   } catch (e) {
     gStatus(e.message);
   }
@@ -139,7 +139,8 @@ function renderCalendar() {
     return;
   }
   btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
-  btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
+  if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
+  else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
   if (!gHasToken()) {
     if (!gSessionEnded()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
     ul.append(gReconnectRow()); // the older list stays visible below

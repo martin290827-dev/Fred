@@ -412,7 +412,7 @@ async function loadQuotes() {
       el('span', { class: 'tprice' }, '$' + fmtPrice(q.price)),
       el('span', { class: 'pct ' + cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%')));
   }
-  $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB') + '. Stocks may be delayed.';
+  $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' \u00b7 stocks may be delayed';
   paintSparks();
   if (news.t) renderNews(); // keeps the movers order current
 }
@@ -486,7 +486,9 @@ function renderNews() {
   const move = (s) => (lastQuotes[s] ? Math.abs(lastQuotes[s].pct || 0) : -1);
   const order = [...tickers].sort((x, y) => move(y) - move(x));
   if (news.groups.crypto) order.push('crypto');
-  box.replaceChildren(...order.map((s) => {
+  const quiet = order.filter((s) => s !== 'crypto' && (news.groups[s] === null || (news.groups[s] && !news.groups[s].length)));
+  const shown = order.filter((s) => !quiet.includes(s));
+  box.replaceChildren(...shown.map((s) => {
     const q = lastQuotes[s];
     const items = news.groups[s];
     const head = el('div', { class: 'news-head' },
@@ -498,7 +500,7 @@ function renderNews() {
           el('span', { class: 'news-title' }, n.title),
           el('span', { class: 'muted small' }, (n.source ? n.source + ' · ' : '') + agoText(n.at))));
     return el('div', { class: 'news-group' }, head, ...body);
-  }));
+  }), quiet.length ? el('p', { class: 'muted small news-quiet' }, 'No headlines in the last 2 days: ' + quiet.map(tickerLabel).join(', ')) : '');
   $('news-status').textContent = 'Updated ' + new Date(news.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' · Finnhub';
 }
 
@@ -575,7 +577,7 @@ function sparkSVG(values, name) {
 // Draw one slot: a chart, or a quiet dash whose tooltip says why there is no chart.
 function paintSlot(slot, sym, series, why) {
   if (series && series.length > 1) slot.replaceChildren(sparkSVG(series, tickerLabel(sym)));
-  else if (why) slot.replaceChildren(el('span', { class: 'muted', title: why }, '–'));
+  else if (why) { slot.replaceChildren(); slot.title = why; } // no chart: leave the space empty, the reason is in the tooltip
 }
 
 function slotsFor(sym) {
@@ -708,7 +710,7 @@ function applyTimerMode() {
   const t = tmMode === 'timer';
   $('tm-timer').hidden = !t;
   $('tm-sw').hidden = t;
-  $('card-timer').querySelector('h2').firstChild.textContent = t ? 'Timer' : 'Stopwatch';
+  $('card-timer').querySelector('.ctitle').textContent = t ? 'Timer' : 'Stopwatch';
   $('tm-alt-path').setAttribute('d', t ? TM_ICON.sw : TM_ICON.timer);
   $('tm-alt-name').textContent = t ? 'Stopwatch' : 'Timer';
   updateTimerAlt();
@@ -1204,7 +1206,7 @@ function toggleTheme() {
 let layout = store.get('layout', { order: [], hidden: [] });
 
 function cardEls() { return [...document.querySelectorAll('main.grid > .card')]; }
-function cardTitle(c) { const h = c.querySelector('h2'); return h ? h.firstChild.textContent.trim() : c.id; }
+function cardTitle(c) { const t = c.querySelector('h2 .ctitle'); return t ? t.textContent.trim() : c.id; }
 
 function currentOrder() {
   const ids = cardEls().map((c) => c.id);
@@ -1279,9 +1281,59 @@ function initLayout() {
 
 /* ---------- Wiring ---------- */
 // Every card: title stays, the rest sits in a scrolling body.
+// Small tinted squircle with a white glyph in front of every card title, like the app icons in iOS Settings.
+const CARD_ICONS = {
+  'card-cal': ['#007aff', 'M9 6h11M9 12h11M9 18h11M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17'],
+  'card-weather': ['#32ade6', 'M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.1 3.5 3.5 0 0 0 7 18z'],
+  'card-tickers': ['#34c759', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
+  'card-events': ['#af52de', 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4'],
+  'card-clock': ['#5856d6', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'],
+  'card-shop': ['#ff2d55', 'M3 4h2l2.5 11h11L21 7H6.2M9 20h.01M18 20h.01'],
+  'card-timer': ['#ff9500', 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4'],
+  'card-calc': ['#8e8e93', 'M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01'],
+  'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
+  'card-news': ['#ff3b30', 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4'],
+};
+
+function cardIcon(id) {
+  const ic = CARD_ICONS[id];
+  if (!ic) return null;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', ic[1]);
+  svg.append(path);
+  const box = el('span', { class: 'cicon', 'aria-hidden': 'true' });
+  box.style.background = ic[0];
+  box.append(svg);
+  return box;
+}
+
+// Small round refresh button (arrow), used in card headers.
+function refreshIcon() {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7');
+  svg.append(path);
+  return svg;
+}
+
 function initCards() {
   for (const card of document.querySelectorAll('main.grid > .card')) {
     const h2 = card.querySelector('h2');
+    // title text goes into its own span, so buttons and icons can sit next to it
+    const title = el('span', { class: 'ctitle' }, h2.firstChild.textContent.trim());
+    h2.firstChild.remove();
+    const ic = cardIcon(card.id);
+    h2.prepend(el('span', { class: 'chead' }, ic || '', title));
+    for (const id of ['btn-refresh', 'news-refresh']) {
+      const b = h2.querySelector('#' + id);
+      if (b) { b.className = 'hicon'; b.setAttribute('aria-label', 'Refresh'); b.title = 'Refresh'; b.replaceChildren(refreshIcon()); }
+    }
     const body = el('div', { class: 'cardbody' });
     while (h2.nextSibling) body.append(h2.nextSibling);
     card.append(body);
