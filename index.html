@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
 </head>
 <body>
   <header>
@@ -94,24 +94,35 @@
 
     <section class="card" id="card-timer">
       <h2>Timer</h2>
-      <div id="timer-display" class="big">00:00</div>
-      <div class="row">
-        <input id="timer-min" type="number" min="1" max="1440" value="25" aria-label="Minutes">
-        <span class="muted">min</span>
-        <button id="timer-start">Start</button>
-        <button id="timer-reset" class="ghost">Reset</button>
+      <div id="tm-timer" class="tm-pane">
+        <div id="timer-display" class="big">00:00</div>
+        <div class="row">
+          <input id="timer-min" type="number" min="1" max="1440" value="25" aria-label="Minutes">
+          <span class="muted">min</span>
+          <button id="timer-start">Start</button>
+          <button id="timer-reset" class="ghost">Reset</button>
+        </div>
+        <div class="row presets">
+          <button class="ghost small" data-min="5">5</button>
+          <button class="ghost small" data-min="10">10</button>
+          <button class="ghost small" data-min="25">25</button>
+          <button class="ghost small" data-min="45">45</button>
+        </div>
       </div>
-      <div class="row presets">
-        <button class="ghost small" data-min="5">5</button>
-        <button class="ghost small" data-min="10">10</button>
-        <button class="ghost small" data-min="25">25</button>
-        <button class="ghost small" data-min="45">45</button>
+      <div id="tm-sw" class="tm-pane" hidden>
+        <div id="sw-display" class="big">00:00.0</div>
+        <div class="row">
+          <button id="sw-start">Start</button>
+          <button id="sw-reset" class="ghost">Reset</button>
+        </div>
       </div>
-      <h3 class="sub">Stopwatch</h3>
-      <div id="sw-display" class="big">00:00.0</div>
-      <div class="row">
-        <button id="sw-start">Start</button>
-        <button id="sw-reset" class="ghost">Reset</button>
+      <div class="tm2">
+        <button id="tm-alt" type="button" class="wx-alt tm-alt" title="Click to show this one on top">
+          <svg class="wxi md tm-ico" viewBox="0 0 24 24" aria-hidden="true"><path id="tm-alt-path" d=""/></svg>
+          <span class="wx-alt-text"><span class="wx-alt-name" id="tm-alt-name"></span><span class="wx-alt-desc" id="tm-alt-desc"></span></span>
+          <span class="wx-alt-temp" id="tm-alt-val"></span>
+          <span class="wx-alt-swap" aria-hidden="true">&#8644;</span>
+        </button>
       </div>
     </section>
 
@@ -205,7 +216,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=32"></script>
-  <script src="gcal.js?v=32"></script>
+  <script src="app.js?v=33"></script>
+  <script src="gcal.js?v=33"></script>
 </body>
 </html>

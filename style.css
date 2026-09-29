@@ -362,8 +362,13 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .spark circle { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
 
 /* ---------- timer, stopwatch, calculator ---------- */
-#timer-display { font-size: 3rem; font-weight: 200; }
-#sw-display { font-size: 2rem; font-weight: 200; margin: 2px 0 8px; }
+/* timer card: the active one is large on top, the other one waits at the bottom (like the second weather place) */
+.tm-pane[hidden] { display: none; }
+#timer-display, #sw-display { font-size: 3.6rem; font-weight: 200; letter-spacing: -0.03em; margin: 0 0 12px; }
+.tm2 { margin-top: auto; padding-top: 12px; }
+.tm-ico { color: var(--muted); }
+.tm-alt.live .tm-ico { color: var(--accent); }
+.tm-alt.live .wx-alt-desc { color: var(--accent); font-weight: 600; }
 /* calculator: one display panel, expression on top, result large and right-aligned */
 .calc-display { background: var(--card-2); border-radius: 14px; padding: 6px 12px 10px; transition: box-shadow 0.15s ease; }
 .calc-display:focus-within { box-shadow: 0 0 0 3px var(--accent-soft); }

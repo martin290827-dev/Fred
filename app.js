@@ -561,6 +561,41 @@ function resetStopwatch() {
   tickStopwatch();
 }
 
+/* ---------- Timer / stopwatch switch: the one in use sits on top, the other waits below ---------- */
+const TM_ICON = {
+  timer: 'M7 3h10M7 21h10M8 3c0 5 4 6 4 9s-4 4-4 9M16 3c0 5-4 6-4 9s4 4 4 9', // hourglass
+  sw: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4M12 2v3', // stopwatch
+};
+let tmMode = store.get('tmMode', 'timer');
+
+function applyTimerMode() {
+  const t = tmMode === 'timer';
+  $('tm-timer').hidden = !t;
+  $('tm-sw').hidden = t;
+  $('card-timer').querySelector('h2').firstChild.textContent = t ? 'Timer' : 'Stopwatch';
+  $('tm-alt-path').setAttribute('d', t ? TM_ICON.sw : TM_ICON.timer);
+  $('tm-alt-name').textContent = t ? 'Stopwatch' : 'Timer';
+  updateTimerAlt();
+}
+
+// Status line of the waiting one, so a running stopwatch or timer is never forgotten.
+function updateTimerAlt() {
+  if (tmMode === 'timer') {
+    $('tm-alt-desc').textContent = sw.start ? 'Running' : (sw.acc ? 'Paused' : 'Ready');
+    $('tm-alt-val').textContent = fmtStopwatch(swElapsed()).replace(/\.\d$/, '');
+  } else {
+    $('tm-alt-desc').textContent = timerEnd ? 'Running' : 'Ready \u00b7 ' + ($('timer-min').value || 25) + ' min';
+    $('tm-alt-val').textContent = timerEnd ? fmtDuration(timerEnd - Date.now()) : '00:00';
+  }
+  $('tm-alt').classList.toggle('live', tmMode === 'timer' ? !!sw.start : !!timerEnd);
+}
+
+function switchTimerMode() {
+  tmMode = tmMode === 'timer' ? 'sw' : 'timer';
+  store.set('tmMode', tmMode);
+  applyTimerMode();
+}
+
 /* ---------- Events (date only, from Google Calendar) ---------- */
 function fmtRemaining(ms) {
   if (ms <= 0) return 'passed';
@@ -1094,6 +1129,8 @@ function init() {
   $('sw-start').addEventListener('click', toggleStopwatch);
   $('sw-reset').addEventListener('click', resetStopwatch);
   tickStopwatch();
+  $('tm-alt').addEventListener('click', switchTimerMode);
+  applyTimerMode();
   document.querySelectorAll('.presets button').forEach((b) =>
     b.addEventListener('click', () => { $('timer-min').value = b.dataset.min; }));
 
@@ -1144,7 +1181,7 @@ function init() {
     $('dlg-settings').returnValue = '';
   });
 
-  setInterval(() => { tickClocks(); tickTimer(); }, 250);
+  setInterval(() => { tickClocks(); tickTimer(); updateTimerAlt(); }, 250);
   setInterval(() => { if (sw.start) tickStopwatch(); }, 100);
   setInterval(tickEvents, 30000);
   setInterval(loadQuotes, 60000);
