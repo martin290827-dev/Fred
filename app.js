@@ -421,66 +421,54 @@ async function loadQuotes() {
 let holdings = store.get('holdings', []); // [{ sym, qty }], only in this browser
 let pfHidden = store.get('pfHidden', false);
 
-// Settings: one amount field per ticker. Rebuilt while the ticker list is edited; typed amounts are kept.
-function buildPfInputs() {
-  const box = $('set-pf');
-  const typed = {};
-  box.querySelectorAll('input').forEach((i) => { typed[i.dataset.sym] = i.value; });
-  const syms = [...new Set($('set-tickers').value.split(',').map((s) => s.trim()).filter(Boolean))];
-  box.replaceChildren(...syms.map((s) => {
-    const inp = el('input', { type: 'text', inputmode: 'decimal', placeholder: '0', 'data-sym': s, 'aria-label': 'Amount of ' + tickerLabel(s) });
-    const old = holdings.find((x) => x.sym.toUpperCase() === s.toUpperCase());
-    inp.value = s in typed ? typed[s] : (old ? old.qty : '');
-    return el('label', { class: 'pf-field' }, el('span', null, tickerLabel(s)), inp);
-  }));
-  if (!syms.length) box.append(el('span', { class: 'muted small' }, 'Add tickers above first.'));
-}
-
-function readPfInputs() {
-  const out = [];
-  $('set-pf').querySelectorAll('input').forEach((i) => {
-    const qty = parseFloat(String(i.value).replace(',', '.'));
-    if (qty > 0) out.push({ sym: i.dataset.sym, qty });
-  });
-  return out;
-}
-
+// Every ticker is listed; type the amount you hold right in the row (empty = only watched).
 function renderPortfolio() {
   const box = $('pf');
+  if (box.contains(document.activeElement)) return; // do not redraw while you type an amount
   $('pf-hide').textContent = pfHidden ? 'Show' : 'Hide';
-  $('pf-hide').hidden = !holdings.length;
-  if (!holdings.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Enter how much you hold of your tickers in Settings. It stays only in this browser.')); return; }
+  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add tickers in Settings first.')); return; }
   const usdPerEur = fx && fx.rates && fx.rates.USD;
   const cur = usdPerEur ? 'EUR' : 'USD';
   const conv = (usd) => (usdPerEur ? usd / usdPerEur : usd);
-  const money = (v) => (pfHidden ? '\u2022\u2022\u2022\u2022' : v.toLocaleString('en-GB', { style: 'currency', currency: cur, maximumFractionDigits: 0 }));
-  const rows = [];
+  const money = (v) => (pfHidden ? '••••' : v.toLocaleString('en-GB', { style: 'currency', currency: cur, maximumFractionDigits: 0 }));
+  const sign = (v) => (v >= 0 ? '+' : '−');
   let total = 0;
   let day = 0;
-  let missing = 0;
-  for (const hd of holdings) {
-    const q = lastQuotes[hd.sym];
-    if (!q) { missing++; rows.push({ sym: hd.sym, qty: hd.qty, value: null }); continue; }
-    const value = conv(q.price * hd.qty);
-    const change = value - value / (1 + (q.pct || 0) / 100);
-    total += value;
-    day += change;
-    rows.push({ sym: hd.sym, qty: hd.qty, value, pct: q.pct || 0 });
-  }
+  const rows = tickers.map((s) => {
+    const hd = holdings.find((x) => x.sym === s);
+    const qty = hd ? hd.qty : 0;
+    const q = lastQuotes[s];
+    const value = qty && q ? conv(q.price * qty) : null;
+    if (value !== null) { total += value; day += value - value / (1 + (q.pct || 0) / 100); }
+    return { s, qty, value, noPrice: qty && !q };
+  });
   const dayPct = total - day ? (day / (total - day)) * 100 : 0;
-  const sign = (v) => (v >= 0 ? '+' : '\u2212');
-  rows.sort((x, y) => (y.value || 0) - (x.value || 0));
-  box.replaceChildren(
-    el('div', { class: 'pf-total' }, money(total)),
-    el('div', { class: 'pf-day' },
-      el('span', { class: 'pct ' + (day >= 0 ? 'up' : 'down') }, sign(dayPct) + Math.abs(dayPct).toFixed(2) + '%'),
-      el('span', { class: 'muted' }, (pfHidden ? '' : ' ' + sign(day) + money(Math.abs(day)).replace(/^[-\u2212]/, '')) + ' today')),
-    el('div', { class: 'pf-list' }, ...rows.map((r) => el('div', { class: 'pf-row' },
-      el('span', { class: 'tsym' }, tickerLabel(r.sym)),
-      el('span', { class: 'muted small' }, pfHidden ? '' : String(r.qty)),
-      el('span', { class: 'pf-val' }, r.value === null ? 'no price' : money(r.value)),
-      el('span', { class: 'muted small pf-share' }, r.value === null || !total ? '' : Math.round((r.value / total) * 100) + '%')))),
-    missing ? el('p', { class: 'muted small' }, missing + ' without price (check the ticker or keys).') : '');
+  const head = total
+    ? [el('div', { class: 'pf-total' }, money(total)),
+      el('div', { class: 'pf-day' },
+        el('span', { class: 'pct ' + (day >= 0 ? 'up' : 'down') }, sign(dayPct) + Math.abs(dayPct).toFixed(2) + '%'),
+        el('span', { class: 'muted' }, (pfHidden ? '' : sign(day) + money(Math.abs(day)) + ' ') + 'today'))]
+    : [el('p', { class: 'muted pf-hint' }, 'Type how much you hold next to each ticker. Stored only in this browser.')];
+  box.replaceChildren(...head, el('div', { class: 'pf-list' }, ...rows.map((r) => el('div', { class: 'pf-row' + (r.qty ? '' : ' watch') },
+    el('span', { class: 'tsym' }, tickerLabel(r.s)),
+    pfHidden ? el('span', { class: 'muted small pf-qty-hidden' }, r.qty ? '••' : '') : qtyInput(r.s, r.qty),
+    el('span', { class: 'pf-val' }, r.noPrice ? 'no price' : r.value === null ? '–' : money(r.value)),
+    el('span', { class: 'muted small pf-share' }, r.value === null || !total ? '' : Math.round((r.value / total) * 100) + '%')))));
+}
+
+function qtyInput(sym, qty) {
+  const inp = el('input', { type: 'text', inputmode: 'decimal', class: 'pf-qty', placeholder: 'amount', 'aria-label': 'Amount of ' + tickerLabel(sym) });
+  inp.value = qty || '';
+  const save = () => {
+    const v = parseFloat(inp.value.replace(',', '.'));
+    holdings = holdings.filter((x) => x.sym !== sym);
+    if (v > 0) holdings.push({ sym, qty: v });
+    store.set('holdings', holdings);
+  };
+  inp.addEventListener('change', () => { save(); inp.blur(); renderPortfolio(); });
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
+  inp.addEventListener('blur', () => setTimeout(renderPortfolio, 0));
+  return inp;
 }
 
 function togglePortfolioHidden() {
@@ -1070,7 +1058,6 @@ function openSettings() {
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
-  buildPfInputs();
   $('set-gclient').value = googleClientId;
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
   $('bk-status').textContent = '';
@@ -1111,7 +1098,7 @@ function saveSettings() {
   }
   if (parsed.length) { zones = parsed; store.set('zones', zones); }
 
-  holdings = readPfInputs();
+  holdings = holdings.filter((x) => tickers.includes(x.sym)); // removed tickers leave the portfolio too
   store.set('holdings', holdings);
 
   setGoogleSettings($('set-gclient').value.trim());
@@ -1279,7 +1266,6 @@ function init() {
   renderShop();
   initNotes();
   $('pf-hide').addEventListener('click', togglePortfolioHidden);
-  $('set-tickers').addEventListener('input', buildPfInputs);
   renderPortfolio();
   initLayout();
   gcalInit();
