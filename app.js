@@ -650,14 +650,15 @@ async function loadFx() {
 }
 
 function convert() {
-  if (!fx) { $('fx-result').textContent = '-'; return; }
+  if (!fx) { $('fx-result').textContent = '\u2013'; $('fx-rate').textContent = ''; return; }
   const amt = parseFloat($('fx-amount').value);
   const from = $('fx-from').value;
   const to = $('fx-to').value;
-  $('fx-date').textContent = 'ECB ' + fx.date;
-  if (!(amt >= 0) || !fx.rates[from] || !fx.rates[to]) { $('fx-result').textContent = '-'; return; }
-  const out = (amt / fx.rates[from]) * fx.rates[to];
-  $('fx-result').textContent = out.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ' + to;
+  $('fx-date').textContent = 'ECB \u00b7 ' + new Date(fx.date + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (!fx.rates[from] || !fx.rates[to]) { $('fx-result').textContent = '\u2013'; return; }
+  const rate = fx.rates[to] / fx.rates[from];
+  $('fx-rate').textContent = '1 ' + from + ' = ' + rate.toLocaleString('en-US', { maximumFractionDigits: rate < 1 ? 4 : 2 }) + ' ' + to;
+  $('fx-result').textContent = amt >= 0 ? (amt * rate).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '\u2013';
 }
 
 function initFx() {

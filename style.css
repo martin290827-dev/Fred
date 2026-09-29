@@ -363,9 +363,38 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 /* ---------- timer, stopwatch, calculator ---------- */
 #timer-display { font-size: 3rem; font-weight: 200; }
 #sw-display { font-size: 2rem; font-weight: 200; margin: 2px 0 8px; }
-#calc-expr { font-size: 1.05rem; flex: 1; width: auto; min-width: 0; }
-#card-calc .big { font-size: 2rem; font-weight: 300; margin: 6px 0 2px; }
-#fx-result { font-weight: 300; }
+/* calculator: one display panel, expression on top, result large and right-aligned */
+.calc-display { background: var(--card-2); border-radius: 14px; padding: 6px 12px 10px; transition: box-shadow 0.15s ease; }
+.calc-display:focus-within { box-shadow: 0 0 0 3px var(--accent-soft); }
+#calc-expr { background: transparent; text-align: right; font-size: 1.05rem; color: var(--muted); padding: 4px 0; border-radius: 0; }
+#calc-expr:focus { box-shadow: none; color: var(--text); }
+.calc-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+#calc-result {
+  flex: 1; min-width: 0; text-align: right; font-size: 2.2rem; font-weight: 300; line-height: 1.1; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+}
+/* currency: two stacked rows (amount / result) with a round swap button between them */
+#card-calc .sub { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; }
+.fx-box { position: relative; display: grid; gap: 6px; }
+.fx-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; background: var(--card-2); border-radius: 12px; padding: 4px 6px 4px 12px; min-height: 46px; }
+#fx-amount, #fx-result {
+  width: 100%; min-width: 0; background: transparent; padding: 4px 0; border-radius: 0;
+  font-size: 1.45rem; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#fx-amount:focus { box-shadow: none; }
+.fx-row:focus-within { box-shadow: 0 0 0 3px var(--accent-soft); }
+.fx-row select { background: var(--card); font-weight: 600; padding: 6px 8px; border-radius: 9px; }
+.fx-swap {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 50%;
+  background: var(--accent); color: #fff; box-shadow: 0 0 0 3px var(--card);
+}
+.fx-swap:active { transform: translate(-50%, -50%) scale(0.94); }
+.fx-swap svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fx-rate { margin: 8px 2px 0; }
+.fx-rate:empty { display: none; }
 #fx-status:empty { display: none; }
 #shop-text { flex: 1; width: auto; }
 .sub {
