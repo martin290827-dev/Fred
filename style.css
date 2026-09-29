@@ -107,6 +107,8 @@ header {
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 0.5px solid var(--line);
+  /* on iPhone home-screen mode the status bar sits on top of the page */
+  padding-top: max(12px, env(safe-area-inset-top));
 }
 header h1 {
   grid-area: title;
@@ -503,6 +505,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
     grid-template-areas: "title btn" "date date";
     row-gap: 6px;
     padding: 10px 16px;
+    padding-top: max(10px, env(safe-area-inset-top));
   }
   .hbtn span { display: none; } /* icons only; labels stay in aria-label and tooltip */
   .hbtn { padding: 8px; }
