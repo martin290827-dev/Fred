@@ -130,11 +130,60 @@ function clockFace() {
   return { svg, hh, mm, ss };
 }
 
+// Stock exchanges: regular trading hours in local exchange time (minutes after midnight).
+// Public holidays are not known here, so a holiday shows as "open".
+const MARKETS = [
+  { name: 'NYSE / Nasdaq', tz: 'America/New_York', open: 9 * 60 + 30, close: 16 * 60 },
+  { name: 'Xetra', tz: 'Europe/Berlin', open: 9 * 60, close: 17 * 60 + 30 },
+  { name: 'Wiener B\u00f6rse', tz: 'Europe/Vienna', open: 9 * 60, close: 17 * 60 + 30 },
+];
+const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+function marketState(m, now) {
+  const p = zoneParts(m.tz, now);
+  const wd = WD[new Intl.DateTimeFormat('en-US', { timeZone: m.tz, weekday: 'short' }).format(now)];
+  const mins = p.hour * 60 + p.minute;
+  const workday = (d) => d >= 1 && d <= 5;
+  if (workday(wd) && mins >= m.open && mins < m.close) return { open: true, left: m.close - mins };
+  for (let d = 0; d <= 7; d++) {
+    if (workday((wd + d) % 7) && (d > 0 || mins < m.open)) return { open: false, wait: d * 1440 + m.open - mins };
+  }
+  return { open: false, wait: 0 };
+}
+
+function fmtSpan(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? h + ' h' + (m ? ' ' + m + ' min' : '') : m + ' min';
+}
+
+let marketsKey = '';
+function renderMarkets(now) {
+  const key = now.getHours() + ':' + now.getMinutes();
+  if (key === marketsKey) return; // once per minute is enough
+  marketsKey = key;
+  const box = $('markets');
+  box.replaceChildren(...MARKETS.map((m) => {
+    const s = marketState(m, now);
+    let text;
+    if (s.open) text = 'Open \u00b7 closes in ' + fmtSpan(s.left);
+    else if (s.wait < 12 * 60) text = 'Closed \u00b7 opens in ' + fmtSpan(s.wait);
+    else {
+      const at = new Date(now.getTime() + s.wait * 60000);
+      text = 'Closed \u00b7 opens ' + at.toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' +
+        at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    return el('div', { class: 'mkt' + (s.open ? ' open' : '') },
+      el('span', { class: 'dot', 'aria-hidden': 'true' }), el('span', { class: 'mkt-name' }, m.name), el('span', { class: 'mkt-state' }, text));
+  }));
+}
+
 let clockNodes = [];
 function renderClocks() {
   const box = $('clocks');
   box.replaceChildren();
   clockNodes = [];
+  marketsKey = '';
   for (const z of zones) {
     const face = clockFace();
     const hm = el('span', { class: 'hm' });
@@ -152,6 +201,7 @@ function tickClocks() {
   const now = new Date();
   const today = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   if ($('today').textContent !== today) $('today').textContent = today;
+  renderMarkets(now);
   const pad = (n) => String(n).padStart(2, '0');
   for (const c of clockNodes) {
     try {
@@ -337,7 +387,7 @@ function fmtPrice(p) {
 function tickerLabel(s) { return s.startsWith('c:') ? s.slice(2).toUpperCase() : s.toUpperCase(); }
 
 async function loadQuotes() {
-  const syms = [...new Set(tickers)];
+  const syms = [...new Set(tickers.concat(holdings.map((x) => x.sym)))]; // holdings need prices too
   const results = await Promise.allSettled(syms.map(fetchQuote));
   const errors = {};
   syms.forEach((s, i) => {
@@ -364,6 +414,67 @@ async function loadQuotes() {
   }
   $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB') + '. Stocks may be delayed.';
   paintSparks();
+  renderPortfolio();
+}
+
+/* ---------- Portfolio: holdings from Settings, valued with the ticker prices, shown in EUR ---------- */
+let holdings = store.get('holdings', []); // [{ sym, qty }], only in this browser
+let pfHidden = store.get('pfHidden', false);
+
+function parseHoldings(text) {
+  const out = [];
+  for (const line of text.split('\n')) {
+    const i = line.indexOf('=');
+    if (i < 1) continue;
+    const sym = line.slice(0, i).trim();
+    const qty = parseFloat(line.slice(i + 1).trim().replace(',', '.'));
+    if (sym && qty > 0) out.push({ sym: sym.startsWith('c:') ? sym : sym.toUpperCase(), qty });
+  }
+  return out;
+}
+
+function renderPortfolio() {
+  const box = $('pf');
+  $('pf-hide').textContent = pfHidden ? 'Show' : 'Hide';
+  $('pf-hide').hidden = !holdings.length;
+  if (!holdings.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add your holdings in Settings (Ticker=Amount). They stay only in this browser.')); return; }
+  const usdPerEur = fx && fx.rates && fx.rates.USD;
+  const cur = usdPerEur ? 'EUR' : 'USD';
+  const conv = (usd) => (usdPerEur ? usd / usdPerEur : usd);
+  const money = (v) => (pfHidden ? '\u2022\u2022\u2022\u2022' : v.toLocaleString('en-GB', { style: 'currency', currency: cur, maximumFractionDigits: 0 }));
+  const rows = [];
+  let total = 0;
+  let day = 0;
+  let missing = 0;
+  for (const hd of holdings) {
+    const q = lastQuotes[hd.sym];
+    if (!q) { missing++; rows.push({ sym: hd.sym, qty: hd.qty, value: null }); continue; }
+    const value = conv(q.price * hd.qty);
+    const change = value - value / (1 + (q.pct || 0) / 100);
+    total += value;
+    day += change;
+    rows.push({ sym: hd.sym, qty: hd.qty, value, pct: q.pct || 0 });
+  }
+  const dayPct = total - day ? (day / (total - day)) * 100 : 0;
+  const sign = (v) => (v >= 0 ? '+' : '\u2212');
+  rows.sort((x, y) => (y.value || 0) - (x.value || 0));
+  box.replaceChildren(
+    el('div', { class: 'pf-total' }, money(total)),
+    el('div', { class: 'pf-day' },
+      el('span', { class: 'pct ' + (day >= 0 ? 'up' : 'down') }, sign(dayPct) + Math.abs(dayPct).toFixed(2) + '%'),
+      el('span', { class: 'muted' }, (pfHidden ? '' : ' ' + sign(day) + money(Math.abs(day)).replace(/^[-\u2212]/, '')) + ' today')),
+    el('div', { class: 'pf-list' }, ...rows.map((r) => el('div', { class: 'pf-row' },
+      el('span', { class: 'tsym' }, tickerLabel(r.sym)),
+      el('span', { class: 'muted small' }, pfHidden ? '' : String(r.qty)),
+      el('span', { class: 'pf-val' }, r.value === null ? 'no price' : money(r.value)),
+      el('span', { class: 'muted small pf-share' }, r.value === null || !total ? '' : Math.round((r.value / total) * 100) + '%')))),
+    missing ? el('p', { class: 'muted small' }, missing + ' without price (check the ticker or keys).') : '');
+}
+
+function togglePortfolioHidden() {
+  pfHidden = !pfHidden;
+  store.set('pfHidden', pfHidden);
+  renderPortfolio();
 }
 
 /* ---------- Sparklines: 30 daily closes, cached for 6 hours ---------- */
@@ -638,7 +749,34 @@ function fmtDaysLeft(dateStr) {
 
 // Events come from Google Calendar only (all-day and multi-day items). Nothing is typed in here.
 function eventList() {
-  return typeof gGoogleEvents === 'function' ? gGoogleEvents() : [];
+  return (typeof gGoogleEvents === 'function' ? gGoogleEvents() : []).concat(earn.list || []);
+}
+
+/* ---------- Earnings dates of the stock tickers (Finnhub, free), shown under Events ---------- */
+let earn = store.get('earn', { t: 0, key: '', list: [] });
+
+async function loadEarnings() {
+  const stocks = tickers.filter((s) => !s.startsWith('c:'));
+  const key = stocks.join(',');
+  if (!finnhubKey || !stocks.length) { earn = { t: 0, key: '', list: [] }; renderEvents(); return; }
+  if (earn.key === key && Date.now() - earn.t < 12 * 3600000) { renderEvents(); return; } // cached for 12 hours
+  const from = toDateStr(new Date());
+  const to = toDateStr(addDays(new Date(), 100));
+  const list = [];
+  for (const s of stocks) {
+    try {
+      const r = await getJSON('https://finnhub.io/api/v1/calendar/earnings?from=' + from + '&to=' + to +
+        '&symbol=' + encodeURIComponent(s) + '&token=' + encodeURIComponent(finnhubKey));
+      const next = (r.earningsCalendar || []).filter((x) => x.date >= from).sort((x, y) => x.date.localeCompare(y.date))[0];
+      if (next) {
+        const when = next.hour === 'bmo' ? ' (before open)' : next.hour === 'amc' ? ' (after close)' : '';
+        list.push({ id: 'earn:' + s, label: tickerLabel(s) + ' earnings' + when, at: next.date, earnings: true });
+      }
+    } catch { /* no data for this symbol: skip it */ }
+  }
+  earn = { t: Date.now(), key, list };
+  store.set('earn', earn);
+  renderEvents();
 }
 
 // Highlight an event that is today or already running.
@@ -652,9 +790,10 @@ function renderEvents() {
     const on = typeof gHasToken === 'function' && gHasToken();
     ul.append(el('li', { class: 'muted' }, on ? 'No events.' : 'Connect Google Calendar to see your events.'));
   }
+  if (typeof gSessionEnded === 'function' && gSessionEnded()) ul.append(gReconnectRow());
   for (const e of sorted) {
-    ul.append(el('li', { class: isEventNow(e) ? 'now' : '' },
-      el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e))),
+    ul.append(el('li', { class: (isEventNow(e) ? 'now' : '') + (e.earnings ? ' earn' : '') },
+      el('span', { class: 'grow' }, e.label, el('br'), el('span', { class: 'muted small' }, fmtEventDates(e) + (e.earnings ? ' \u00b7 Earnings' : ''))),
       el('span', { 'data-id': e.id })));
   }
   tickEvents();
@@ -684,6 +823,7 @@ async function loadFx() {
     $('fx-status').textContent = fx ? 'Offline, showing saved rates.' : 'Rates not available.';
   }
   convert();
+  renderPortfolio(); // values in EUR need the rate
 }
 
 function convert() {
@@ -918,6 +1058,7 @@ function openSettings() {
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
+  $('set-pf').value = holdings.map((x) => x.sym + '=' + x.qty).join('\n');
   $('set-gclient').value = googleClientId;
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
   $('bk-status').textContent = '';
@@ -958,7 +1099,12 @@ function saveSettings() {
   }
   if (parsed.length) { zones = parsed; store.set('zones', zones); }
 
+  holdings = parseHoldings($('set-pf').value);
+  store.set('holdings', holdings);
+
   setGoogleSettings($('set-gclient').value.trim());
+  earn.t = 0;
+  loadEarnings();
 
   renderClocks();
   loadWeather();
@@ -966,9 +1112,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'holdings', 'pfHidden', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
-const ARRAY_KEYS = ['tickers', 'zones', 'shop'];
+const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'holdings'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -1120,6 +1266,8 @@ function init() {
   initCalc();
   renderShop();
   initNotes();
+  $('pf-hide').addEventListener('click', togglePortfolioHidden);
+  renderPortfolio();
   initLayout();
   gcalInit();
   tickTimer();
@@ -1191,6 +1339,8 @@ function init() {
   loadWeather();
   loadQuotes();
   loadFx();
+  loadEarnings();
+  setInterval(loadEarnings, 6 * 3600000);
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

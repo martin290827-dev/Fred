@@ -10,6 +10,16 @@ let gExpiry = 0;
 let gAgenda = []; // upcoming events from Google Calendar
 
 function gHasToken() { return !!gToken && Date.now() < gExpiry - 30000; }
+let gEndTimer = null;
+
+// Was connected before, but the one-hour Google session is over.
+function gSessionEnded() { return !!googleClientId && !gHasToken() && store.get('gConnected', false); }
+
+function gReconnectRow() {
+  return el('li', { class: 'reconnect' },
+    el('span', { class: 'grow' }, el('b', null, 'Google session ended'), el('br'), el('span', { class: 'muted small' }, 'Google allows one hour at a time.')),
+    el('button', { type: 'button', class: 'small', onclick: gConnect }, 'Reconnect'));
+}
 
 function gStatus(text) {
   for (const id of ['cal-status', 'g-status']) { const n = $(id); if (n) n.textContent = text; }
@@ -42,6 +52,8 @@ async function gRequestToken(prompt) {
         gToken = r.access_token;
         gExpiry = Date.now() + (parseInt(r.expires_in, 10) || 3600) * 1000;
         store.set('gConnected', true);
+        clearTimeout(gEndTimer); // show the Reconnect button the moment the hour is over
+        gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); renderEvents(); }, gExpiry - Date.now() - 25000);
         resolve();
       },
       error_callback: (err) => { clearTimeout(timer); reject(new Error(err && err.type ? err.type : 'sign-in cancelled')); },
@@ -126,9 +138,13 @@ function renderCalendar() {
     ul.append(el('li', { class: 'muted' }, 'Add your Google Client ID in Settings to see your calendar.'));
     return;
   }
-  btn.hidden = false;
+  btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
   btn.textContent = gHasToken() ? 'Refresh' : 'Connect';
-  if (!gHasToken()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
+  if (!gHasToken()) {
+    if (!gSessionEnded()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
+    ul.append(gReconnectRow()); // the older list stays visible below
+    if (!gAgenda.length) return;
+  }
   const limit = addDays(new Date(), 30).getTime();
   const now = new Date();
   const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit && (!e.end || e.end > now)).slice(0, 25); // one-day items with a time, next 30 days

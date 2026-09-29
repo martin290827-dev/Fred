@@ -11,7 +11,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=34">
+  <link rel="stylesheet" href="style.css?v=35">
 </head>
 <body>
   <header>
@@ -63,6 +63,7 @@
     <section class="card" id="card-clock">
       <h2>Time</h2>
       <div id="clocks"></div>
+      <div id="markets" class="markets" aria-label="Stock exchanges"></div>
     </section>
 
     <section class="card" id="card-calc">
@@ -139,6 +140,11 @@
       <h2>Notes <span id="notes-status" class="muted small"></span></h2>
       <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
     </section>
+
+    <section class="card" id="card-pf">
+      <h2>Portfolio <button id="pf-hide" class="ghost small" type="button">Hide</button></h2>
+      <div id="pf"></div>
+    </section>
   </main>
 
   <dialog id="dlg-settings">
@@ -184,6 +190,11 @@
         </span>
       </label>
 
+      <label>Portfolio (one per line: Ticker=Amount)
+        <textarea id="set-pf" rows="3" placeholder="c:BTC=0.25&#10;TSLA=10"></textarea>
+        <span class="muted small">Stored only in this browser. Uses the same ticker format as above.</span>
+      </label>
+
       <label>Clocks (one per line: Label=Time zone)
         <textarea id="set-zones" rows="3"></textarea>
       </label>
@@ -216,7 +227,7 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=34"></script>
-  <script src="gcal.js?v=34"></script>
+  <script src="app.js?v=35"></script>
+  <script src="gcal.js?v=35"></script>
 </body>
 </html>

@@ -304,6 +304,31 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .clock .sec { font-size: 0.95rem; color: var(--muted); margin-left: 1px; }
 .clock:first-child .t { font-size: 2.3rem; }
 
+/* ---------- stock exchange hours (bottom of the Time card) ---------- */
+.markets { margin-top: auto; padding-top: 10px; display: grid; gap: 4px; }
+.markets:empty { display: none; }
+.mkt { display: grid; grid-template-columns: 8px auto 1fr; align-items: center; gap: 8px; font-size: 0.8rem; }
+.mkt .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); }
+.mkt.open .dot { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 20%, transparent); }
+.mkt-name { font-weight: 600; }
+.mkt-state { color: var(--muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mkt.open .mkt-state { color: var(--text); }
+
+/* ---------- reconnect row, earnings rows ---------- */
+.list li.reconnect { background: color-mix(in srgb, var(--warn) 14%, transparent); border-bottom-color: transparent; margin-bottom: 4px; }
+.list li.earn .grow::before { content: "\25C6"; color: var(--accent); font-size: 0.7rem; margin-right: 6px; vertical-align: 1px; }
+
+/* ---------- portfolio ---------- */
+.pf-total { font-size: 2.4rem; font-weight: 300; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", Inter, Roboto, system-ui, sans-serif; }
+.pf-day { display: flex; align-items: center; gap: 8px; margin: 6px 0 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.pf-day .pct { justify-self: auto; }
+.pf-list { display: grid; }
+.pf-row { display: grid; grid-template-columns: minmax(48px, 1fr) auto auto 40px; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 0.5px solid var(--line); font-variant-numeric: tabular-nums; }
+.pf-row:last-child { border-bottom: 0; }
+.pf-val { text-align: right; font-weight: 500; }
+.pf-share { text-align: right; }
+
 /* ---------- weather ---------- */
 .wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }
 .wxi.lg { width: 48px; height: 48px; }
