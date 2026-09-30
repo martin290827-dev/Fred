@@ -29,7 +29,7 @@ Fred ist eine Web-App und kann Apple Health nicht direkt lesen. Darum der Weg: i
 
 **1. Script anlegen (am Computer)**
 1. Neues Google Sheet anlegen, z. B. „Fred Health“.
-2. Erweiterungen → Apps Script. Den Inhalt von `health-script.gs` aus diesem Repo einfügen. (Oder ein eigenständiges Projekt auf script.google.com: dann `SHEET_ID` auf die ID aus dem Sheet-Link setzen.)
+2. Erweiterungen → Apps Script. Den Inhalt von `health-script.gs` aus diesem Repo einfügen.
 3. `KEY` auf ein eigenes, langes Zufallswort ändern. Speichern.
 4. Bereitstellen → Neue Bereitstellung → Typ „Web-App“. Ausführen als: **Ich**. Zugriff: **Jeder**. Bereitstellen, Zugriff erlauben.
 5. Den Link kopieren (endet auf `/exec`).

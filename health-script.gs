@@ -5,12 +5,11 @@
 // Fred calls:                 <link>?key=KEY&days=120                     (reads the last days)
 
 const KEY = 'CHANGE_ME';
-const SHEET_ID = ''; // only for a standalone script: the id from the sheet's link (/d/<id>/edit). Leave empty inside a sheet.
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.key !== KEY) return out({ error: 'wrong key' });
-  const sh = (SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet()).getSheets()[0];
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   if (sh.getLastRow() === 0) sh.appendRow(['date', 'steps', 'updated']);
   if (p.date && p.steps !== undefined) save(sh, String(p.date).trim(), steps(p.steps));
   const n = Math.min(Number(p.days) || 120, 400);
