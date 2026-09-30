@@ -294,6 +294,8 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .list li.soon::before { background: var(--warn); }
 .list li.now { background: var(--accent-soft); border-bottom-color: transparent; font-weight: 600; }
 .list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#events > li, #cal-list > li { padding-top: 7px; padding-bottom: 7px; } /* a bit tighter, so 5 rows fit */
+#events .muted.small { line-height: 1.3; }
 .list li.done .t { text-decoration: line-through; color: var(--muted); }
 
 /* ---------- clocks (World Clock style: analog face, city, offset, light digits) ---------- */
@@ -613,6 +615,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .card { height: auto; max-height: 440px; border-radius: 20px; padding: 16px 18px; }
   .cardbody > ul.list { min-height: 0; }
   #card-notes { height: 320px; }
+  #card-weather, #card-cal, #card-events { max-height: none; } /* one common height, set in app.js */
   .card-wide { max-height: none; }
   #banners { top: 96px; padding: 0 16px; }
 }

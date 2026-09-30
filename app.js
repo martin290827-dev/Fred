@@ -413,6 +413,7 @@ async function loadWeather() {
     if (second.status === 'fulfilled') renderWeatherAlt(alt, low, second.value);
     else alt.textContent = 'Second place not available.';
   }
+  matchWeatherHeight();
 }
 
 async function geocode(name) {
@@ -891,6 +892,39 @@ function renderEvents() {
     ul.append(li);
   }
   tickEvents();
+  fitRows(ul, 5);
+  matchWeatherHeight();
+}
+
+// Show at most n rows; the rest scrolls inside the list.
+function fitRows(ul, n) {
+  requestAnimationFrame(() => {
+    const rows = [...ul.children];
+    if (rows.length <= n) { ul.style.maxHeight = ''; return; }
+    const top = rows[0].offsetTop;
+    const end = rows[n - 1].offsetTop + rows[n - 1].offsetHeight;
+    ul.style.maxHeight = Math.ceil(end - top + 2) + 'px';
+  });
+}
+
+// Phone: Weather, Tasks & Reminders and Events get one common height,
+// tall enough for the weather and for 5 rows in each list.
+function matchWeatherHeight() {
+  requestAnimationFrame(() => {
+    const ids = ['card-weather', 'card-cal', 'card-events'];
+    for (const id of ids) $(id).style.height = '';
+    if (!window.matchMedia('(max-width: 699px)').matches) return;
+    const need = (cardId, listId) => {
+      const card = $(cardId);
+      const ul = $(listId);
+      const rows = [...ul.children].slice(0, 5);
+      if (!rows.length) return 0;
+      const last = rows[rows.length - 1];
+      return (last.getBoundingClientRect().bottom - card.getBoundingClientRect().top) + 44; // + status line and padding
+    };
+    const h = Math.ceil(Math.max($('card-weather').offsetHeight, need('card-cal', 'cal-list'), need('card-events', 'events')));
+    if (h > 200) for (const id of ids) $(id).style.height = h + 'px';
+  });
 }
 
 function tickEvents() {
@@ -1471,6 +1505,7 @@ function init() {
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();
+  window.addEventListener('resize', matchWeatherHeight);
   gcalInit();
   syncInit();
   tickTimer();

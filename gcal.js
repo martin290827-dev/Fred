@@ -179,6 +179,8 @@ function renderCalendar() {
     ul.append(li);
   }
   ul.scrollTop = keepScroll;
+  fitRows(ul, 5);
+  matchWeatherHeight();
 }
 
 // 'now' while it runs, 'soon' in the last hour before it starts. Words carry the meaning, colour only helps.
