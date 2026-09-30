@@ -1435,6 +1435,29 @@ function applyLayout() {
     c.classList.toggle('half', !!((next && next.classList.contains('card-wide')) || (prev && prev.classList.contains('card-wide'))));
   });
   renderLayoutBar();
+  renderJumpbar(visible);
+}
+
+// Shortcut chips in the header: jump straight to a card.
+function renderJumpbar(visible) {
+  const bar = $('jumpbar');
+  if (!bar) return;
+  bar.replaceChildren(...visible.map((id) => {
+    const c = $(id);
+    const title = cardTitle(c);
+    return el('button', { type: 'button', title, 'aria-label': 'Go to ' + title, onclick: () => jumpTo(c) },
+      cardIcon(id) || '', el('span', { class: 'jl' }, shortTitle(title)));
+  }));
+  document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px');
+}
+
+function shortTitle(t) { return t.split(/\s*&\s*/)[0]; } // "Calculator & Currency" -> "Calculator"
+
+function jumpTo(card) {
+  document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px');
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  card.classList.add('flash');
+  setTimeout(() => card.classList.remove('flash'), 1200);
 }
 
 function saveLayout() { store.set('layout', layout); applyLayout(); }

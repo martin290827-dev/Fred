@@ -98,7 +98,7 @@ header {
   z-index: 10;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  grid-template-areas: "title date btn";
+  grid-template-areas: "title date btn" "jump jump jump";
   align-items: center;
   gap: 6px 12px;
   /* line the bar up with the card grid (max width 1200px) */
@@ -712,7 +712,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 @media (max-width: 700px) {
   header {
     grid-template-columns: 1fr auto;
-    grid-template-areas: "title btn" "date date";
+    grid-template-areas: "title btn" "date date" "jump jump";
     row-gap: 6px;
     padding: 10px 16px;
     padding-top: max(10px, env(safe-area-inset-top));
@@ -763,3 +763,15 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #notes-mic.rec { background: var(--down); color: #fff; animation: micpulse 1.2s ease-in-out infinite; }
 @keyframes micpulse { 50% { opacity: 0.6; } }
 @media (prefers-reduced-motion: reduce) { #notes-mic.rec { animation: none; } }
+
+/* shortcut bar under the header: one chip per visible card, tap = jump there */
+.jumpbar { grid-area: jump; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 0; padding: 2px 4px; }
+.jumpbar::-webkit-scrollbar { display: none; }
+.jumpbar button { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border-radius: 999px;
+  background: var(--fill); color: var(--text); font-size: 0.8rem; font-weight: 500; min-height: 0; box-shadow: none; }
+.jumpbar button:hover { background: var(--accent-soft); }
+.jumpbar .cicon { width: 20px; height: 20px; border-radius: 6px; }
+.jumpbar .cicon svg { width: 13px; height: 13px; }
+.grid > .card { scroll-margin-top: calc(var(--head-h, 110px) + 12px); }
+.card.flash { box-shadow: 0 0 0 3px var(--accent), var(--shadow); transition: box-shadow 0.3s; }
+@media (max-width: 700px) { .jumpbar button { padding: 4px 6px 4px 5px; } .jumpbar button span.jl { display: none; } }
