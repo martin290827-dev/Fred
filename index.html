@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=79">
+  <link rel="stylesheet" href="style.css?v=80">
 </head>
 <body>
   <header>
@@ -209,6 +209,7 @@
 
       <h3>Nutrition goal</h3>
       <div class="nutri-grid">
+        <label class="wide">Weight today (kg) <input id="set-weight" type="text" inputmode="decimal" placeholder="e.g. 93.5"></label>
         <label>Calories per day <input id="set-kcal" type="text" inputmode="numeric" placeholder="2500"></label>
         <label>Lose weight by (%) <input id="set-goalpct" type="text" inputmode="decimal" placeholder="10"></label>
         <label>Start weight kg (optional) <input id="set-startkg" type="text" inputmode="decimal" placeholder="first logged weight"></label>
@@ -271,9 +272,9 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=79"></script>
-  <script src="gcal.js?v=79"></script>
-  <script src="sync.js?v=79"></script>
-  <script src="food.js?v=79"></script>
+  <script src="app.js?v=80"></script>
+  <script src="gcal.js?v=80"></script>
+  <script src="sync.js?v=80"></script>
+  <script src="food.js?v=80"></script>
 </body>
 </html>

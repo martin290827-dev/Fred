@@ -272,7 +272,7 @@ function weekCheck() {
 // Where you stand: progress to the goal and four key numbers, like the tiles in Apple Health.
 function goalBlock() {
   const g = goalInfo();
-  if (!g) return el('p', { class: 'muted small' }, 'Enter your weight once above to see your goal and targets.');
+  if (!g) return el('p', { class: 'muted small' }, 'Enter your weight in Settings to see your goal and targets.');
   const done = Math.max(0, g.start - g.cur);
   const need = g.start - g.goal;
   const left = Math.max(0, g.cur - g.goal);
@@ -309,6 +309,9 @@ function goalBlock() {
 
 /* ---------- Settings: nutrition goal ---------- */
 function nutriFillSettings() {
+  const w = weightOn(toDateStr(new Date()));
+  $('set-weight').value = '';
+  $('set-weight').placeholder = w ? 'last: ' + fmtKg(w.kg) + ' kg (' + shortDay(w.d) + ')' : 'e.g. 93.5';
   $('set-kcal').value = nutri.kcal || '';
   $('set-goalpct').value = nutri.goalPct || '';
   $('set-startkg').value = nutri.startKg || '';
@@ -320,6 +323,13 @@ function nutriFillSettings() {
 
 function nutriSaveSettings() {
   const num = (id) => { const v = parseFloat(String($(id).value).replace(',', '.')); return v > 0 ? v : null; };
+  const kg = num('set-weight'); // today's weight: one entry per day, a new value replaces it
+  if (kg && kg > 20 && kg < 400) {
+    const today = toDateStr(new Date());
+    weight = weight.filter((x) => x.d !== today).concat({ d: today, kg: Math.round(kg * 10) / 10 });
+    saveWeight();
+    renderFood();
+  }
   const next = {
     kcal: Math.round(num('set-kcal') || 2500), goalPct: num('set-goalpct') || 10, startKg: num('set-startkg'),
     height: num('set-height'), birthYear: num('set-birth'), sex: $('set-sex').value, activity: parseFloat($('set-activity').value) || 1.45,
@@ -458,7 +468,7 @@ function renderFood() {
       el('div', { class: 'lg-h ' + h.cls }, h.hint));
   }));
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
-  const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Health to get protein, carb and fat targets.');
+  const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Settings to get protein, carb and fat targets.');
   const head = el('div', { class: 'food-today' }, hero, macros);
 
   const ul = el('ul', { class: 'list food-list' });
@@ -467,23 +477,12 @@ function renderFood() {
 
   const w = weightOn(today);
   const w7 = weightOn(toDateStr(addDays(new Date(), -7)));
-  const wIn = el('input', { type: 'text', inputmode: 'decimal', placeholder: 'kg', 'aria-label': 'Weight in kg', class: 'food-kg' });
   const dw = w && w7 && w7.d !== w.d ? w.kg - w7.kg : null;
-  const wForm = el('form', { class: 'food-weight' },
+  const wForm = el('div', { class: 'food-weight' },
     el('div', { class: 'grow' },
       el('div', { class: 'wt-v' }, w ? fmtKg(w.kg) : '\u2013', el('span', { class: 'wt-u' }, ' kg')),
-      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) +
-        (dw !== null ? ' · ' : '') : 'Not entered yet',
-        dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')),
-    wIn, el('button', { type: 'submit', class: 'small' }, 'Save'));
-  wForm.addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const kg = parseFloat(wIn.value.replace(',', '.'));
-    if (!(kg > 20 && kg < 400)) return;
-    weight = weight.filter((x) => x.d !== today).concat({ d: today, kg: Math.round(kg * 10) / 10 });
-    saveWeight();
-    renderFood();
-  });
+      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) + (dw !== null ? ' \u00b7 ' : '') : 'Enter your weight in Settings',
+        dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')));
 
   const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %', goalBlock());
   // Trends: one range for all charts, like Apple Health (W / M / 3M)
