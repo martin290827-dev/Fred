@@ -747,8 +747,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .grid { grid-auto-flow: row dense; } /* small cards fill the gaps a wide card leaves */
   .grid > .card.card-wide { grid-column: span 6; }
   .grid > .card.card-wide.half { grid-column: span 3; }
-  #card-news { height: 844px; } /* two rows of normal cards; the rest scrolls inside */
-  #card-news:not(.half) { height: 640px; }
   .food { --panel: var(--card-2); }
   .fpanel { border-radius: 14px; padding: 10px 12px; }
   .fpanel .food-sub { text-transform: none; letter-spacing: 0; font-size: 0.92rem; font-weight: 700; color: var(--text); }
@@ -876,3 +874,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #cal-list > li.ag.show-act .pill, #events > li.evr.show-act .ev-when { display: none; }
 .ev-t, .ag-t { overflow-wrap: normal; word-break: normal; hyphens: auto; }
 #cal-list > li.ag, #events > li.evr { cursor: default; }
+/* Market News: as tall as its content (up to a limit), no empty space */
+#card-news { height: auto; max-height: 640px; }
+.news { align-items: stretch; } /* all ticker boxes the same height */
