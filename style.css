@@ -372,6 +372,44 @@ button.danger { background: var(--down); color: #fff; }
 #news-status:empty { display: none; }
 .news-quiet { margin: 12px 0 0; }
 
+/* ---------- food diary (wide card: today left, trends right) ---------- */
+#card-food { height: auto; }
+.food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.food-col { min-width: 0; }
+.food-add { margin: 0 0 12px; }
+.food-add input { flex: 1; width: auto; }
+.food-today { margin-bottom: 8px; }
+.food-kcal { font-size: 2.4rem; font-weight: 300; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", Inter, Roboto, system-ui, sans-serif; }
+.food-unit { font-size: 1rem; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+.food-list { max-height: 260px; overflow: auto; }
+.food-list li { align-items: flex-start; }
+.food-time { width: 42px; flex: none; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.food-kc { white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.food-err { color: var(--down); }
+.food-edit-fields { display: grid; gap: 6px; }
+.food-edit-fields .row { margin: 0; }
+.food-edit-fields input[type="time"] { width: 110px; }
+.food-edit-fields input[inputmode="numeric"] { width: 90px; }
+.food-weight { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line); flex-wrap: wrap; }
+.food-wlabel { font-weight: 600; }
+.food-kg { width: 76px !important; text-align: right; }
+.food-sub { font-size: 0.92rem; font-weight: 700; margin: 0 0 6px; }
+.food-sub:not(:first-child) { margin-top: 14px; }
+.food-stats { margin: 4px 0 0; }
+.fchart { width: 100%; height: auto; display: block; }
+.fchart .grid { stroke: var(--line); stroke-width: 1; }
+.fchart .ax { fill: var(--muted); font-size: 11px; }
+.fchart .bar rect:not(.hit) { fill: var(--accent); opacity: 0.55; }
+.fchart .bar.today rect:not(.hit) { opacity: 1; }
+.fchart .bar:hover rect:not(.hit) { opacity: 1; }
+.fchart .hit { fill: transparent; }
+.fchart .avg { stroke: var(--text); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.5; }
+.fchart .avglbl { fill: var(--text); }
+.fchart .wline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.fchart .wdot circle:not(.hit) { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+@media (max-width: 800px) { .food { grid-template-columns: 1fr; } }
+
 /* ---------- weather ---------- */
 .wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }
 .wxi.lg { width: 48px; height: 48px; }

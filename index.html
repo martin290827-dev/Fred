@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=49">
+  <link rel="stylesheet" href="style.css?v=50">
 </head>
 <body>
   <header>
@@ -147,6 +147,11 @@
       <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
     </section>
 
+    <section class="card card-wide" id="card-food">
+      <h2>Food <span id="food-status" class="muted small"></span></h2>
+      <div id="food" class="food"></div>
+    </section>
+
     <section class="card card-wide" id="card-news">
       <h2>Market News <button id="news-refresh" class="ghost small" type="button">Refresh</button></h2>
       <div id="news" class="news"></div>
@@ -187,6 +192,11 @@
       <label>Twelve Data API key (optional, for stock charts)
         <input id="set-twelve" type="password" autocomplete="off" placeholder="Stored only in this browser">
         <span class="muted small">Free key at twelvedata.com. Without it, only crypto shows a chart.</span>
+      </label>
+
+      <label>Anthropic API key (optional, for calorie estimates)
+        <input id="set-anthropic" type="password" autocomplete="off" placeholder="Stored only in your browser and your Google Drive sync">
+        <span class="muted small">From console.anthropic.com. Food texts are sent to Anthropic for the estimate. Without a key, say "... 500 kcal" yourself.</span>
       </label>
 
       <label>Default currencies (converter)
@@ -234,8 +244,9 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=49"></script>
-  <script src="gcal.js?v=49"></script>
-  <script src="sync.js?v=49"></script>
+  <script src="app.js?v=50"></script>
+  <script src="gcal.js?v=50"></script>
+  <script src="sync.js?v=50"></script>
+  <script src="food.js?v=50"></script>
 </body>
 </html>

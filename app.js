@@ -1123,6 +1123,7 @@ function openSettings() {
   $('set-tickers').value = tickers.join(', ');
   $('set-key').value = finnhubKey;
   $('set-twelve').value = twelveKey;
+  $('set-anthropic').value = anthropicKey;
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
@@ -1146,6 +1147,8 @@ function saveSettings() {
   store.set('finnhubKey', finnhubKey);
   twelveKey = $('set-twelve').value.trim();
   store.set('twelveKey', twelveKey);
+  anthropicKey = $('set-anthropic').value.trim();
+  store.set('anthropicKey', anthropicKey);
   const fxNew = { from: $('set-fx-from').value, to: $('set-fx-to').value };
   if (fxNew.from !== fxDefault.from || fxNew.to !== fxDefault.to) {
     fxDefault = fxNew;
@@ -1179,9 +1182,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId'];
-const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId'];
-const ARRAY_KEYS = ['tickers', 'zones', 'shop'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
+const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
+const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'food', 'weight'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -1335,6 +1338,7 @@ const CARD_ICONS = {
   'card-timer': ['#ff9500', 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4'],
   'card-calc': ['#8e8e93', 'M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01'],
   'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
+  'card-food': ['#30b0c7', 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3'],
   'card-news': ['#ff3b30', 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4'],
 };
 
@@ -1391,6 +1395,7 @@ function init() {
   initCalc();
   renderShop();
   initNotes();
+  initFood();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();

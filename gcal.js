@@ -4,7 +4,8 @@
    Google hands out tokens for one hour, so after that you press "Connect" again. */
 
 // calendar.events: read and write your events. drive.appdata: only Fred's own hidden sync file in your Drive.
-const G_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.appdata';
+// drive.file: only files Fred creates itself (the food and weight sheets), nothing else in your Drive.
+const G_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file';
 const G_API = 'https://www.googleapis.com/calendar/v3/';
 const G_BIRTHDAYS = 'addressbook#contacts@group.v.calendar.google.com'; // Google's contact birthdays
 let gToken = null;

@@ -1,0 +1,329 @@
+'use strict';
+/* Food diary with weight.
+   - Type or dictate (microphone on the iPhone keyboard) what you ate.
+   - Calories and macros are estimated by Claude (Anthropic API, your own key in Settings).
+     Say "... 600 kcal" to set the calories yourself; then nothing is sent anywhere.
+   - Entries sync between your devices (sync.js) and are mirrored to two Google Sheets
+     in your Drive ("Fred Food Log", "Fred Weight Log") for your own analysis.
+   Estimates are rough (often +/- 20-30 %). */
+
+let food = store.get('food', []);     // [{ id, at: 'YYYY-MM-DDTHH:MM', text, kcal, p, c, f, src: 'ai'|'manual', err }]
+let weight = store.get('weight', []); // [{ d: 'YYYY-MM-DD', kg }]
+let anthropicKey = store.get('anthropicKey', '');
+let foodEditId = null;
+
+const AI_MODEL = 'claude-haiku-4-5-20251001';
+const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input is a short, often dictated description ' +
+  '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
+  'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0}],' +
+  '"kcal":0,"protein":0,"carbs":0,"fat":0}. protein, carbs and fat in grams. Whole numbers. ' +
+  'If the text is not about food or drink, reply with kcal 0 and an empty items list.';
+
+function saveFood() { store.set('food', food); foodMirrorSoon(); }
+function saveWeight() { store.set('weight', weight); foodMirrorSoon(); }
+
+/* ---------- estimating ---------- */
+
+// "... 650 kcal" in the text: the user's own number wins, no AI call.
+function manualKcal(text) {
+  const m = text.match(/(\d{2,5})\s*(kcal|kalorien|calories|cal)\b/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+async function aiEstimate(text) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true', // the key is yours and stays in this browser
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: 700, system: AI_SYSTEM, messages: [{ role: 'user', content: text }] }),
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
+  const out = (j.content || []).map((x) => x.text || '').join('');
+  const json = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+  const n = (v) => Math.max(0, Math.round(Number(v) || 0));
+  return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat) };
+}
+
+async function estimateEntry(e) {
+  const own = manualKcal(e.text);
+  if (own !== null) { Object.assign(e, { kcal: own, p: null, c: null, f: null, src: 'manual', err: null }); saveFood(); renderFood(); return; }
+  if (!anthropicKey) { Object.assign(e, { kcal: null, src: null, err: 'Add an Anthropic key in Settings, or say "... 500 kcal"' }); saveFood(); renderFood(); return; }
+  e.busy = true;
+  renderFood();
+  try {
+    Object.assign(e, await aiEstimate(e.text), { src: 'ai', err: null });
+  } catch (err) {
+    e.err = err.message;
+  }
+  delete e.busy;
+  saveFood();
+  renderFood();
+}
+
+/* ---------- numbers ---------- */
+
+function dayTotals(d) {
+  const t = { kcal: 0, p: 0, c: 0, f: 0, n: 0 };
+  for (const e of food) {
+    if (e.at.slice(0, 10) !== d) continue;
+    t.n++;
+    t.kcal += e.kcal || 0; t.p += e.p || 0; t.c += e.c || 0; t.f += e.f || 0;
+  }
+  return t;
+}
+
+function lastDays(n) {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) out.push(toDateStr(addDays(new Date(), -i)));
+  return out;
+}
+
+// Average kcal of the days that have entries (days without entries do not count as 0).
+function avgKcal(days) {
+  const vals = days.map((d) => dayTotals(d)).filter((t) => t.n).map((t) => t.kcal);
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+}
+
+function weightOn(d) {
+  const w = weight.filter((x) => x.d <= d).sort((a, b) => a.d.localeCompare(b.d));
+  return w.length ? w[w.length - 1] : null;
+}
+
+const fmtN = (v) => Math.round(v).toLocaleString('en-US');
+const fmtKg = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const shortDay = (d) => new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+/* ---------- charts (plain SVG, one series each, hover shows the value) ---------- */
+
+function svgEl(tag, attrs, text) {
+  const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+function kcalChart(days) {
+  const W = 600, H = 150, L = 46, B = 18, T = 8;
+  const vals = days.map((d) => dayTotals(d));
+  const max = Math.max(500, ...vals.map((v) => v.kcal)) * 1.1;
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  const bw = (W - L) / days.length;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Calories per day, last ' + days.length + ' days' });
+  for (const g of [0.5, 1]) { // two quiet grid lines with labels
+    const v = Math.round((max / 1.1) * g / 100) * 100;
+    svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'grid' }), svgEl('text', { x: L - 6, y: y(v) + 4, class: 'ax', 'text-anchor': 'end' }, fmtN(v)));
+  }
+  days.forEach((d, i) => {
+    const v = vals[i];
+    const x = L + i * bw + 1.5;
+    const w = Math.max(2, bw - 3);
+    const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') });
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v.n ? fmtN(v.kcal) + ' kcal' : 'no entries')));
+    g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' })); // bigger hover target
+    if (v.n) g.append(svgEl('rect', { x, y: y(v.kcal), width: w, height: Math.max(1, y(0) - y(v.kcal)), rx: Math.min(3, w / 2) }));
+    svg.append(g);
+    const last = i === days.length - 1;
+    if ((days.length - 1 - i) % 7 === 0) svg.append(svgEl('text', { x: last ? x + w : x + w / 2, y: H - 4, class: 'ax', 'text-anchor': last ? 'end' : 'middle' }, last ? 'today' : shortDay(d)));
+  });
+  const avg = avgKcal(days);
+  if (avg) svg.append(svgEl('line', { x1: L, x2: W, y1: y(avg), y2: y(avg), class: 'avg' }), svgEl('text', { x: W - 2, y: y(avg) - 4, class: 'ax avglbl', 'text-anchor': 'end' }, 'Ø ' + fmtN(avg)));
+  return svg;
+}
+
+function weightChart(all) {
+  const pts = weight.filter((w) => w.d >= all[0]).sort((a, b) => a.d.localeCompare(b.d));
+  // start the axis at the first weight (at least 14 days shown), so a new diary does not look empty
+  const days = pts.length ? all.slice(Math.min(Math.max(0, all.indexOf(pts[0].d)), all.length - 14)) : all;
+  const W = 600, H = 120, L = 46, B = 18, T = 10;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Weight since ' + days[0] });
+  if (pts.length < 2) { svg.append(svgEl('text', { x: W / 2, y: H / 2, class: 'ax', 'text-anchor': 'middle' }, pts.length ? 'Enter your weight on more days to see a line.' : 'No weight entered yet.')); return svg; }
+  const lo = Math.min(...pts.map((p) => p.kg)) - 0.5;
+  const hi = Math.max(...pts.map((p) => p.kg)) + 0.5;
+  const x = (d) => L + (W - L - 6) * (days.indexOf(d) / (days.length - 1));
+  const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  for (const v of [lo + 0.5, hi - 0.5]) svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'grid' }), svgEl('text', { x: L - 6, y: y(v) + 4, class: 'ax', 'text-anchor': 'end' }, fmtKg(v)));
+  svg.append(svgEl('polyline', { points: pts.map((p) => x(p.d).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline' }));
+  pts.forEach((p, i) => {
+    const g = svgEl('g', { class: 'wdot' });
+    g.append(svgEl('title', {}, shortDay(p.d) + ': ' + fmtKg(p.kg) + ' kg'));
+    g.append(svgEl('circle', { cx: x(p.d), cy: y(p.kg), r: 9, class: 'hit' }));
+    g.append(svgEl('circle', { cx: x(p.d), cy: y(p.kg), r: i === pts.length - 1 ? 4 : 3 }));
+    svg.append(g);
+  });
+  svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(days[0])), svgEl('text', { x: W - 2, y: H - 4, class: 'ax', 'text-anchor': 'end' }, 'today'));
+  return svg;
+}
+
+/* ---------- card ---------- */
+
+function renderFood() {
+  const box = $('food');
+  if (!box) return;
+  if (box.contains(document.activeElement) && document.activeElement.closest('.food-edit')) return; // editing: do not redraw
+  const typing = document.activeElement && document.activeElement.id === 'food-text' ? document.activeElement.value : null;
+  const today = toDateStr(new Date());
+  const t = dayTotals(today);
+  const avg7 = avgKcal(lastDays(7));
+  const list = food.filter((e) => e.at.slice(0, 10) === today).sort((a, b) => b.at.localeCompare(a.at));
+
+  const input = el('input', { type: 'text', id: 'food-text', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '300', autocomplete: 'off', 'aria-label': 'What did you eat' });
+  const form = el('form', { class: 'row food-add' }, input, el('button', { type: 'submit' }, 'Add'));
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, src: null, err: null };
+    food.push(e);
+    saveFood();
+    input.value = '';
+    estimateEntry(e);
+  });
+
+  const macro = t.p || t.c || t.f ? 'Protein ' + fmtN(t.p) + ' g · Carbs ' + fmtN(t.c) + ' g · Fat ' + fmtN(t.f) + ' g' : '';
+  const head = el('div', { class: 'food-today' },
+    el('div', { class: 'food-kcal' }, fmtN(t.kcal), el('span', { class: 'food-unit' }, ' kcal today')),
+    el('div', { class: 'muted small' }, [macro, avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : ''].filter(Boolean).join(' · ')));
+
+  const ul = el('ul', { class: 'list food-list' });
+  if (!list.length) ul.append(el('li', { class: 'muted' }, 'Nothing logged today yet.'));
+  for (const e of list) ul.append(foodEditId === e.id ? foodEditRow(e) : foodRow(e));
+
+  const w = weightOn(today);
+  const w7 = weightOn(toDateStr(addDays(new Date(), -7)));
+  const wIn = el('input', { type: 'text', inputmode: 'decimal', placeholder: 'kg', 'aria-label': 'Weight in kg', class: 'food-kg' });
+  const wForm = el('form', { class: 'row food-weight' },
+    el('span', { class: 'food-wlabel' }, 'Weight'),
+    wIn, el('button', { type: 'submit', class: 'ghost small' }, 'Save'),
+    el('span', { class: 'muted small' }, w ? fmtKg(w.kg) + ' kg (' + (w.d === today ? 'today' : shortDay(w.d)) + ')' +
+      (w7 && w7.d !== w.d ? ' · ' + (Math.abs(w.kg - w7.kg) < 0.05 ? 'same as 7 days ago' : (w.kg - w7.kg > 0 ? '+' : '−') + fmtKg(Math.abs(w.kg - w7.kg)) + ' kg vs 7 days ago') : '') : 'not entered yet'));
+  wForm.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const kg = parseFloat(wIn.value.replace(',', '.'));
+    if (!(kg > 20 && kg < 400)) return;
+    weight = weight.filter((x) => x.d !== today).concat({ d: today, kg: Math.round(kg * 10) / 10 });
+    saveWeight();
+    renderFood();
+  });
+
+  const days30 = lastDays(30);
+  const days90 = lastDays(90);
+  const logged30 = days30.filter((d) => dayTotals(d).n).length;
+  const wNow = weightOn(today);
+  const w30 = weightOn(days30[0]);
+  const trends = el('div', { class: 'food-col food-trends' },
+    el('div', { class: 'food-sub' }, 'Calories · last 30 days'),
+    kcalChart(days30),
+    el('div', { class: 'muted small food-stats' },
+      [avg7 ? 'Ø 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? 'Ø 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' · ')),
+    el('div', { class: 'food-sub' }, 'Weight'),
+    weightChart(days90),
+    el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
+      ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '−') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : ''));
+
+  box.replaceChildren(
+    el('div', { class: 'food-col' }, form, head, ul, wForm),
+    trends);
+  if (typing !== null) { input.value = typing; input.focus(); }
+  $('food-status').textContent = foodMirrorMsg;
+}
+
+function foodRow(e) {
+  const kc = e.busy ? el('span', { class: 'muted small' }, 'estimating…')
+    : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal) + ' kcal', e.src === 'manual' ? el('span', { class: 'muted small' }, ' (own)') : '')
+      : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
+  const li = el('li', null,
+    el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)),
+    el('span', { class: 'grow' }, e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, el('br'), e.err) : ''),
+    kc,
+    iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
+    iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); saveFood(); renderFood(); }));
+  return li;
+}
+
+// Change text, time or calories. A changed text is estimated again (unless you typed the calories).
+function foodEditRow(e) {
+  const text = el('input', { type: 'text', 'aria-label': 'Food' }); text.value = e.text;
+  const time = el('input', { type: 'time', 'aria-label': 'Time' }); time.value = e.at.slice(11, 16);
+  const kcal = el('input', { type: 'text', inputmode: 'numeric', 'aria-label': 'kcal', placeholder: 'kcal' }); kcal.value = e.kcal ?? '';
+  const done = () => { foodEditId = null; renderFood(); };
+  const save = () => {
+    const newText = text.value.trim() || e.text;
+    const newKcal = kcal.value === '' ? null : parseInt(kcal.value, 10);
+    const textChanged = newText !== e.text;
+    const kcalChanged = newKcal !== (e.kcal ?? null);
+    e.text = newText;
+    e.at = e.at.slice(0, 11) + (time.value || e.at.slice(11, 16));
+    foodEditId = null;
+    if (kcalChanged && newKcal !== null) Object.assign(e, { kcal: newKcal, p: null, c: null, f: null, src: 'manual', err: null });
+    saveFood();
+    if (textChanged && !kcalChanged) estimateEntry(e); else renderFood();
+  };
+  for (const n of [text, time, kcal]) n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } if (ev.key === 'Escape') done(); });
+  requestAnimationFrame(() => text.focus());
+  return el('li', { class: 'food-edit' }, el('span', { class: 'grow food-edit-fields' }, text, el('span', { class: 'row' }, time, kcal)),
+    el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
+    el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'));
+}
+
+/* ---------- mirror to two Google Sheets in your Drive (for your own analysis) ---------- */
+
+let foodMirrorTimer = null;
+let foodMirrorMsg = '';
+
+function foodMirrorSoon() {
+  clearTimeout(foodMirrorTimer);
+  foodMirrorTimer = setTimeout(foodMirror, 8000);
+}
+
+function csv(rows) {
+  return rows.map((r) => r.map((v) => {
+    const s = v === null || v === undefined ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(',')).join('\n') + '\n';
+}
+
+async function sheetFind(name) {
+  const q = encodeURIComponent("name='" + name + "' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+  const r = await (await driveFetch(DRIVE + '?fields=files(id)&q=' + q)).json();
+  return r.files && r.files[0] ? r.files[0].id : null;
+}
+
+// Create the sheet from CSV the first time; afterwards replace its content with the new CSV.
+async function sheetWrite(name, content) {
+  const id = await sheetFind(name);
+  if (id) {
+    await driveFetch(DRIVE_UP + '/' + id + '?uploadType=media', { method: 'PATCH', headers: { 'Content-Type': 'text/csv' }, body: content });
+    return;
+  }
+  const b = 'fredsheet' + Date.now();
+  const meta = { name, mimeType: 'application/vnd.google-apps.spreadsheet' };
+  const body = '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+    '\r\n--' + b + '\r\nContent-Type: text/csv\r\n\r\n' + content + '\r\n--' + b + '--';
+  await driveFetch(DRIVE_UP + '?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body });
+}
+
+async function foodMirror() {
+  if (typeof gHasToken !== 'function' || !gHasToken()) return; // next time you are connected
+  if (!gScopes.includes('drive.file')) { foodMirrorMsg = 'Sheets in Drive need one more Google permission: press Connect.'; $('food-status').textContent = foodMirrorMsg; return; }
+  try {
+    const rows = [['date', 'time', 'food', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source']].concat(
+      [...food].sort((a, b) => a.at.localeCompare(b.at)).map((e) => [e.at.slice(0, 10), e.at.slice(11, 16), e.text, e.kcal, e.p, e.c, e.f, e.src || '']));
+    await sheetWrite('Fred Food Log', csv(rows));
+    await sheetWrite('Fred Weight Log', csv([['date', 'weight_kg']].concat([...weight].sort((a, b) => a.d.localeCompare(b.d)).map((w) => [w.d, w.kg]))));
+    foodMirrorMsg = 'Saved to Google Sheets ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    foodMirrorMsg = 'Sheets: ' + e.message;
+  }
+  $('food-status').textContent = foodMirrorMsg;
+}
+
+function initFood() {
+  renderFood();
+  // new day at midnight, and keep "today" current
+  setInterval(() => { if (!document.hidden) renderFood(); }, 5 * 60000);
+}
