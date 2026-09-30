@@ -167,25 +167,33 @@ function macroStatus(key, val, target) {
   return r < RANGES[key][0] ? 'low' : r > RANGES[key][1] ? 'high' : 'ok';
 }
 
-// Today's bar: how much is left, or how much too much.
-function progressBar(key, label, val, target, unit) {
-  const pct = target ? Math.min(100, (val / target) * 100) : 0;
+// Plain words for today: how much is left, or how much too much.
+function macroHint(key, val, target, unit) {
   const st = macroStatus(key, val, target);
-  let hint, cls = '';
   if (key === 'p') {
-    if (val >= target * RANGES.p[0]) { hint = 'reached'; cls = 'done'; }
-    else hint = fmtN(target - val) + ' ' + unit + ' to go';
-    if (st === 'high') { hint = fmtN(val - target) + ' ' + unit + ' over'; cls = 'over'; }
-  } else if (val > target) {
-    hint = fmtN(val - target) + ' ' + unit + ' over';
-    cls = st === 'high' ? 'high' : 'over';
-  } else hint = fmtN(target - val) + ' ' + unit + ' left';
-  return el('div', { class: 'nbar' },
-    el('div', { class: 'nbar-top' }, el('span', { class: 'nbar-l' }, label),
-      el('span', { class: 'nbar-v' }, fmtN(val) + ' / ' + fmtN(target) + ' ' + unit,
-        el('span', { class: 'nbar-h ' + cls }, ' · ' + hint))),
-    el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill ' + cls, style: 'width:' + pct.toFixed(1) + '%' })));
+    if (st === 'high') return { hint: fmtN(val - target) + ' ' + unit + ' over', cls: 'over' };
+    if (st === 'ok') return { hint: 'Reached', cls: 'done' };
+    return { hint: fmtN(target - val) + ' ' + unit + ' to go', cls: '' };
+  }
+  if (val > target) return { hint: fmtN(val - target) + ' ' + unit + ' over', cls: st === 'high' ? 'high' : 'over' };
+  return { hint: fmtN(target - val) + ' ' + unit + ' left', cls: '' };
 }
+
+// Activity-style ring. Past 100 % a second, darker lap starts, like on the Apple Watch.
+function ring(val, target, cls, size, stroke) {
+  const c = size / 2, r = (size - stroke) / 2, C = 2 * Math.PI * r;
+  const frac = target ? val / target : 0;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, class: 'ring ' + cls, 'aria-hidden': 'true' });
+  const arc = (f, extra) => svgEl('circle', { cx: c, cy: c, r, 'stroke-width': stroke, class: 'ring-arc' + extra,
+    'stroke-dasharray': (Math.min(f, 1) * C).toFixed(2) + ' ' + C.toFixed(2), transform: 'rotate(-90 ' + c + ' ' + c + ')' });
+  svg.append(svgEl('circle', { cx: c, cy: c, r, 'stroke-width': stroke, class: 'ring-track' }));
+  if (frac > 0.005) svg.append(arc(frac, ''));
+  if (frac > 1) svg.append(arc(frac - 1, ' ring-lap'));
+  return svg;
+}
+
+const hstat = (label, value, cls) => el('div', { class: 'hstat' }, el('div', { class: 'hstat-l' }, label), el('div', { class: 'hstat-v ' + (cls || '') }, value));
+const panel = (title, ...kids) => el('section', { class: 'fpanel' }, el('div', { class: 'food-sub' }, title), ...kids);
 
 // Last 7 full days: one row per nutrient, one cell per day, marked too low / in range / too high.
 function weekCheck() {
@@ -249,9 +257,9 @@ function goalBlock() {
   } else lines.push('Add height, birth year, sex and activity in Settings to estimate your maintenance calories.');
   if (mm) lines.push('Your trend: ' + (mm.perWeek <= 0 ? '\u2212' : '+') + Math.abs(mm.perWeek).toFixed(2) + ' kg/week (last 4 weeks).');
   return el('div', { class: 'goal' },
-    el('div', { class: 'nbar-top' }, el('span', { class: 'nbar-l' }, 'Goal \u2212' + (nutri.goalPct || 10) + ' %: ' + fmtKg(g.start) + ' \u2192 ' + fmtKg(g.goal) + ' kg'),
-      el('span', { class: 'nbar-v' }, fmtKg(done) + ' of ' + fmtKg(need) + ' kg')),
+    el('div', { class: 'goal-hero' }, el('span', { class: 'goal-num' }, fmtKg(done)), el('span', { class: 'goal-of' }, ' of ' + fmtKg(need) + ' kg lost')),
     el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
+    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal) + ' kg (\u2212' + (nutri.goalPct || 10) + ' %)')),
     ...lines.map((l) => el('p', { class: 'muted small goal-line' }, l)));
 }
 
@@ -365,24 +373,40 @@ function renderFood() {
 
   const tg = targets();
   const left = tg.kcal - t.kcal;
-  const head = el('div', { class: 'food-today' },
-    el('div', { class: 'food-kcal' }, fmtN(t.kcal), el('span', { class: 'food-unit' }, ' / ' + fmtN(tg.kcal) + ' kcal')),
-    el('div', { class: 'muted small' }, [left >= 0 ? fmtN(left) + ' kcal left today' : fmtN(-left) + ' kcal over target', avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : ''].filter(Boolean).join(' · ')),
-    el('div', { class: 'nbars' },
-      ...NUTRI.filter(([k]) => tg[k]).map(([k, label, unit]) => progressBar(k, label, t[k], tg[k], unit))));
+  const hero = el('div', { class: 'food-hero' },
+    el('div', { class: 'ring-wrap' }, ring(t.kcal, tg.kcal, 'r-kcal', 128, 14),
+      el('div', { class: 'ring-mid' }, el('div', { class: 'ring-num' + (left < 0 ? ' over' : '') }, fmtN(Math.abs(left))), el('div', { class: 'ring-cap' }, left < 0 ? 'kcal over' : 'kcal left'))),
+    el('div', { class: 'hero-stats' },
+      hstat('Eaten', fmtN(t.kcal) + ' kcal'),
+      hstat('Target', fmtN(tg.kcal) + ' kcal'),
+      avg7 ? hstat('7-day average', fmtN(avg7) + ' kcal', macroStatus('kcal', avg7, tg.kcal) === 'high' ? 'high' : '') : ''));
+  const macros = tg.p
+    ? el('div', { class: 'macros' }, ...NUTRI.slice(1).map(([k, label, unit]) => {
+      const h = macroHint(k, t[k], tg[k], unit);
+      return el('div', { class: 'macro m-' + k },
+        el('div', { class: 'ring-wrap' }, ring(t[k], tg[k], 'r-' + k, 64, 8), el('div', { class: 'ring-mid' }, el('span', { class: 'macro-num' }, fmtN(t[k])))),
+        el('div', { class: 'macro-l' }, label),
+        el('div', { class: 'macro-t' }, 'of ' + fmtN(tg[k]) + ' ' + unit),
+        el('div', { class: 'macro-h ' + h.cls }, h.hint));
+    }))
+    : el('p', { class: 'muted small' }, 'Enter your weight below to get protein, carb and fat targets.');
+  const head = el('div', { class: 'food-today' }, hero, macros);
 
   const ul = el('ul', { class: 'list food-list' });
-  if (!list.length) ul.append(el('li', { class: 'muted' }, 'Nothing logged today yet.'));
+  if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Nothing logged yet. Type or dictate what you ate.'));
   for (const e of list) ul.append(foodEditId === e.id ? foodEditRow(e) : foodRow(e));
 
   const w = weightOn(today);
   const w7 = weightOn(toDateStr(addDays(new Date(), -7)));
   const wIn = el('input', { type: 'text', inputmode: 'decimal', placeholder: 'kg', 'aria-label': 'Weight in kg', class: 'food-kg' });
-  const wForm = el('form', { class: 'row food-weight' },
-    el('span', { class: 'food-wlabel' }, 'Weight'),
-    wIn, el('button', { type: 'submit', class: 'ghost small' }, 'Save'),
-    el('span', { class: 'muted small' }, w ? fmtKg(w.kg) + ' kg (' + (w.d === today ? 'today' : shortDay(w.d)) + ')' +
-      (w7 && w7.d !== w.d ? ' · ' + (Math.abs(w.kg - w7.kg) < 0.05 ? 'same as 7 days ago' : (w.kg - w7.kg > 0 ? '+' : '−') + fmtKg(Math.abs(w.kg - w7.kg)) + ' kg vs 7 days ago') : '') : 'not entered yet'));
+  const dw = w && w7 && w7.d !== w.d ? w.kg - w7.kg : null;
+  const wForm = el('form', { class: 'food-weight' },
+    el('div', { class: 'grow' },
+      el('div', { class: 'wt-v' }, w ? fmtKg(w.kg) : '\u2013', el('span', { class: 'wt-u' }, ' kg')),
+      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) +
+        (dw !== null ? ' · ' : '') : 'Not entered yet',
+        dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')),
+    wIn, el('button', { type: 'submit', class: 'small' }, 'Save'));
   wForm.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const kg = parseFloat(wIn.value.replace(',', '.'));
@@ -398,37 +422,36 @@ function renderFood() {
   const wNow = weightOn(today);
   const w30 = weightOn(days30[0]);
   const trends = el('div', { class: 'food-col food-trends' },
-    el('div', { class: 'food-sub' }, 'Goal'),
-    goalBlock(),
-    el('div', { class: 'food-sub' }, 'Last 7 days vs targets'),
-    weekCheck(),
-    el('div', { class: 'food-sub' }, 'Calories · last 30 days'),
-    kcalChart(days30),
-    el('div', { class: 'muted small food-stats' },
-      [avg7 ? 'Ø 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? 'Ø 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' · ')),
-    el('div', { class: 'food-sub' }, 'Weight'),
-    weightChart(days90),
-    el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
-      ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '−') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : ''));
+    panel('Goal', goalBlock()),
+    panel('Last 7 days vs targets', weekCheck()),
+    panel('Calories · last 30 days', kcalChart(days30),
+      el('div', { class: 'muted small food-stats' },
+        [avg7 ? 'Ø 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? 'Ø 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' · '))),
+    panel('Weight trend', weightChart(days90),
+      el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
+        ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '\u2212') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : '')));
 
   box.replaceChildren(
-    el('div', { class: 'food-col' }, form, head, ul, wForm),
+    el('div', { class: 'food-col' }, form, head, panel('Meals today', ul), panel('Weight', wForm)),
     trends);
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
 }
 
 function foodRow(e) {
-  const kc = e.busy ? el('span', { class: 'muted small' }, 'estimating…')
-    : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal) + ' kcal', e.src === 'manual' ? el('span', { class: 'muted small' }, ' (own)') : '')
+  const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
+    : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
       : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
-  const li = el('li', null,
-    el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)),
-    el('span', { class: 'grow' }, e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, el('br'), e.err) : ''),
+  const macro = e.p != null ? 'P ' + fmtN(e.p) + ' · C ' + fmtN(e.c) + ' · F ' + fmtN(e.f) + ' g' : e.src === 'manual' ? 'Own value' : '';
+  return el('li', { class: 'meal' },
+    el('span', { class: 'grow meal-main' },
+      el('span', { class: 'meal-t' }, e.text),
+      el('span', { class: 'meal-sub muted small' }, [e.at.slice(11, 16), macro].filter(Boolean).join(' · ')),
+      e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
     kc,
-    iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
-    iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); saveFood(); renderFood(); }));
-  return li;
+    el('span', { class: 'meal-act' },
+      iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
+      iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); saveFood(); renderFood(); })));
 }
 
 // Change text, time or calories. A changed text is estimated again (unless you typed the calories).

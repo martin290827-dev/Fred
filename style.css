@@ -458,6 +458,79 @@ button.danger { background: var(--down); color: #fff; }
 .fchart .wdot circle:not(.hit) { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
 @media (max-width: 800px) { .food { grid-template-columns: 1fr; } }
 
+/* ---------- food: Apple Health style ---------- */
+.food { --c-kcal: #ff375f; --c-p: #7d7aff; --c-c: #1fa39c; --c-f: #b8860b; --panel: var(--bg); }
+:root[data-theme="light"] .food { --c-kcal: #ff2d55; --c-p: #5e5ce6; --c-c: #0f9189; --c-f: #b07d00; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .food { --c-kcal: #ff2d55; --c-p: #5e5ce6; --c-c: #0f9189; --c-f: #b07d00; } }
+.food-col { display: flex; flex-direction: column; gap: 12px; }
+.food-add { margin: 0; }
+.food-add input { border-radius: 12px; }
+.food-add button { border-radius: 12px; }
+.fpanel { background: var(--panel); border-radius: 16px; padding: 12px 14px 12px; min-width: 0; }
+.fpanel .food-sub { margin: 0 0 8px; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.food-today { margin: 2px 0 0; }
+
+/* rings */
+.ring-wrap { position: relative; flex: none; display: grid; place-items: center; }
+.ring-wrap .ring { display: block; }
+.ring-track { fill: none; stroke: currentColor; opacity: 0.2; }
+.ring-arc { fill: none; stroke: currentColor; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
+.ring-lap { filter: brightness(0.7) drop-shadow(0 0 2px rgba(0, 0, 0, 0.45)); }
+.r-kcal { color: var(--c-kcal); } .r-p { color: var(--c-p); } .r-c { color: var(--c-c); } .r-f { color: var(--c-f); }
+.ring-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.05; }
+.ring-num { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif; }
+.ring-num.over { color: var(--down); }
+.ring-cap { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.food-hero { display: flex; align-items: center; gap: 22px; padding: 4px 2px 0; }
+.hero-stats { display: grid; gap: 10px; min-width: 0; }
+.hstat-l { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.hstat-v { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.hstat-v.high { color: var(--down); }
+.macros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.macro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px; }
+.macro .ring-wrap { margin-bottom: 6px; }
+.macro-num { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.macro-l { font-size: 0.85rem; font-weight: 600; }
+.m-p .macro-l { color: var(--c-p); } .m-c .macro-l { color: var(--c-c); } .m-f .macro-l { color: var(--c-f); }
+.macro-t { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.macro-h { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.macro-h.done { color: var(--up); font-weight: 600; }
+.macro-h.over { color: var(--warn); font-weight: 600; }
+.macro-h.high { color: var(--down); font-weight: 600; }
+
+/* meals */
+.fpanel .food-list { margin: 0; max-height: 280px; }
+.food-list li.meal { align-items: center; gap: 10px; padding: 9px 0; }
+.meal-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meal-t { font-weight: 500; overflow-wrap: anywhere; }
+.meal-sub { font-variant-numeric: tabular-nums; }
+.food-kc { font-size: 1.05rem; font-weight: 600; }
+.food-kcu { font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+.meal-act { display: flex; gap: 0; opacity: 0.55; transition: opacity 0.15s; }
+.meal:hover .meal-act, .meal:focus-within .meal-act { opacity: 1; }
+.meal-empty { padding: 6px 0; }
+.food-err { display: block; }
+
+/* weight */
+.food-weight { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0; border: 0; }
+.wt-v { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.wt-u { font-size: 0.95rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.wt-d.good { color: var(--up); font-weight: 600; }
+.wt-d.bad { color: var(--warn); font-weight: 600; }
+.food-weight .food-kg { background: var(--card); }
+
+/* goal */
+.goal-hero { margin: 0 0 8px; }
+.goal-num { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.goal-of { color: var(--muted); font-size: 0.9rem; }
+.goal .nbar-track { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--up) 18%, transparent); }
+.goal-ends { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0 4px; font-variant-numeric: tabular-nums; }
+.mgrid { gap: 4px; }
+.mg-c { border-radius: 8px; padding: 5px 0; }
+.fpanel .mg-c.none, .fpanel .mg-c.unk { background: var(--card); }
+@media (max-width: 420px) { .food-hero { gap: 16px; } .ring-num { font-size: 1.7rem; } }
+
 /* ---------- weather ---------- */
 .here-ico { width: 11px; height: 11px; fill: var(--accent); margin-right: 4px; vertical-align: -1px; }
 .wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }
