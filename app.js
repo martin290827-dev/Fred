@@ -1314,6 +1314,13 @@ function initLayout() {
       el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Move later', onclick: () => moveCard(c.id, 1) }, 'Later ›'),
       el('button', { type: 'button', class: 'ghost small', onclick: () => hideCard(c.id) }, 'Hide')));
   }
+  // one-time: Market News directly before Food, so the two half-width cards sit side by side (Food on the right)
+  if (!store.get('mig.newsFood', false)) {
+    const o = layout.order.filter((id) => id !== 'card-food');
+    const n = o.indexOf('card-news');
+    if (n >= 0) { o.splice(n + 1, 0, 'card-food'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.newsFood', true);
+  }
   // one-time change of the saved order: Shopping List and Calculator & Currency swap places
   if (!store.get('mig.swapCalcShop', false)) {
     const o = layout.order;

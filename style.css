@@ -156,7 +156,8 @@ header h1::before {
 /* ---------- grid and cards (widgets) ---------- */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: 1fr;
+  grid-auto-flow: row dense;
   gap: 20px;
   padding: 24px 20px 40px;
   max-width: 1200px;
@@ -359,7 +360,16 @@ button.danger { background: var(--down); color: #fff; }
 .list li.earn .grow::before { content: "\25C6"; color: var(--accent); font-size: 0.7rem; margin-right: 6px; vertical-align: 1px; }
 
 /* ---------- market news: full width, one column per ticker ---------- */
-.card-wide { grid-column: 1 / -1; height: auto; }
+.card-wide { height: auto; }
+/* column plan: phone 1 column; tablet 2; desktop 6 thin columns, normal cards take 2, the two wide cards take 3 each (half) */
+@media (min-width: 700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) {
+  .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .grid > .card { grid-column: span 2; }
+  .grid > .card.card-wide { grid-column: span 3; }
+}
+/* in a half-width card the food diary stacks: today on top, trends below */
+.card-wide .food { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px 20px; align-items: start; }
 .news-group { min-width: 0; background: var(--card-2); border-radius: 14px; padding: 10px 12px; }
 .news-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
