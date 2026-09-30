@@ -1375,6 +1375,14 @@ function applyLayout() {
     c.style.order = i;
     c.hidden = layout.hidden.includes(id);
   });
+  // wide cards: next to each other they share a row (half each), alone they take the full row
+  const visible = order.filter((id) => !layout.hidden.includes(id));
+  visible.forEach((id, i) => {
+    const c = $(id);
+    if (!c.classList.contains('card-wide')) return;
+    const next = $(visible[i + 1] || ''), prev = $(visible[i - 1] || '');
+    c.classList.toggle('half', !!((next && next.classList.contains('card-wide')) || (prev && prev.classList.contains('card-wide'))));
+  });
   renderLayoutBar();
 }
 

@@ -739,8 +739,16 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .meal-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
 .fpanel .food-list { max-height: 190px; overflow: auto; scrollbar-width: thin; }
 @media (min-width: 1000px) {
-  #card-food, #card-news { height: 760px; } /* two rows of normal cards; the rest scrolls inside */
-  #card-food .cardbody { padding-right: 4px; }
+  /* a wide card alone takes the full row; two wide cards side by side take half each (class set in app.js) */
+  .grid { grid-auto-flow: row dense; } /* small cards fill the gaps a wide card leaves */
+  .grid > .card.card-wide { grid-column: span 6; }
+  .grid > .card.card-wide.half { grid-column: span 3; }
+  #card-food, #card-news { height: 760px; } /* the rest scrolls inside */
+  #card-food:not(.half), #card-news:not(.half) { height: 640px; }
+  #card-food .cardbody { overflow: hidden; }
+  #card-food .food { height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  #card-food.half .food { grid-template-columns: minmax(0, 1fr); overflow: auto; scrollbar-width: thin; }
+  #card-food:not(.half) .food-col { overflow: auto; min-height: 0; scrollbar-width: thin; padding-right: 2px; }
   .food { --panel: var(--card-2); }
   .fpanel { border-radius: 14px; padding: 10px 12px; }
   .fpanel .food-sub { text-transform: none; letter-spacing: 0; font-size: 0.92rem; font-weight: 700; color: var(--text); }
