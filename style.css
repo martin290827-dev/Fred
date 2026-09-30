@@ -379,6 +379,12 @@ button.danger { background: var(--down); color: #fff; }
 .news-item:hover .news-title { color: var(--accent); }
 .news-title { font-size: 0.88rem; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .news-group > p { margin: 6px 0 2px; }
+/* one headline visible, the rest scroll inside the box and snap to the next one */
+.news-scroll { height: 64px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; }
+.news-scroll::-webkit-scrollbar { display: none; }
+.news-scroll .news-item { height: 64px; scroll-snap-align: start; border-top: 0; padding: 4px 0; justify-content: center; }
+.news-head .pct { margin-left: auto; }
+.news-more { margin-left: 8px; font-weight: 600; white-space: nowrap; }
 #news-status:empty { display: none; }
 .news-quiet { margin: 12px 0 0; }
 

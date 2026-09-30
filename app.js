@@ -500,6 +500,11 @@ function renderNews() {
         : items.map((n) => el('a', { class: 'news-item', href: n.url, target: '_blank', rel: 'noopener noreferrer' },
           el('span', { class: 'news-title' }, n.title),
           el('span', { class: 'muted small' }, (n.source ? n.source + ' · ' : '') + agoText(n.at))));
+    if (items && items.length > 1) {
+      // only the top headline is visible; the others are one scroll (or swipe) away inside the box
+      head.append(el('span', { class: 'news-more muted small', title: 'Scroll inside the box for more' }, '+' + (items.length - 1) + ' \u2193'));
+      return el('div', { class: 'news-group' }, head, el('div', { class: 'news-scroll' }, ...body));
+    }
     return el('div', { class: 'news-group' }, head, ...body);
   }), quiet.length ? el('p', { class: 'muted small news-quiet' }, 'No headlines in the last 2 days: ' + quiet.map(tickerLabel).join(', ')) : '');
   $('news-status').textContent = 'Updated ' + new Date(news.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' · Finnhub';
