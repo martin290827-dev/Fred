@@ -1525,6 +1525,13 @@ function initLayout() {
     if (n >= 0) { o.splice(n + 1, 0, 'card-food'); layout.order = o; store.set('layout', layout); }
     store.set('mig.newsFood', true);
   }
+  // one-time: the new Health and Trends cards go right after Food
+  if (!store.get('mig.splitFood', false)) {
+    const o = layout.order.filter((id) => id !== 'card-health' && id !== 'card-trends');
+    const n = o.indexOf('card-food');
+    if (n >= 0) { o.splice(n + 1, 0, 'card-health', 'card-trends'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.splitFood', true);
+  }
   // one-time change of the saved order: Shopping List and Calculator & Currency swap places
   if (!store.get('mig.swapCalcShop', false)) {
     const o = layout.order;
@@ -1550,6 +1557,8 @@ const CARD_ICONS = {
   'card-calc': ['#8e8e93', 'M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01'],
   'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
   'card-food': ['#30b0c7', 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3'],
+  'card-health': ['#af52de', 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z'],
+  'card-trends': ['#ff9500', 'M5 20V10M10 20V4M15 20v-7M20 20V8'],
   'card-news': ['#ff3b30', 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4'],
 };
 

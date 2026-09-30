@@ -451,19 +451,20 @@ function renderFood() {
   const logged30 = days30.filter((d) => dayTotals(d).n).length;
   const wNow = weightOn(today);
   const w30 = weightOn(days30[0]);
-  const trends = el('div', { class: 'food-col food-trends' },
-    hcard('goal', 'green', 'Goal', '\u2212' + (nutri.goalPct || 10) + ' %', goalBlock()),
-    hcard('check', 'orange', 'Last 7 days', 'vs targets', weekCheck()),
-    hcard('bars', 'pink', 'Calories', '30 days', kcalChart(days30),
-      el('div', { class: 'muted small food-stats' },
-        [avg7 ? 'Ø 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? 'Ø 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' · '))),
-    hcard('line', 'purple', 'Weight', 'trend', weightChart(days90),
-      el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
-        ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '\u2212') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : '')));
+  const goalCard = hcard('goal', 'green', 'Goal', '\u2212' + (nutri.goalPct || 10) + ' %', goalBlock());
+  const weekCard = hcard('check', 'orange', 'Last 7 days', 'vs targets', weekCheck());
+  const kcalCard = hcard('bars', 'pink', 'Calories', '30 days', kcalChart(days30),
+    el('div', { class: 'muted small food-stats' },
+      [avg7 ? '\u00d8 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? '\u00d8 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' \u00b7 ')));
+  const trendCard = hcard('line', 'purple', 'Weight', 'trend', weightChart(days90),
+    el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
+      ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '\u2212') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : ''));
 
-  box.replaceChildren(
-    el('div', { class: 'food-col' }, form, head, hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul), hcard('weight', 'purple', 'Weight', 'today', wForm)),
-    trends);
+  // three cards: Food (today), Health (weight and goal), Trends (last days)
+  box.replaceChildren(el('div', { class: 'food-col' }, form, head,
+    hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
+  $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard, trendCard));
+  $('trends').replaceChildren(el('div', { class: 'food-col' }, weekCard, kcalCard));
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
 }

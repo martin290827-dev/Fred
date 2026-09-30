@@ -391,7 +391,7 @@ button.danger { background: var(--down); color: #fff; }
 .news-quiet { margin: 12px 0 0; }
 
 /* ---------- food diary (wide card: today left, trends right) ---------- */
-#card-food { height: auto; }
+#card-food, #card-health, #card-trends { height: 660px; } /* taller than normal cards; more scrolls inside */
 .food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .food-col { min-width: 0; }
 .food-add { margin: 0 0 12px; }
@@ -740,12 +740,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .grid { grid-auto-flow: row dense; } /* small cards fill the gaps a wide card leaves */
   .grid > .card.card-wide { grid-column: span 6; }
   .grid > .card.card-wide.half { grid-column: span 3; }
-  #card-food, #card-news { height: 844px; } /* two rows of normal cards; the rest scrolls inside */
-  #card-food:not(.half), #card-news:not(.half) { height: 640px; }
-  #card-food .cardbody { overflow: hidden; }
-  #card-food .food { height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
-  #card-food.half .food { grid-template-columns: minmax(0, 1fr); overflow: auto; scrollbar-width: thin; }
-  #card-food:not(.half) .food-col { overflow: auto; min-height: 0; scrollbar-width: thin; padding-right: 2px; }
+  #card-news { height: 844px; } /* two rows of normal cards; the rest scrolls inside */
+  #card-news:not(.half) { height: 640px; }
   .food { --panel: var(--card-2); }
   .fpanel { border-radius: 14px; padding: 10px 12px; }
   .fpanel .food-sub { text-transform: none; letter-spacing: 0; font-size: 0.92rem; font-weight: 700; color: var(--text); }
@@ -825,9 +821,10 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 }
 @media (min-width: 1000px) { .fh .fh-t { font-size: 0.92rem; } }
 .meal-t { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
-@media (min-width: 1000px) {
-  .fsum { gap: 32px; padding: 10px 4px 4px; }
-  .fsum-rings { width: 176px; height: 176px; }
-  .lgd { grid-template-columns: 1fr 1fr; gap: 18px 24px; }
-  .lg-v { font-size: 1.45rem; }
-}
+/* Food, Health and Trends: one column each; on the phone they show everything */
+.food { grid-template-columns: minmax(0, 1fr) !important; }
+@media (max-width: 700px) { #card-food, #card-health, #card-trends { height: auto; max-height: none; } }
+/* Food card is a normal-width card: slightly smaller rings and numbers so "KCAL" always fits */
+#card-food .fsum { gap: 14px; }
+#card-food .fsum-rings { width: 132px; height: 132px; }
+#card-food .lg-v { font-size: 1.12rem; }
