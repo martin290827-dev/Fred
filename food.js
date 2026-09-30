@@ -138,7 +138,8 @@ function formulaMaintenance() {
 
 // Measured from your own data: average intake plus what the weight trend says (needs 2+ weeks).
 function weightTrendPerDay(days) {
-  const pts = weight.filter((w) => w.d >= days[0]).map((w) => [(new Date(w.d + 'T00:00') - new Date(days[0] + 'T00:00')) / 86400000, w.kg]);
+  const pts = weight.filter((w) => w.d >= days[0]).sort((a, b) => a.d.localeCompare(b.d))
+    .map((w) => [(new Date(w.d + 'T00:00') - new Date(days[0] + 'T00:00')) / 86400000, w.kg]);
   if (pts.length < 3 || pts[pts.length - 1][0] - pts[0][0] < 14) return null;
   const n = pts.length;
   const mx = pts.reduce((s, p) => s + p[0], 0) / n;
@@ -148,13 +149,32 @@ function weightTrendPerDay(days) {
   return den ? num / den : null;
 }
 
+// Weighing once a week gives few points: then look back 6 weeks instead of 4, so one odd value counts less.
+function trendWindow() {
+  const d28 = lastDays(28);
+  return weight.filter((w) => w.d >= d28[0]).length >= 5 ? d28 : lastDays(42);
+}
+
 function measuredMaintenance() {
-  const days = lastDays(28);
+  const days = trendWindow();
   const logged = days.filter((d) => dayTotals(d).n).length;
   const slope = weightTrendPerDay(days);
   const avg = avgKcal(days);
-  if (logged < 14 || slope === null || !avg) return null;
+  if (logged < days.length / 2 || slope === null || !avg) return null;
   return { kcal: Math.round((avg - slope * 7700) / 10) * 10, perWeek: slope * 7 };
+}
+
+// What is still missing before Pace and Maintenance come from your own data.
+function dataStatus() {
+  const days = trendWindow();
+  const pts = weight.filter((w) => w.d >= days[0]).sort((a, b) => a.d.localeCompare(b.d));
+  const span = pts.length > 1 ? (new Date(pts[pts.length - 1].d) - new Date(pts[0].d)) / 86400000 : 0;
+  const logged14 = lastDays(14).filter((d) => dayTotals(d).n).length;
+  const loggedW = days.filter((d) => dayTotals(d).n).length;
+  const last = [...weight].sort((a, b) => b.d.localeCompare(a.d))[0];
+  const needW = pts.length < 3 ? 3 - pts.length : span < 14 ? Math.ceil((14 - span) / 7) : 0;
+  const needF = Math.max(0, Math.ceil(days.length / 2) - loggedW);
+  return { last, logged14, needW, needF, ok: needW === 0 && needF === 0 };
 }
 
 /* In range = share of the target. Protein is a minimum (more is fine),
@@ -281,7 +301,7 @@ function goalBlock() {
   const mm = measuredMaintenance();
   const maint = mm ? mm.kcal : formulaMaintenance();
   // pace: measured from your weights (4 weeks) if possible, else expected from calories
-  const slope = weightTrendPerDay(lastDays(28));
+  const slope = weightTrendPerDay(trendWindow());
   const measured = slope !== null ? -slope * 7 : null; // kg lost per week
   const expected = maint ? ((maint - kcal) * 7) / 7700 : null;
   const pace = measured !== null ? measured : expected;
@@ -294,16 +314,22 @@ function goalBlock() {
   const tile = (label, value, sub, cls) => el('div', { class: 'kpi ' + (cls || '') }, el('div', { class: 'kpi-l' }, label), el('div', { class: 'kpi-v' }, value), el('div', { class: 'kpi-s' }, sub));
   const kpis = el('div', { class: 'kpis' },
     tile('Lost', fmtKg(done) + ' kg', 'of ' + fmtKg(need) + ' kg', 'k-green'),
-    tile('Pace', pace !== null ? (pace >= 0 ? '−' : '+') + Math.abs(pace).toFixed(2) + ' kg' : '–', measured !== null ? 'per week, measured' : expected !== null ? 'per week, expected' : 'needs Settings'),
+    tile('Pace', pace !== null ? (pace >= 0 ? '−' : '+') + Math.abs(pace).toFixed(2) + ' kg' : '–', measured !== null ? 'per week, last ' + trendWindow().length / 7 + ' weeks' : expected !== null ? 'per week, expected' : 'needs Settings'),
     tile('Goal date', when, left > 0 ? fmtKg(left) + ' kg to go' : 'well done'),
     tile('For −0.5 kg/wk', maint ? fmtN(Math.round((maint - 550) / 50) * 50) : '–', 'kcal per day', 'k-pink'));
   const note = maint
     ? 'Maintenance ≈ ' + fmtN(maint) + ' kcal' + (mm ? ' (from your data)' : ' (estimate)') + '. Your target: ' + fmtN(kcal) + ' kcal.'
     : 'Add height, birth year, sex and activity in Settings for your maintenance calories.';
+  const ds = dataStatus();
+  const missing = [ds.needW ? ds.needW + ' more weigh-in' + (ds.needW > 1 ? 's' : '') : '', ds.needF ? ds.needF + ' more logged day' + (ds.needF > 1 ? 's' : '') : ''].filter(Boolean).join(' and ');
+  const data = el('div', { class: 'data-line' },
+    el('span', { class: 'dl-state ' + (ds.ok ? 'ok' : '') }, ds.ok ? '\u2713 Measured from your data' : 'Estimated until ' + missing),
+    el('span', { class: 'muted' }, 'Last weigh-in ' + (ds.last ? shortDay(ds.last.d) : '\u2013') + ' \u00b7 food logged ' + ds.logged14 + ' of 14 days'));
   return el('div', { class: 'goal' },
     el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
     el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal) + ' kg')),
     kpis,
+    data,
     el('p', { class: 'muted small goal-line goal-note' }, note));
 }
 
@@ -405,8 +431,19 @@ function weightChart(all, h) {
     const w = weight.filter((p) => p.d >= from && p.d <= d);
     return w.length ? [d, w.reduce((a, p) => a + p.kg, 0) / w.length] : null;
   }).filter(Boolean);
-  svg.append(svgEl('polyline', { points: pts.map((p) => x(p.d).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline raw' }));
-  if (avgPts.length > 1) svg.append(svgEl('polyline', { points: avgPts.map(([d, v]) => x(d).toFixed(1) + ',' + y(Math.min(hi, Math.max(lo, v))).toFixed(1)).join(' '), class: 'wavg' }));
+  // weighed often (every ~2 days): 7-day average line; weighed rarely (e.g. weekly): join the points and add a straight trend line
+  const gap = pts.length > 1 ? (new Date(pts[pts.length - 1].d) - new Date(pts[0].d)) / 86400000 / (pts.length - 1) : 0;
+  const dense = gap <= 2.5;
+  svg.dataset.mode = dense ? 'avg' : 'sparse';
+  svg.append(svgEl('polyline', { points: pts.map((p) => x(p.d).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: dense ? 'wline raw' : 'wline' }));
+  if (dense && avgPts.length > 1) svg.append(svgEl('polyline', { points: avgPts.map(([d, v]) => x(d).toFixed(1) + ',' + y(Math.min(hi, Math.max(lo, v))).toFixed(1)).join(' '), class: 'wavg' }));
+  if (!dense && pts.length >= 3) { // least-squares line over the points in view
+    const t = pts.map((p) => days.indexOf(p.d)), n = pts.length;
+    const mt = t.reduce((a, b) => a + b, 0) / n, mk = pts.reduce((a, p) => a + p.kg, 0) / n;
+    const k = t.reduce((a, ti, i) => a + (ti - mt) * (pts[i].kg - mk), 0) / (t.reduce((a, ti) => a + (ti - mt) ** 2, 0) || 1);
+    const at = (ti) => Math.min(hi, Math.max(lo, mk + k * (ti - mt)));
+    svg.append(svgEl('line', { x1: x(days[t[0]]), y1: y(at(t[0])), x2: x(days[t[n - 1]]), y2: y(at(t[n - 1])), class: 'wtrend' }));
+  }
   pts.forEach((p, i) => {
     const g = svgEl('g', { class: 'wdot' });
     g.append(svgEl('title', {}, shortDay(p.d) + ': ' + fmtKg(p.kg) + ' kg'));
@@ -499,12 +536,15 @@ function renderFood() {
     hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120)),
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
     hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
-      el('div', { class: 'muted small food-stats' }, 'Dots: daily weight · line: 7-day average')),
+      el('div', { class: 'muted small food-stats w-cap' }, '')),
   ];
 
   // three cards: Food (today), Health (weight and goal), Trends (last days)
   box.replaceChildren(el('div', { class: 'food-col' }, form, head,
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
+  const wsvg = trendCards[3] && trendCards[3].querySelector && trendCards[3].querySelector('svg.fchart');
+  const wcap = trendCards[3] && trendCards[3].querySelector && trendCards[3].querySelector('.w-cap');
+  if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
   $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
   fitRows(ul, 3); // the last three meals; the rest scrolls

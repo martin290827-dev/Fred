@@ -904,3 +904,9 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 :root[data-theme="light"] .seg { --seg-on: #ffffff; }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .seg { --seg-on: #ffffff; } }
 .seg button.on { background: var(--seg-on); }
+.food .fchart .wtrend { stroke: var(--c-body); stroke-width: 2; stroke-dasharray: 6 5; opacity: 0.9; }
+.food .fchart[data-mode="sparse"] .wline { stroke-width: 2; opacity: 0.8; }
+.food .fchart[data-mode="sparse"] .wdot circle:not(.hit) { opacity: 1; }
+.data-line { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 0; font-size: 0.78rem; }
+.dl-state { font-weight: 600; color: var(--warn); }
+.dl-state.ok { color: var(--c-green); }
