@@ -438,16 +438,15 @@ function renderFood() {
   $('food-status').textContent = foodMirrorMsg;
 }
 
+// One line per meal: time, what, kcal. Protein/carbs/fat show on hover.
 function foodRow(e) {
   const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
     : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
       : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
-  const macro = e.p != null ? 'P ' + fmtN(e.p) + ' · C ' + fmtN(e.c) + ' · F ' + fmtN(e.f) + ' g' : e.src === 'manual' ? 'Own value' : '';
-  return el('li', { class: 'meal' },
-    el('span', { class: 'grow meal-main' },
-      el('span', { class: 'meal-t' }, e.text),
-      el('span', { class: 'meal-sub muted small' }, [e.at.slice(11, 16), macro].filter(Boolean).join(' · ')),
-      e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
+  const macro = e.p != null ? 'Protein ' + fmtN(e.p) + ' g · Carbs ' + fmtN(e.c) + ' g · Fat ' + fmtN(e.f) + ' g' : e.src === 'manual' ? 'Own value' : '';
+  return el('li', { class: 'meal', title: macro },
+    el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)),
+    el('span', { class: 'grow meal-t' }, e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
     kc,
     el('span', { class: 'meal-act' },
       iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),

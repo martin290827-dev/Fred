@@ -502,9 +502,7 @@ button.danger { background: var(--down); color: #fff; }
 /* meals */
 .fpanel .food-list { margin: 0; max-height: 280px; }
 .food-list li.meal { align-items: center; gap: 10px; padding: 9px 0; }
-.meal-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .meal-t { font-weight: 500; overflow-wrap: anywhere; }
-.meal-sub { font-variant-numeric: tabular-nums; }
 .food-kc { font-size: 1.05rem; font-weight: 600; }
 .food-kcu { font-size: 0.75rem; font-weight: 500; color: var(--muted); }
 .meal-act { display: flex; gap: 0; opacity: 0.55; transition: opacity 0.15s; }
@@ -733,4 +731,22 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+/* ---------- food: compact meal rows; on desktop a fixed size like the other cards ---------- */
+.food-list li.meal { padding: 7px 0; gap: 8px; }
+.meal .food-time { width: 40px; padding-top: 0; }
+.meal-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.fpanel .food-list { max-height: 190px; overflow: auto; scrollbar-width: thin; }
+@media (min-width: 1000px) {
+  #card-food, #card-news { height: 760px; } /* two rows of normal cards; the rest scrolls inside */
+  #card-food .cardbody { padding-right: 4px; }
+  .food { --panel: var(--card-2); }
+  .fpanel { border-radius: 14px; padding: 10px 12px; }
+  .fpanel .food-sub { text-transform: none; letter-spacing: 0; font-size: 0.92rem; font-weight: 700; color: var(--text); }
+  .food-hero { gap: 18px; }
+  .food-hero .ring { width: 110px; height: 110px; }
+  .food-hero .ring-num { font-size: 1.6rem; }
+  .hstat-v { font-size: 1.05rem; }
+  .macros { margin-top: 12px; }
 }
