@@ -328,8 +328,8 @@ function svgEl(tag, attrs, text) {
   return n;
 }
 
-function kcalChart(days) {
-  const W = 600, H = 150, L = 46, B = 18, T = 8;
+function kcalChart(days, h) {
+  const W = 600, H = h || 150, L = 46, B = 18, T = 8;
   const vals = days.map((d) => dayTotals(d));
   const max = Math.max(500, nutri.kcal || 0, ...vals.map((v) => v.kcal)) * 1.1;
   const y = (v) => T + (H - T - B) * (1 - v / max);
@@ -358,11 +358,11 @@ function kcalChart(days) {
   return svg;
 }
 
-function weightChart(all) {
+function weightChart(all, h) {
   const pts = weight.filter((w) => w.d >= all[0]).sort((a, b) => a.d.localeCompare(b.d));
   // start the axis at the first weight (at least 14 days shown), so a new diary does not look empty
   const days = pts.length ? all.slice(Math.min(Math.max(0, all.indexOf(pts[0].d)), all.length - 14)) : all;
-  const W = 600, H = 120, L = 46, B = 18, T = 10;
+  const W = 600, H = h || 120, L = 46, B = 18, T = 10;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Weight since ' + days[0] });
   if (pts.length < 2) { svg.append(svgEl('text', { x: W / 2, y: H / 2, class: 'ax', 'text-anchor': 'middle' }, pts.length ? 'Enter your weight on more days to see a line.' : 'No weight entered yet.')); return svg; }
   const lo = Math.min(...pts.map((p) => p.kg)) - 0.5;
@@ -380,6 +380,20 @@ function weightChart(all) {
   });
   svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(days[0])), svgEl('text', { x: W - 2, y: H - 4, class: 'ax', 'text-anchor': 'end' }, 'today'));
   return svg;
+}
+
+/* When a card is taller than its content (cards in a row share one height),
+   the last chart grows so the card has no empty space at the bottom. */
+function growChart(box, draw) {
+  const svg = box && box.querySelector('.fpanel:last-child svg.fchart');
+  if (!svg) return;
+  const panel = svg.closest('.fpanel');
+  const used = [...panel.children].reduce((s, n) => s + n.getBoundingClientRect().height, 0) + 24 + 8 * (panel.children.length - 1);
+  const free = panel.clientHeight - used;
+  if (free < 12 || !svg.clientWidth) return;
+  const vb = svg.viewBox.baseVal;
+  const h = Math.min(420, Math.round(vb.height + free * (vb.width / svg.clientWidth)));
+  svg.replaceWith(draw(h));
 }
 
 /* ---------- card ---------- */
@@ -465,6 +479,10 @@ function renderFood() {
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
   $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard, trendCard));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, weekCard, kcalCard));
+  requestAnimationFrame(() => {
+    growChart($('health'), (h) => weightChart(days90, h));
+    growChart($('trends'), (h) => kcalChart(days30, h));
+  });
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
 }
@@ -563,6 +581,8 @@ async function foodMirror() {
 
 function initFood() {
   renderFood();
+  let rt = null; // new size of the window: draw again, so the charts fill the cards
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderFood, 250); });
   // new day at midnight, and keep "today" current
   setInterval(() => { if (!document.hidden) renderFood(); }, 5 * 60000);
 }

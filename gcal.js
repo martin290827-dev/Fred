@@ -106,6 +106,7 @@ async function gRefresh() {
         allDay: !!i.start.date,
         series: i.recurringEventId || null, // repeating items (birthdays, ...) share this id
         // birthdays from contacts and events of other people cannot be changed here
+        birthday: i.eventType === 'birthday',
         readOnly: i.eventType === 'birthday' || i.eventType === 'fromGmail' || (i.organizer && i.organizer.self === false && !i.guestsCanModify),
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
@@ -170,23 +171,36 @@ function renderCalendar() {
   const now = new Date();
   const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit && (!e.end || e.end > now)).slice(0, 25); // one-day items with a time, next 30 days
   if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
+  // like the Up Next widget of Apple Calendar: a small header per day, then the items with their times
+  let day = '';
   for (const ev of list) {
+    const d = toDateStr(ev.start);
+    if (d !== day) { day = d; ul.append(el('li', { class: 'dayh' + (dayDiff(d) === 0 ? ' is-today' : '') }, agendaDay(d))); }
     const state = gState(ev, now);
-    const li = el('li', { class: state.cls },
-      el('span', { class: 'grow' }, ev.title, ev.series ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : ''),
-      el('span', { class: state.cls ? 'small' : 'muted small' }, state.text || fmtDue({ due: toLocalISO(ev.start), allDay: ev.allDay })));
+    const li = el('li', { class: 'ag ' + state.cls },
+      el('span', { class: 'ag-bar', 'aria-hidden': 'true' }),
+      el('span', { class: 'grow ag-main' },
+        el('span', { class: 'ag-t' }, ev.title),
+        el('span', { class: 'ag-s' }, hhmm(ev.start) + (ev.end ? ' \u2013 ' + hhmm(ev.end) : ''), ev.series ? el('span', { class: 'rep', title: 'Repeats' }, ' \u00b7 \u21bb') : '')),
+      state.text ? el('span', { class: 'pill ' + state.cls }, state.text) : '');
     gRowActions(li, ev, 'task');
     ul.append(li);
   }
   ul.scrollTop = keepScroll;
-  fitRows(ul, 5);
   matchWeatherHeight();
+}
+
+function agendaDay(d) {
+  const n = dayDiff(d);
+  if (n === 0) return 'Today';
+  if (n === 1) return 'Tomorrow';
+  return new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
 // 'now' while it runs, 'soon' in the last hour before it starts. Words carry the meaning, colour only helps.
 function gState(ev, now) {
   const mins = Math.round((ev.start - now) / 60000);
-  if (mins <= 0) return { cls: 'now', text: 'now' + (ev.end ? ' \u00b7 until ' + ev.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '') };
+  if (mins <= 0) return { cls: 'now', text: 'Now' };
   if (mins <= 60) return { cls: 'soon', text: 'in ' + mins + ' min' };
   return { cls: '', text: '' };
 }

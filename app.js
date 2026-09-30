@@ -901,16 +901,27 @@ function renderEvents() {
   }
   if (typeof gSessionEnded === 'function' && gSessionEnded()) ul.append(gReconnectRow());
   for (const e of sorted) {
-    const li = el('li', { class: (isEventNow(e) ? 'now' : '') + (e.earnings ? ' earn' : '') },
-      el('span', { class: 'grow' }, e.label, e.src && e.src.series ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : '', el('br'),
-        el('span', { class: 'muted small' }, fmtEventDates(e) + (e.earnings ? ' \u00b7 Earnings' : ''))),
-      el('span', { 'data-id': e.id }));
+    // a small calendar leaf (month and day), the title, and a countdown pill on the right
+    const kind = e.earnings ? 'Earnings' : e.src && e.src.birthday ? 'Birthday' : '';
+    const wd = new Date(e.at + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long' });
+    const li = el('li', { class: 'evr' + (isEventNow(e) ? ' now' : '') + (e.earnings ? ' earn' : '') },
+      dateLeaf(e.at),
+      el('span', { class: 'grow ev-main' },
+        el('span', { class: 'ev-t' }, e.label, e.src && e.src.series && !e.src.birthday ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : ''),
+        el('span', { class: 'ev-s' }, [wd, kind].filter(Boolean).join(' \u00b7 '))),
+      el('span', { class: 'ev-when', 'data-id': e.id }));
     if (e.src && typeof gRowActions === 'function') gRowActions(li, e.src, 'event');
     ul.append(li);
   }
   tickEvents();
-  fitRows(ul, 5);
   matchWeatherHeight();
+}
+
+function dateLeaf(dateStr) {
+  const d = new Date(dateStr + 'T00:00');
+  return el('span', { class: 'dleaf', 'aria-hidden': 'true' },
+    el('span', { class: 'dl-m' }, d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()),
+    el('span', { class: 'dl-d' }, String(d.getDate())));
 }
 
 // Show at most n rows; the rest scrolls inside the list.
@@ -1615,6 +1626,14 @@ function init() {
   initCalc();
   renderShop();
   initNotes();
+  // touch: tap a Tasks or Events row to show its edit and delete buttons (tap again to hide)
+  for (const id of ['cal-list', 'events']) $(id).addEventListener('click', (ev) => {
+    const li = ev.target.closest('li.ag, li.evr');
+    if (!li || ev.target.closest('button')) return;
+    const on = !li.classList.contains('show-act');
+    document.querySelectorAll('li.show-act').forEach((x) => x.classList.remove('show-act'));
+    li.classList.toggle('show-act', on);
+  });
   initFood();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));

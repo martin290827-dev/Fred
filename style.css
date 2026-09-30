@@ -391,7 +391,13 @@ button.danger { background: var(--down); color: #fff; }
 .news-quiet { margin: 12px 0 0; }
 
 /* ---------- food diary (wide card: today left, trends right) ---------- */
-#card-food, #card-health, #card-trends { height: 660px; } /* taller than normal cards; more scrolls inside */
+/* Food, Health and Trends: as tall as their content; in a row they share the height of the tallest,
+   and the last section of each fills the rest (see growChart in food.js) */
+#card-food, #card-health, #card-trends { height: auto; max-height: 760px; }
+#food, #health, #trends { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#food > .food-col, #health > .food-col, #trends > .food-col { flex: 1; min-height: 0; }
+.food-col > .fpanel:last-child { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#food .fpanel:last-child .food-list { flex: 1; max-height: none; min-height: 120px; overflow: auto; }
 .food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .food-col { min-width: 0; }
 .food-add { margin: 0 0 12px; }
@@ -828,3 +834,44 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #card-food .fsum { gap: 14px; }
 #card-food .fsum-rings { width: 132px; height: 132px; }
 #card-food .lg-v { font-size: 1.12rem; }
+
+/* ---------- Tasks & Reminders: like the Up Next widget of Apple Calendar ---------- */
+#cal-list > li.dayh { display: block; padding: 12px 2px 4px; border: 0; border-radius: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+#cal-list > li.dayh:first-child { padding-top: 2px; }
+#cal-list > li.dayh.is-today { color: var(--down); }
+#cal-list > li.ag { gap: 10px; padding: 6px 4px; border-bottom: 0; border-radius: 10px; align-items: stretch; font-weight: 400; }
+.list li.ag::before { display: none; }
+.ag-bar { flex: none; width: 4px; border-radius: 2px; background: var(--accent); }
+.ag.soon .ag-bar { background: var(--warn); }
+.list li.ag.now { background: var(--accent-soft); padding-left: 4px; }
+.list li.ag.soon { padding-left: 4px; }
+.ag-main { display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+.ag-t { font-weight: 500; line-height: 1.25; }
+.ag-s { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill { align-self: center; flex: none; font-size: 0.74rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.soon { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--text); }
+.pill.now { background: var(--accent); color: #fff; }
+.ag button.icon, .evr button.icon { align-self: center; }
+
+/* ---------- Events: calendar leaf, title, countdown pill ---------- */
+#events > li.evr { gap: 12px; padding: 7px 4px; border-bottom: 0; font-weight: 400; }
+.list li.evr::before { display: none; }
+.list li.evr.now { background: var(--accent-soft); padding-left: 4px; }
+.list li.evr.earn .grow::before { content: none; }
+.dleaf { flex: none; width: 42px; height: 44px; border-radius: 11px; background: var(--card-2); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; box-shadow: inset 0 0 0 0.5px var(--line); }
+.list li.evr.now .dleaf { background: var(--card); }
+.dl-m { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em; color: var(--down); }
+.evr.earn .dl-m { color: var(--accent); }
+.dl-d { font-size: 1.2rem; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.ev-main { display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.ev-t { font-weight: 500; line-height: 1.25; }
+.ev-s { font-size: 0.8rem; color: var(--muted); }
+.ev-when { flex: none; align-self: center; font-size: 0.74rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--card-2); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.evr.now .ev-when { background: var(--accent); color: #fff; }
+/* edit/delete: hidden until you hover the row (mouse) or tap it (touch), so titles get the full width */
+#cal-list > li.ag > button.icon, #events > li.evr > button.icon { display: none; opacity: 1; }
+#cal-list > li.ag.show-act > button.icon, #events > li.evr.show-act > button.icon { display: inline-grid; }
+@media (hover: hover) { #cal-list > li.ag:hover > button.icon, #events > li.evr:hover > button.icon { display: inline-grid; } }
+#cal-list > li.ag.show-act .pill, #events > li.evr.show-act .ev-when { display: none; }
+.ev-t, .ag-t { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+#cal-list > li.ag, #events > li.evr { cursor: default; }
