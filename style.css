@@ -416,6 +416,23 @@ button.danger { background: var(--down); color: #fff; }
 .food-sub:not(:first-child) { margin-top: 14px; }
 .food-stats { margin: 4px 0 0; }
 .fchart { width: 100%; height: auto; display: block; }
+.fchart .tgt { stroke: var(--up); stroke-width: 1.5; opacity: 0.8; }
+.fchart .tgtlbl { fill: var(--up); font-weight: 600; }
+/* progress bars for calories and macros, and the goal */
+.nbars { display: grid; gap: 8px; margin: 12px 0 4px; }
+.nbar-top { display: flex; justify-content: space-between; gap: 8px; font-size: 0.82rem; margin-bottom: 3px; }
+.nbar-l { font-weight: 600; }
+.nbar-v { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nbar-track { height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+.nbar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.nbar-fill.done { background: var(--up); }
+.nbar-fill.over { background: var(--warn); }
+.goal { margin-bottom: 4px; }
+.goal-line { margin: 5px 0 0; line-height: 1.35; }
+.nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.nutri-grid label { margin: 8px 0; }
+.nutri-grid .wide { grid-column: 1 / -1; }
+.nutri-grid select, .nutri-grid input { width: 100%; }
 .fchart .grid { stroke: var(--line); stroke-width: 1; }
 .fchart .ax { fill: var(--muted); font-size: 11px; }
 .fchart .bar rect:not(.hit) { fill: var(--accent); opacity: 0.55; }

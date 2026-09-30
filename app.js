@@ -1228,6 +1228,7 @@ function openSettings() {
   $('set-key').value = finnhubKey;
   $('set-twelve').value = twelveKey;
   $('set-anthropic').value = anthropicKey;
+  nutriFillSettings();
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
@@ -1252,6 +1253,7 @@ function saveSettings() {
   store.set('finnhubKey', finnhubKey);
   twelveKey = $('set-twelve').value.trim();
   store.set('twelveKey', twelveKey);
+  nutriSaveSettings();
   anthropicKey = $('set-anthropic').value.trim();
   store.set('anthropicKey', anthropicKey);
   const fxNew = { from: $('set-fx-from').value, to: $('set-fx-to').value };
@@ -1287,7 +1289,7 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'food', 'weight'];
 

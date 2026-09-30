@@ -11,6 +11,8 @@ let food = store.get('food', []);     // [{ id, at: 'YYYY-MM-DDTHH:MM', text, kc
 let weight = store.get('weight', []); // [{ d: 'YYYY-MM-DD', kg }]
 let anthropicKey = store.get('anthropicKey', '');
 let foodEditId = null;
+// Your goal (Settings). Personal values live only in your browser and your Drive sync, never in the code.
+let nutri = store.get('nutri', { kcal: 2500, goalPct: 10, startKg: null, height: null, birthYear: null, sex: '', activity: 1.45 });
 
 const AI_MODEL = 'claude-haiku-4-5-20251001';
 const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input is a short, often dictated description ' +
@@ -98,6 +100,121 @@ const fmtN = (v) => Math.round(v).toLocaleString('en-US');
 const fmtKg = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const shortDay = (d) => new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
+/* ---------- goal and targets ----------
+   Protein 1.8 g per kg of goal weight (keeps muscle while losing fat), fat 28 % of calories
+   but at least 0.8 g per kg, carbs the rest. Maintenance: Mifflin-St Jeor x activity,
+   and later measured from your own intake and weight trend (7,700 kcal per kg of body fat). */
+const round5 = (v) => Math.round(v / 5) * 5;
+
+function goalInfo() {
+  const cur = weightOn(toDateStr(new Date()));
+  const first = [...weight].sort((x, y) => x.d.localeCompare(y.d))[0];
+  const start = nutri.startKg || (first ? first.kg : null);
+  if (!start) return null;
+  const goal = Math.round(start * (1 - (nutri.goalPct || 10) / 100) * 10) / 10;
+  return { start, goal, cur: cur ? cur.kg : start };
+}
+
+function targets() {
+  const g = goalInfo();
+  const kcal = nutri.kcal || 2500;
+  if (!g) return { kcal, p: null, f: null, c: null };
+  const p = round5(1.8 * g.goal);
+  const f = Math.max(round5((kcal * 0.28) / 9), round5(0.8 * g.cur));
+  const c = Math.max(0, round5((kcal - p * 4 - f * 9) / 4));
+  return { kcal, p, f, c };
+}
+
+// Estimated from height, age, sex and activity (Settings).
+function formulaMaintenance() {
+  const g = goalInfo();
+  if (!g || !nutri.height || !nutri.birthYear || !nutri.sex) return null;
+  const age = new Date().getFullYear() - nutri.birthYear;
+  const bmr = 10 * g.cur + 6.25 * nutri.height - 5 * age + (nutri.sex === 'm' ? 5 : -161);
+  return Math.round((bmr * (nutri.activity || 1.45)) / 10) * 10;
+}
+
+// Measured from your own data: average intake plus what the weight trend says (needs 2+ weeks).
+function weightTrendPerDay(days) {
+  const pts = weight.filter((w) => w.d >= days[0]).map((w) => [(new Date(w.d + 'T00:00') - new Date(days[0] + 'T00:00')) / 86400000, w.kg]);
+  if (pts.length < 3 || pts[pts.length - 1][0] - pts[0][0] < 14) return null;
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p[0], 0) / n;
+  const my = pts.reduce((s, p) => s + p[1], 0) / n;
+  const num = pts.reduce((s, p) => s + (p[0] - mx) * (p[1] - my), 0);
+  const den = pts.reduce((s, p) => s + (p[0] - mx) ** 2, 0);
+  return den ? num / den : null;
+}
+
+function measuredMaintenance() {
+  const days = lastDays(28);
+  const logged = days.filter((d) => dayTotals(d).n).length;
+  const slope = weightTrendPerDay(days);
+  const avg = avgKcal(days);
+  if (logged < 14 || slope === null || !avg) return null;
+  return { kcal: Math.round((avg - slope * 7700) / 10) * 10, perWeek: slope * 7 };
+}
+
+function progressBar(label, val, target, unit, warnOver) {
+  const pct = target ? Math.min(100, (val / target) * 100) : 0;
+  const over = target && val > target;
+  return el('div', { class: 'nbar' },
+    el('div', { class: 'nbar-top' }, el('span', { class: 'nbar-l' }, label),
+      el('span', { class: 'nbar-v' }, fmtN(val) + (target ? ' / ' + fmtN(target) : '') + ' ' + unit)),
+    el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill' + (over && warnOver ? ' over' : '') + (!warnOver && val >= target ? ' done' : ''), style: 'width:' + pct.toFixed(1) + '%' })));
+}
+
+function goalBlock() {
+  const g = goalInfo();
+  if (!g) return el('p', { class: 'muted small' }, 'Enter your weight once (left) to see your goal and targets.');
+  const done = Math.max(0, g.start - g.cur);
+  const need = g.start - g.goal;
+  const pct = need > 0 ? Math.min(100, (done / need) * 100) : 0;
+  const kcal = nutri.kcal || 2500;
+  const lines = [];
+  const fm = formulaMaintenance();
+  const mm = measuredMaintenance();
+  const maint = mm ? mm.kcal : fm;
+  if (maint) {
+    const perWeek = ((maint - kcal) * 7) / 7700; // expected kg per week at your target
+    const left = g.cur - g.goal;
+    let when = '';
+    if (perWeek > 0.05 && left > 0) {
+      const weeks = left / perWeek;
+      when = ' \u2192 goal ' + (weeks > 104 ? 'in more than 2 years' : 'around ' + addDays(new Date(), weeks * 7).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }));
+    }
+    lines.push('Maintenance \u2248 ' + fmtN(maint) + ' kcal' + (mm ? ' (from your data)' : ' (estimate)') + '. At ' + fmtN(kcal) + ' kcal: ' +
+      (perWeek > 0.05 ? '\u2248 \u2212' + perWeek.toFixed(2) + ' kg/week' : perWeek < -0.05 ? '\u2248 +' + (-perWeek).toFixed(2) + ' kg/week' : 'about no change') + when + '.');
+    if (perWeek < 0.4 && left > 0) lines.push('For \u2248 \u22120.5 kg/week: about ' + fmtN(Math.round((maint - 550) / 50) * 50) + ' kcal per day.');
+  } else lines.push('Add height, birth year, sex and activity in Settings to estimate your maintenance calories.');
+  if (mm) lines.push('Your trend: ' + (mm.perWeek <= 0 ? '\u2212' : '+') + Math.abs(mm.perWeek).toFixed(2) + ' kg/week (last 4 weeks).');
+  return el('div', { class: 'goal' },
+    el('div', { class: 'nbar-top' }, el('span', { class: 'nbar-l' }, 'Goal \u2212' + (nutri.goalPct || 10) + ' %: ' + fmtKg(g.start) + ' \u2192 ' + fmtKg(g.goal) + ' kg'),
+      el('span', { class: 'nbar-v' }, fmtKg(done) + ' of ' + fmtKg(need) + ' kg')),
+    el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
+    ...lines.map((l) => el('p', { class: 'muted small goal-line' }, l)));
+}
+
+/* ---------- Settings: nutrition goal ---------- */
+function nutriFillSettings() {
+  $('set-kcal').value = nutri.kcal || '';
+  $('set-goalpct').value = nutri.goalPct || '';
+  $('set-startkg').value = nutri.startKg || '';
+  $('set-height').value = nutri.height || '';
+  $('set-birth').value = nutri.birthYear || '';
+  $('set-sex').value = nutri.sex || '';
+  $('set-activity').value = String(nutri.activity || 1.45);
+}
+
+function nutriSaveSettings() {
+  const num = (id) => { const v = parseFloat(String($(id).value).replace(',', '.')); return v > 0 ? v : null; };
+  const next = {
+    kcal: Math.round(num('set-kcal') || 2500), goalPct: num('set-goalpct') || 10, startKg: num('set-startkg'),
+    height: num('set-height'), birthYear: num('set-birth'), sex: $('set-sex').value, activity: parseFloat($('set-activity').value) || 1.45,
+  };
+  if (JSON.stringify(next) !== JSON.stringify(nutri)) { nutri = next; store.set('nutri', nutri); renderFood(); }
+}
+
 /* ---------- charts (plain SVG, one series each, hover shows the value) ---------- */
 
 function svgEl(tag, attrs, text) {
@@ -110,7 +227,7 @@ function svgEl(tag, attrs, text) {
 function kcalChart(days) {
   const W = 600, H = 150, L = 46, B = 18, T = 8;
   const vals = days.map((d) => dayTotals(d));
-  const max = Math.max(500, ...vals.map((v) => v.kcal)) * 1.1;
+  const max = Math.max(500, nutri.kcal || 0, ...vals.map((v) => v.kcal)) * 1.1;
   const y = (v) => T + (H - T - B) * (1 - v / max);
   const bw = (W - L) / days.length;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Calories per day, last ' + days.length + ' days' });
@@ -130,6 +247,8 @@ function kcalChart(days) {
     const last = i === days.length - 1;
     if ((days.length - 1 - i) % 7 === 0) svg.append(svgEl('text', { x: last ? x + w : x + w / 2, y: H - 4, class: 'ax', 'text-anchor': last ? 'end' : 'middle' }, last ? 'today' : shortDay(d)));
   });
+  const tgt = nutri.kcal || 0;
+  if (tgt) svg.append(svgEl('line', { x1: L, x2: W, y1: y(tgt), y2: y(tgt), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(tgt) - 4, class: 'ax tgtlbl' }, 'target ' + fmtN(tgt)));
   const avg = avgKcal(days);
   if (avg) svg.append(svgEl('line', { x1: L, x2: W, y1: y(avg), y2: y(avg), class: 'avg' }), svgEl('text', { x: W - 2, y: y(avg) - 4, class: 'ax avglbl', 'text-anchor': 'end' }, 'Ø ' + fmtN(avg)));
   return svg;
@@ -184,10 +303,16 @@ function renderFood() {
     estimateEntry(e);
   });
 
-  const macro = t.p || t.c || t.f ? 'Protein ' + fmtN(t.p) + ' g · Carbs ' + fmtN(t.c) + ' g · Fat ' + fmtN(t.f) + ' g' : '';
+  const tg = targets();
+  const left = tg.kcal - t.kcal;
   const head = el('div', { class: 'food-today' },
-    el('div', { class: 'food-kcal' }, fmtN(t.kcal), el('span', { class: 'food-unit' }, ' kcal today')),
-    el('div', { class: 'muted small' }, [macro, avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : ''].filter(Boolean).join(' · ')));
+    el('div', { class: 'food-kcal' }, fmtN(t.kcal), el('span', { class: 'food-unit' }, ' / ' + fmtN(tg.kcal) + ' kcal')),
+    el('div', { class: 'muted small' }, [left >= 0 ? fmtN(left) + ' kcal left today' : fmtN(-left) + ' kcal over target', avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : ''].filter(Boolean).join(' · ')),
+    el('div', { class: 'nbars' },
+      progressBar('Calories', t.kcal, tg.kcal, 'kcal', true),
+      tg.p ? progressBar('Protein', t.p, tg.p, 'g', false) : '',
+      tg.c !== null ? progressBar('Carbs', t.c, tg.c, 'g', true) : '',
+      tg.f ? progressBar('Fat', t.f, tg.f, 'g', true) : ''));
 
   const ul = el('ul', { class: 'list food-list' });
   if (!list.length) ul.append(el('li', { class: 'muted' }, 'Nothing logged today yet.'));
@@ -216,6 +341,8 @@ function renderFood() {
   const wNow = weightOn(today);
   const w30 = weightOn(days30[0]);
   const trends = el('div', { class: 'food-col food-trends' },
+    el('div', { class: 'food-sub' }, 'Goal'),
+    goalBlock(),
     el('div', { class: 'food-sub' }, 'Calories · last 30 days'),
     kcalChart(days30),
     el('div', { class: 'muted small food-stats' },
