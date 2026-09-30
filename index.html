@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=58">
+  <link rel="stylesheet" href="style.css?v=59">
 </head>
 <body>
   <header>
@@ -157,6 +157,11 @@
       <h2>Food <span id="food-status" class="muted small"></span></h2>
       <div id="food" class="food"></div>
     </section>
+
+    <section class="card card-wide" id="card-activity">
+      <h2>Activity <span id="act-status" class="muted small"></span></h2>
+      <div id="activity" class="food activity"></div>
+    </section>
   </main>
 
   <dialog id="dlg-settings">
@@ -209,6 +214,16 @@
       </div>
       <span class="muted small">Used for your protein, carbs and fat targets and the time to your goal. Stored only in your browser and your own Google Drive sync.</span>
 
+      <h3>Activity</h3>
+      <label>Apple Health link (optional)
+        <input id="set-health-url" type="password" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec?key=...">
+        <span class="muted small">Your own Google Apps Script link. An iPhone Shortcut sends your steps there, Fred reads them. Setup: README, section "Steps from Apple Health". Without it, type your steps in the Activity card.</span>
+      </label>
+      <div class="nutri-grid">
+        <label>Step goal per day <input id="set-stepgoal" type="text" inputmode="numeric" placeholder="8000"></label>
+        <label>Strength workouts per week <input id="set-traingoal" type="text" inputmode="numeric" placeholder="3"></label>
+      </div>
+
       <label>Anthropic API key (optional, for calorie estimates)
         <input id="set-anthropic" type="password" autocomplete="off" placeholder="Stored only in your browser and your Google Drive sync">
         <span class="muted small">From console.anthropic.com. Food texts are sent to Anthropic for the estimate. Without a key, say "... 500 kcal" yourself.</span>
@@ -259,9 +274,10 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=58"></script>
-  <script src="gcal.js?v=58"></script>
-  <script src="sync.js?v=58"></script>
-  <script src="food.js?v=58"></script>
+  <script src="app.js?v=59"></script>
+  <script src="gcal.js?v=59"></script>
+  <script src="sync.js?v=59"></script>
+  <script src="food.js?v=59"></script>
+  <script src="health.js?v=59"></script>
 </body>
 </html>

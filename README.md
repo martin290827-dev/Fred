@@ -22,3 +22,27 @@ Hinweise:
 - Fred liest und schreibt nur deine Termine: "Tasks & Reminders" zeigt Termine mit Uhrzeit (30 Tage), "Events" ganztägige und mehrtägige Termine (ein Jahr). Mit **+**, Stift und Mülleimer legst du Termine direkt in Google an, änderst oder löschst sie.
 - Abgleich zwischen Geräten: Fred speichert Einstellungen, Notizen und Einkaufsliste in einer versteckten Datei in deinem Google Drive (Ordner "App-Daten", nur für Fred sichtbar). Auf einem neuen Gerät nur die Client-ID eintragen und Connect drücken.
 - Food: Fred schreibt dein Essensprotokoll und dein Gewicht in zwei Google Sheets in deinem Drive ("Fred Food Log", "Fred Weight Log"). Mit `drive.file` sieht Fred nur Dateien, die Fred selbst angelegt hat. Kalorien schätzt Claude über deinen eigenen Anthropic-Key (Settings); die Texte gehen dafür an Anthropic.
+
+## Schritte aus Apple Health (optional, einmalig ca. 15 Minuten)
+
+Fred ist eine Web-App und kann Apple Health nicht direkt lesen. Darum der Weg: iPhone-Kurzbefehl → kleines Google Apps Script in deinem eigenen Google-Konto → Fred.
+
+**1. Script anlegen (am Computer)**
+1. Neues Google Sheet anlegen, z. B. „Fred Health“.
+2. Erweiterungen → Apps Script. Den Inhalt von `health-script.gs` aus diesem Repo einfügen.
+3. `KEY` auf ein eigenes, langes Zufallswort ändern. Speichern.
+4. Bereitstellen → Neue Bereitstellung → Typ „Web-App“. Ausführen als: **Ich**. Zugriff: **Jeder**. Bereitstellen, Zugriff erlauben.
+5. Den Link kopieren (endet auf `/exec`).
+6. In Fred: Settings → Activity → Apple Health link: `<Link>?key=<dein KEY>` eintragen und speichern.
+
+**2. Kurzbefehl (am iPhone, App „Kurzbefehle“)**
+1. Neuer Kurzbefehl „Fred Schritte“.
+2. Aktion „Health-Samples suchen“: Filter „Typ ist Schritte“ und „Startdatum ist heute“. „Gruppieren nach: Tag“.
+3. Aktion „Datum formatieren“: Aktuelles Datum, Format „Eigenes“: `yyyy-MM-dd`.
+4. Aktion „Inhalte von URL abrufen“: `<Link>?key=<dein KEY>&date=` + Variable „Formatiertes Datum“ + `&steps=` + Variable „Health-Samples“ (auf die Variable tippen → „Wert“).
+5. Einmal testen (▶). In Fred erscheint die Zahl nach dem nächsten Laden.
+
+**3. Automatisch ausführen**
+Kurzbefehle → Automation → + → „Tageszeit“ → z. B. 12:00, täglich → „Sofort ausführen“ → „Fred Schritte“. Dasselbe für 18:00 und 23:30. Jeder Lauf überschreibt den Wert des Tages.
+
+Hinweise: Apple Health rechnet iPhone und Uhr/Band (z. B. Whoop) beim Gruppieren nach Tag ohne Doppelzählung zusammen. Die Daten liegen nur in deinem Google Sheet und in deinem Browser, nie im Repo.

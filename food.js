@@ -436,6 +436,7 @@ function renderFood() {
     trends);
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
+  if (typeof renderActivity === 'function') renderActivity(); // the weekly review uses food and weight
 }
 
 function foodRow(e) {
@@ -529,6 +530,7 @@ async function foodMirror() {
     foodMirrorMsg = 'Sheets: ' + e.message;
   }
   $('food-status').textContent = foodMirrorMsg;
+  if (typeof renderActivity === 'function') renderActivity(); // the weekly review uses food and weight
 }
 
 function initFood() {

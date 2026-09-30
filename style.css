@@ -734,3 +734,34 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ---------- activity ---------- */
+#card-activity { height: auto; }
+.activity { --c-steps: #30d158; }
+:root[data-theme="light"] .activity { --c-steps: #28a745; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .activity { --c-steps: #28a745; } }
+.r-steps { color: var(--c-steps); }
+.hstat-v.good { color: var(--up); }
+.schart .bar rect:not(.hit) { fill: var(--c-steps); opacity: 0.45; }
+.schart .bar.hit rect:not(.hit) { opacity: 0.85; }
+.schart .bar.today rect:not(.hit), .schart .bar:hover rect:not(.hit) { opacity: 1; }
+.act-manual { margin-top: 10px; flex-wrap: wrap; }
+.train-head { margin: 0 0 10px; }
+.train-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.train-day { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; color: var(--text); cursor: pointer; min-height: 0; box-shadow: none; }
+.train-day:disabled { opacity: 0.35; cursor: default; }
+.train-dot { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 2px solid var(--line); font-weight: 700; font-size: 0.95rem; color: #fff; transition: background 0.15s, border-color 0.15s; }
+.train-day.on .train-dot { background: var(--c-steps); border-color: var(--c-steps); }
+.train-day.is-today .train-dot { border-color: var(--c-steps); }
+.train-l { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+.train-day.is-today .train-l { color: var(--text); }
+.wrow { padding: 8px 0; border-top: 0.5px solid var(--line); }
+.food-sub + .wrow { border-top: 0; padding-top: 0; }
+.wrow-h { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 0.85rem; }
+.wchips { display: flex; flex-wrap: wrap; gap: 5px; }
+.wchip { font-size: 0.76rem; padding: 3px 8px; border-radius: 999px; background: var(--card); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wchip.ok { background: color-mix(in srgb, var(--up) 24%, transparent); }
+.wchip.low { background: color-mix(in srgb, var(--warn) 30%, transparent); }
+.wchip.high { background: color-mix(in srgb, var(--down) 26%, transparent); }
+.steps-num { font-size: 1.55rem; }
+.food-kg.steps-in { width: 110px !important; }
