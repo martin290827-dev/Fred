@@ -10,6 +10,7 @@ Personal dashboard PWA. Hosted on GitHub Pages (static only, public repo).
 - Keep the code simple and readable. Small functions, short comments.
 - One feature per session. Do not refactor unrelated code.
 - After changing app files, bump `CACHE` in `sw.js` AND the `?v=` number on style.css, app.js and gcal.js (and in `SHELL` in sw.js) in index.html (GitHub Pages caches files for 10 minutes).
+- Phone and desktop always have the same features. Only the layout may differ.
 
 ## Files
 - index.html, style.css: page and styles. app.js: everything else. gcal.js: Google Calendar (loaded after app.js; `init()` runs on DOMContentLoaded).

@@ -174,7 +174,7 @@ header h1::before {
   /* every card has the same size; more rows scroll inside the card */
   display: flex;
   flex-direction: column;
-  height: 370px;
+  height: 412px; /* fits the weather card with its hourly strip */
   overflow: hidden;
 }
 .card[hidden] { display: none; }
@@ -548,14 +548,11 @@ button.danger { background: var(--down); color: #fff; }
 .wx-tile-temp { font-size: 1.3rem; font-weight: 500; margin: 2px 0 1px; font-variant-numeric: tabular-nums; }
 .wx-tile-temp .muted { font-size: 1rem; font-weight: 400; }
 .wx-tile .small { line-height: 1.35; }
-.wx-hours { display: none; } /* only on the phone (below) */
-@media (max-width: 699px) {
-  .wx-hours { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin-top: 12px; padding: 10px 4px; background: var(--card-2); border-radius: 14px; }
-  .wx-hour { display: flex; flex-direction: column; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
-  .wx-h-t { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
-  .wx-h-v { font-size: 0.9rem; font-weight: 500; }
-  #card-weather .wx2 { padding-top: 12px; }
-}
+.wx-hours { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin-top: 12px; padding: 10px 4px; background: var(--card-2); border-radius: 14px; }
+.wx-hour { display: flex; flex-direction: column; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.wx-h-t { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+.wx-h-v { font-size: 0.9rem; font-weight: 500; }
+#card-weather .wx2 { padding-top: 12px; }
 .wx-tile .wx-rain { color: var(--accent); font-weight: 600; }
 .wx-warn {
   margin-bottom: 8px; padding: 6px 12px; border-radius: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -743,7 +740,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .grid { grid-auto-flow: row dense; } /* small cards fill the gaps a wide card leaves */
   .grid > .card.card-wide { grid-column: span 6; }
   .grid > .card.card-wide.half { grid-column: span 3; }
-  #card-food, #card-news { height: 760px; } /* the rest scrolls inside */
+  #card-food, #card-news { height: 844px; } /* two rows of normal cards; the rest scrolls inside */
   #card-food:not(.half), #card-news:not(.half) { height: 640px; }
   #card-food .cardbody { overflow: hidden; }
   #card-food .food { height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
