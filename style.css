@@ -427,6 +427,19 @@ button.danger { background: var(--down); color: #fff; }
 .nbar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
 .nbar-fill.done { background: var(--up); }
 .nbar-fill.over { background: var(--warn); }
+.nbar-fill.high { background: var(--down); }
+.nbar-h.done { color: var(--up); }
+.nbar-h.over { color: var(--warn); }
+.nbar-h.high { color: var(--down); font-weight: 600; }
+.mgrid { display: grid; grid-template-columns: auto repeat(7, 1fr); gap: 3px; font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+.mg-d { text-align: center; color: var(--muted); }
+.mg-l { font-weight: 600; padding-right: 6px; align-self: center; }
+.mg-c { text-align: center; padding: 4px 0; border-radius: 6px; background: var(--fill); white-space: nowrap; }
+.mg-c.ok { background: color-mix(in srgb, var(--up) 24%, transparent); }
+.mg-c.low { background: color-mix(in srgb, var(--warn) 30%, transparent); }
+.mg-c.high { background: color-mix(in srgb, var(--down) 26%, transparent); }
+.mg-c.none, .mg-c.unk { color: var(--muted); }
+.mg-key { margin: 5px 0 2px; }
 .goal { margin-bottom: 4px; }
 .goal-line { margin: 5px 0 0; line-height: 1.35; }
 .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }

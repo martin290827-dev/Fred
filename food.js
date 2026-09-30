@@ -70,10 +70,11 @@ async function estimateEntry(e) {
 /* ---------- numbers ---------- */
 
 function dayTotals(d) {
-  const t = { kcal: 0, p: 0, c: 0, f: 0, n: 0 };
+  const t = { kcal: 0, p: 0, c: 0, f: 0, n: 0, m: 0 };
   for (const e of food) {
     if (e.at.slice(0, 10) !== d) continue;
     t.n++;
+    if (e.p == null) t.m++; // no protein/carbs/fat known for this entry
     t.kcal += e.kcal || 0; t.p += e.p || 0; t.c += e.c || 0; t.f += e.f || 0;
   }
   return t;
@@ -155,13 +156,72 @@ function measuredMaintenance() {
   return { kcal: Math.round((avg - slope * 7700) / 10) * 10, perWeek: slope * 7 };
 }
 
-function progressBar(label, val, target, unit, warnOver) {
+/* In range = share of the target. Protein is a minimum (more is fine),
+   calories, carbs and fat are upper limits with some room below. */
+const RANGES = { kcal: [0.9, 1.1], p: [0.9, 1.5], c: [0.7, 1.15], f: [0.75, 1.15] };
+const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g']];
+
+function macroStatus(key, val, target) {
+  if (!target) return 'none';
+  const r = val / target;
+  return r < RANGES[key][0] ? 'low' : r > RANGES[key][1] ? 'high' : 'ok';
+}
+
+// Today's bar: how much is left, or how much too much.
+function progressBar(key, label, val, target, unit) {
   const pct = target ? Math.min(100, (val / target) * 100) : 0;
-  const over = target && val > target;
+  const st = macroStatus(key, val, target);
+  let hint, cls = '';
+  if (key === 'p') {
+    if (val >= target * RANGES.p[0]) { hint = 'reached'; cls = 'done'; }
+    else hint = fmtN(target - val) + ' ' + unit + ' to go';
+    if (st === 'high') { hint = fmtN(val - target) + ' ' + unit + ' over'; cls = 'over'; }
+  } else if (val > target) {
+    hint = fmtN(val - target) + ' ' + unit + ' over';
+    cls = st === 'high' ? 'high' : 'over';
+  } else hint = fmtN(target - val) + ' ' + unit + ' left';
   return el('div', { class: 'nbar' },
     el('div', { class: 'nbar-top' }, el('span', { class: 'nbar-l' }, label),
-      el('span', { class: 'nbar-v' }, fmtN(val) + (target ? ' / ' + fmtN(target) : '') + ' ' + unit)),
-    el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill' + (over && warnOver ? ' over' : '') + (!warnOver && val >= target ? ' done' : ''), style: 'width:' + pct.toFixed(1) + '%' })));
+      el('span', { class: 'nbar-v' }, fmtN(val) + ' / ' + fmtN(target) + ' ' + unit,
+        el('span', { class: 'nbar-h ' + cls }, ' · ' + hint))),
+    el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill ' + cls, style: 'width:' + pct.toFixed(1) + '%' })));
+}
+
+// Last 7 full days: one row per nutrient, one cell per day, marked too low / in range / too high.
+function weekCheck() {
+  const tg = targets();
+  const days = lastDays(8).slice(0, 7); // today is not finished, so it does not count yet
+  const tot = days.map(dayTotals);
+  if (!tot.some((t) => t.n)) return el('p', { class: 'muted small' }, 'Log a few days to see how you did against your targets.');
+  const MARK = { low: '↓', high: '↑', ok: '', none: '', unk: '' };
+  const grid = el('div', { class: 'mgrid', role: 'table', 'aria-label': 'Last 7 days against targets' });
+  grid.append(el('span', {}), ...days.map((d) => el('span', { class: 'mg-d' }, new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2))));
+  const notes = [];
+  for (const [key, label, unit] of NUTRI) {
+    if (!tg[key]) continue;
+    grid.append(el('span', { class: 'mg-l' }, label));
+    const count = { low: 0, high: 0 };
+    const vals = [];
+    tot.forEach((t, i) => {
+      let st = 'none', txt = '–';
+      if (t.n) {
+        const val = t[key];
+        st = key !== 'kcal' && t.m ? 'unk' : macroStatus(key, val, tg[key]);
+        txt = key === 'kcal' ? (val / 1000).toFixed(1) + 'k' : fmtN(val);
+        if (st === 'low' || st === 'high') count[st]++;
+        if (st !== 'unk') vals.push(val);
+      }
+      const why = { low: 'too low', high: 'too high', ok: 'in range', unk: 'some entries without protein/carbs/fat', none: 'nothing logged' }[st];
+      grid.append(el('span', { class: 'mg-c ' + st, title: shortDay(days[i]) + ' · ' + label + ': ' + (t.n ? fmtN(t[key]) + ' ' + unit + ' of ' + fmtN(tg[key]) + ' · ' : '') + why }, txt + MARK[st]));
+    });
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    const n = vals.length;
+    if (count.low && count.low >= count.high) notes.push(label + ': too low on ' + count.low + ' of ' + n + ' days (Ø ' + fmtN(avg) + ' of ' + fmtN(tg[key]) + ' ' + unit + ')');
+    else if (count.high) notes.push(label + ': too high on ' + count.high + ' of ' + n + ' days (Ø ' + fmtN(avg) + ' of ' + fmtN(tg[key]) + ' ' + unit + ')');
+  }
+  return el('div', {}, grid,
+    el('div', { class: 'muted small mg-key' }, '↓ too low · ↑ too high · green = in range'),
+    ...(notes.length ? notes : ['All within range. Well done.']).map((l) => el('p', { class: 'small goal-line' }, l)));
 }
 
 function goalBlock() {
@@ -309,10 +369,7 @@ function renderFood() {
     el('div', { class: 'food-kcal' }, fmtN(t.kcal), el('span', { class: 'food-unit' }, ' / ' + fmtN(tg.kcal) + ' kcal')),
     el('div', { class: 'muted small' }, [left >= 0 ? fmtN(left) + ' kcal left today' : fmtN(-left) + ' kcal over target', avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : ''].filter(Boolean).join(' · ')),
     el('div', { class: 'nbars' },
-      progressBar('Calories', t.kcal, tg.kcal, 'kcal', true),
-      tg.p ? progressBar('Protein', t.p, tg.p, 'g', false) : '',
-      tg.c !== null ? progressBar('Carbs', t.c, tg.c, 'g', true) : '',
-      tg.f ? progressBar('Fat', t.f, tg.f, 'g', true) : ''));
+      ...NUTRI.filter(([k]) => tg[k]).map(([k, label, unit]) => progressBar(k, label, t[k], tg[k], unit))));
 
   const ul = el('ul', { class: 'list food-list' });
   if (!list.length) ul.append(el('li', { class: 'muted' }, 'Nothing logged today yet.'));
@@ -343,6 +400,8 @@ function renderFood() {
   const trends = el('div', { class: 'food-col food-trends' },
     el('div', { class: 'food-sub' }, 'Goal'),
     goalBlock(),
+    el('div', { class: 'food-sub' }, 'Last 7 days vs targets'),
+    weekCheck(),
     el('div', { class: 'food-sub' }, 'Calories · last 30 days'),
     kcalChart(days30),
     el('div', { class: 'muted small food-stats' },
