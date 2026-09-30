@@ -910,3 +910,40 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .data-line { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 0; font-size: 0.78rem; }
 .dl-state { font-weight: 600; color: var(--warn); }
 .dl-state.ok { color: var(--c-green); }
+
+/* ---------- Health: nutrition tips ---------- */
+.food { --c-yellow: #ffd60a; }
+:root[data-theme="light"] .food { --c-yellow: #b58900; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .food { --c-yellow: #b58900; } }
+.fh-yellow { color: var(--c-yellow); }
+.tip-refresh { margin-left: auto; width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; background: var(--card); color: var(--accent); font-size: 0.95rem; box-shadow: none; }
+.tips { list-style: none; margin: 0; padding: 0; overflow: auto; scrollbar-width: thin; }
+.tip { display: flex; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--line); }
+.tip:last-child { border-bottom: 0; }
+.tip-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--c-yellow) 25%, transparent); color: var(--text); font-size: 0.75rem; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.tip-b { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tip-t { font-weight: 600; font-size: 0.88rem; }
+.tip-x { font-size: 0.84rem; color: var(--muted); line-height: 1.35; }
+#health .food-weight { margin-bottom: 10px; }
+#health .wt-v { font-size: 1.5rem; }
+.kpis { gap: 6px; margin: 10px 0 2px; }
+.kpi { padding: 6px 10px; }
+.kpi-v { font-size: 1.05rem; }
+#health .goal-note { margin-top: 6px !important; }
+#health .fpanel:last-child .tips { flex: 1; }
+.kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpi-v { font-size: 1rem; }
+.kpi-s { font-size: 0.68rem; line-height: 1.25; }
+.goal-ends .lost { color: var(--c-green); font-weight: 700; }
+.food-col > .fpanel { flex-shrink: 0; }
+.food-col > .fpanel:last-child { flex: 1 0 auto; }
+/* Health: weight on one line, so goal and two tips fit */
+#health .food-weight .grow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#health .food-weight { margin-bottom: 8px; }
+.data-line:empty { display: none; }
+.tip { padding: 5px 0; gap: 8px; }
+.tip-x { font-size: 0.8rem; line-height: 1.3; }
+.tip-t { font-size: 0.85rem; }
+.tip-n { width: 20px; height: 20px; font-size: 0.7rem; }
+#health .fh { margin-bottom: 6px; }
+#health .fpanel { padding: 10px 12px; }

@@ -33,7 +33,8 @@ function manualKcal(text) {
   return m ? parseInt(m[1], 10) : null;
 }
 
-async function aiEstimate(text) {
+// One call to Claude; returns the JSON object in the reply.
+async function aiJSON(system, text, maxTokens) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -42,12 +43,16 @@ async function aiEstimate(text) {
       'anthropic-dangerous-direct-browser-access': 'true', // the key is yours and stays in this browser
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model: AI_MODEL, max_tokens: 700, system: AI_SYSTEM, messages: [{ role: 'user', content: text }] }),
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens || 700, system, messages: [{ role: 'user', content: text }] }),
   });
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
   const out = (j.content || []).map((x) => x.text || '').join('');
-  const json = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+  return JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+}
+
+async function aiEstimate(text) {
+  const json = await aiJSON(AI_SYSTEM, text, 700);
   const n = (v) => Math.max(0, Math.round(Number(v) || 0));
   return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat) };
 }
@@ -66,6 +71,62 @@ async function estimateEntry(e) {
   delete e.busy;
   saveFood();
   renderFood();
+}
+
+/* ---------- nutrition tips: once a day from your last 7 days (Claude, your own key) ---------- */
+let tips = store.get('tips', { day: '', list: [], err: '' });
+let tipsBusy = false;
+
+const TIPS_SYSTEM = 'You are a friendly, evidence-based nutrition coach. You get one adult\'s food diary for the last days, ' +
+  'the daily targets and the goal (lose weight while keeping muscle). Give 5 short, practical tips based on what this person ' +
+  'actually eats: name the real foods and drinks from the diary, suggest concrete swaps or additions with rough numbers ' +
+  '(kcal or grams of protein). Start with the tip that has the biggest effect. No medical advice, no moralizing. ' +
+  'Reply with JSON only: {"tips":[{"title":"max 5 words","text":"max 22 words"}]}';
+
+function tipsInput() {
+  const tg = targets();
+  const days = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n);
+  const lines = days.map((d) => {
+    const t = dayTotals(d);
+    const meals = food.filter((e) => e.at.slice(0, 10) === d).sort((a, b) => a.at.localeCompare(b.at))
+      .map((e) => e.at.slice(11, 16) + ' ' + e.text + (e.kcal != null ? ' (' + e.kcal + ' kcal' + (e.p != null ? ', P' + e.p + ' C' + e.c + ' F' + e.f : '') + ')' : ''));
+    return d + ': total ' + Math.round(t.kcal) + ' kcal, protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g\n  ' + meals.join('\n  ');
+  });
+  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
+    'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + '\n' +
+    'Diary:\n' + lines.join('\n');
+}
+
+async function loadTips(force) {
+  const today = toDateStr(new Date());
+  if (tipsBusy || !anthropicKey) return;
+  if (!force && tips.day === today && tips.list.length) return;
+  const logged = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n).length;
+  if (logged < 2) return; // too little to say something useful
+  tipsBusy = true;
+  renderFood();
+  try {
+    const j = await aiJSON(TIPS_SYSTEM, tipsInput(), 900);
+    tips = { day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ title: String(t.title || ''), text: String(t.text) })), err: '' };
+  } catch (e) {
+    tips = Object.assign({}, tips, { err: e.message });
+  }
+  tipsBusy = false;
+  store.set('tips', tips);
+  renderFood();
+}
+
+function tipsBlock() {
+  if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
+  const logged = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n).length;
+  if (!tips.list.length) {
+    return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : '');
+  }
+  const ul = el('ul', { class: 'tips' }, ...tips.list.map((t, i) => el('li', { class: 'tip' },
+    el('span', { class: 'tip-n' }, String(i + 1)),
+    el('span', { class: 'tip-b' }, t.title ? el('span', { class: 'tip-t' }, t.title) : '', el('span', { class: 'tip-x' }, t.text)))));
+  fitRows(ul, 2); // two tips; the rest scrolls
+  return ul;
 }
 
 /* ---------- numbers ---------- */
@@ -238,6 +299,7 @@ const FICONS = {
   check: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
   bars: 'M5 20V10M10 20V4M15 20v-7M20 20V8',
   line: 'M3 17l6-6 4 4 8-8M3 21h18',
+  bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z',
 };
 
 // Health-style card: colored icon and title, optional caption on the right.
@@ -313,24 +375,18 @@ function goalBlock() {
   }
   const tile = (label, value, sub, cls) => el('div', { class: 'kpi ' + (cls || '') }, el('div', { class: 'kpi-l' }, label), el('div', { class: 'kpi-v' }, value), el('div', { class: 'kpi-s' }, sub));
   const kpis = el('div', { class: 'kpis' },
-    tile('Lost', fmtKg(done) + ' kg', 'of ' + fmtKg(need) + ' kg', 'k-green'),
-    tile('Pace', pace !== null ? (pace >= 0 ? '−' : '+') + Math.abs(pace).toFixed(2) + ' kg' : '–', measured !== null ? 'per week, last ' + trendWindow().length / 7 + ' weeks' : expected !== null ? 'per week, expected' : 'needs Settings'),
-    tile('Goal date', when, left > 0 ? fmtKg(left) + ' kg to go' : 'well done'),
-    tile('For −0.5 kg/wk', maint ? fmtN(Math.round((maint - 550) / 50) * 50) : '–', 'kcal per day', 'k-pink'));
-  const note = maint
-    ? 'Maintenance ≈ ' + fmtN(maint) + ' kcal' + (mm ? ' (from your data)' : ' (estimate)') + '. Your target: ' + fmtN(kcal) + ' kcal.'
-    : 'Add height, birth year, sex and activity in Settings for your maintenance calories.';
+    tile('Pace', pace !== null ? (pace >= 0 ? '\u2212' : '+') + Math.abs(pace).toFixed(2) : '\u2013', measured !== null ? 'kg/wk \u00b7 ' + trendWindow().length / 7 + ' wks' : expected !== null ? 'kg/week, expected' : 'needs Settings'),
+    tile('Goal', when, left > 0 ? fmtKg(left) + ' kg to go' : 'well done'),
+    tile('For \u22120.5/wk', maint ? fmtN(Math.round((maint - 550) / 50) * 50) : '\u2013', maint ? 'kcal/day' : 'Settings', 'k-pink'));
   const ds = dataStatus();
   const missing = [ds.needW ? ds.needW + ' more weigh-in' + (ds.needW > 1 ? 's' : '') : '', ds.needF ? ds.needF + ' more logged day' + (ds.needF > 1 ? 's' : '') : ''].filter(Boolean).join(' and ');
-  const data = el('div', { class: 'data-line' },
-    el('span', { class: 'dl-state ' + (ds.ok ? 'ok' : '') }, ds.ok ? '\u2713 Measured from your data' : 'Estimated until ' + missing),
-    el('span', { class: 'muted' }, 'Last weigh-in ' + (ds.last ? shortDay(ds.last.d) : '\u2013') + ' \u00b7 food logged ' + ds.logged14 + ' of 14 days'));
+  const data = el('div', { class: 'data-line', title: 'Food logged ' + ds.logged14 + ' of the last 14 days' + (maint ? ' \u00b7 maintenance \u2248 ' + fmtN(maint) + ' kcal' : '') },
+    ds.ok ? '' : el('span', { class: 'dl-state' }, 'Estimated \u00b7 needs ' + missing));
   return el('div', { class: 'goal' },
     el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
-    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal) + ' kg')),
+    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start)), el('span', { class: 'lost' }, '\u2212' + fmtKg(done) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal))),
     kpis,
-    data,
-    el('p', { class: 'muted small goal-line goal-note' }, note));
+    data);
 }
 
 /* ---------- Settings: nutrition goal ---------- */
@@ -521,7 +577,7 @@ function renderFood() {
       el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) + (dw !== null ? ' \u00b7 ' : '') : 'Enter your weight in Settings',
         dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')));
 
-  const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %', goalBlock());
+  const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %' + (dataStatus().ok ? ' \u00b7 \u2713 measured' : ''), goalBlock());
   // Trends: one range for all charts, like Apple Health (W / M / 3M)
   const n = trendRange;
   const daysN = lastDays(n);
@@ -545,7 +601,11 @@ function renderFood() {
   const wsvg = trendCards[3] && trendCards[3].querySelector && trendCards[3].querySelector('svg.fchart');
   const wcap = trendCards[3] && trendCards[3].querySelector && trendCards[3].querySelector('.w-cap');
   if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
-  $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard));
+  const refresh = el('button', { type: 'button', class: 'tip-refresh', title: 'New tips', 'aria-label': 'New tips', onclick: () => loadTips(true) }, tipsBusy ? '\u2026' : '\u21bb');
+  const tipsCard = hcard('bulb', 'yellow', 'Tips', '', tipsBlock());
+  tipsCard.querySelector('.fh').append(refresh);
+  goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
+  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
   fitRows(ul, 3); // the last three meals; the rest scrolls
   requestAnimationFrame(() => {
@@ -655,6 +715,8 @@ async function foodMirror() {
 
 function initFood() {
   renderFood();
+  setTimeout(() => loadTips(false), 1500); // once a day
+  setInterval(() => { if (!document.hidden) loadTips(false); }, 30 * 60000);
   let rt = null; // new size of the window: draw again, so the charts fill the cards
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderFood, 250); });
   // new day at midnight, and keep "today" current
