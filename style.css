@@ -393,11 +393,12 @@ button.danger { background: var(--down); color: #fff; }
 /* ---------- food diary (wide card: today left, trends right) ---------- */
 /* Food, Health and Trends: as tall as their content; in a row they share the height of the tallest,
    and the last section of each fills the rest (see growChart in food.js) */
-#card-food, #card-health, #card-trends { height: auto; max-height: 760px; }
+#card-food, #card-health, #card-trends { height: auto; max-height: none; }
+#card-food { align-self: start; } /* Food keeps its own height; Health and Trends copy it (food.js) */
 #food, #health, #trends { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 #food > .food-col, #health > .food-col, #trends > .food-col { flex: 1; min-height: 0; }
 .food-col > .fpanel:last-child { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-#food .fpanel:last-child .food-list { flex: 1; max-height: none; min-height: 120px; overflow: auto; }
+#food .food-list { overflow: auto; scrollbar-width: thin; }
 .food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .food-col { min-width: 0; }
 .food-add { margin: 0 0 12px; }
@@ -740,7 +741,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .food-list li.meal { padding: 7px 0; gap: 8px; }
 .meal .food-time { width: 40px; padding-top: 0; }
 .meal-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
-.fpanel .food-list { max-height: 190px; overflow: auto; scrollbar-width: thin; }
+.fpanel .food-list { overflow: auto; scrollbar-width: thin; }
 @media (min-width: 1000px) {
   /* a wide card alone takes the full row; two wide cards side by side take half each (class set in app.js) */
   .grid { grid-auto-flow: row dense; } /* small cards fill the gaps a wide card leaves */

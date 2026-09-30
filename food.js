@@ -479,9 +479,16 @@ function renderFood() {
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
   $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard, trendCard));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, weekCard, kcalCard));
+  fitRows(ul, 3); // the last three meals; the rest scrolls
   requestAnimationFrame(() => {
-    growChart($('health'), (h) => weightChart(days90, h));
-    growChart($('trends'), (h) => kcalChart(days30, h));
+    // Food sets the height; Health and Trends take the same height (not on the phone, where cards stack)
+    const wide = window.matchMedia('(min-width: 700px)').matches;
+    const fh = $('card-food').offsetHeight;
+    for (const id of ['card-health', 'card-trends']) $(id).style.height = wide ? fh + 'px' : '';
+    requestAnimationFrame(() => {
+      growChart($('health'), (h) => weightChart(days90, h));
+      growChart($('trends'), (h) => kcalChart(days30, h));
+    });
   });
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
