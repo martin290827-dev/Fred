@@ -758,3 +758,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .hstat-v { font-size: 1.05rem; }
   .macros { margin-top: 12px; }
 }
+
+/* notes: microphone button, red while listening */
+#notes-mic.rec { background: var(--down); color: #fff; animation: micpulse 1.2s ease-in-out infinite; }
+@keyframes micpulse { 50% { opacity: 0.6; } }
+@media (prefers-reduced-motion: reduce) { #notes-mic.rec { animation: none; } }

@@ -1084,6 +1084,57 @@ function initNotes() {
   window.addEventListener('beforeunload', () => { if (notesTimer) store.set('notes', box.value); });
   $('notes-share').addEventListener('click', shareNote);
   $('notes-clear').addEventListener('click', clearNote);
+  $('notes-mic').addEventListener('click', toggleDictation);
+}
+
+/* Dictation into the note. Uses the browser's speech recognition where it exists (Chrome, Safari).
+   Where it does not (e.g. Brave, some home-screen apps), the note opens for typing and the keyboard's own microphone can be used. */
+let dictation = null;
+
+function insertIntoNote(text) {
+  const box = $('notes');
+  const at = box.selectionEnd ?? box.value.length;
+  const before = box.value.slice(0, at);
+  const sep = before && !/\s$/.test(before) ? ' ' : '';
+  box.value = before + sep + text + box.value.slice(at);
+  const pos = at + sep.length + text.length;
+  box.setSelectionRange(pos, pos);
+  box.dispatchEvent(new Event('input')); // saves as usual
+}
+
+function toggleDictation() {
+  const btn = $('notes-mic');
+  const st = $('notes-status');
+  if (dictation) { dictation.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    $('notes').focus();
+    st.textContent = 'Use keyboard 🎤';
+    return;
+  }
+  const rec = new SR();
+  rec.lang = navigator.language || 'de-AT';
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.onresult = (ev) => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (ev.results[i].isFinal) insertIntoNote(ev.results[i][0].transcript.trim());
+    }
+  };
+  rec.onerror = (ev) => {
+    st.textContent = ev.error === 'not-allowed' ? 'Microphone not allowed' : ev.error === 'network' ? 'Dictation needs internet' : 'Dictation stopped';
+  };
+  rec.onend = () => { dictation = null; btn.classList.remove('rec'); btn.setAttribute('aria-pressed', 'false'); };
+  try {
+    rec.start();
+    dictation = rec;
+    btn.classList.add('rec');
+    btn.setAttribute('aria-pressed', 'true');
+    st.textContent = 'Listening…';
+  } catch (e) {
+    $('notes').focus();
+    st.textContent = 'Use keyboard 🎤';
+  }
 }
 
 // Clear button: empties the note at once; "Undo" brings it back for 10 seconds.
