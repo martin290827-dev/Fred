@@ -774,3 +774,60 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 @media (max-width: 700px) { .jumpbar button { padding: 4px 6px 4px 5px; } .jumpbar button span.jl { display: none; } }
 .notes-hint { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); font-size: 0.85rem; line-height: 1.35; }
 .notes-hint[hidden] { display: none; }
+
+/* ---------- food: Apple Fitness / Health look ---------- */
+.food { --c-body: #bf5af2; --c-green: #30d158; --c-orange: #ff9f0a; }
+:root[data-theme="light"] .food { --c-body: #af52de; --c-green: #248a3d; --c-orange: #c93400; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .food { --c-body: #af52de; --c-green: #248a3d; --c-orange: #c93400; } }
+.food .num, .lg-v, .goal-num, .wt-v, .food-kc { font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+/* summary: stacked rings + legend in ring colors */
+.fsum { display: flex; align-items: center; gap: 20px; padding: 6px 2px 2px; }
+.fsum-rings { flex: none; width: 150px; height: 150px; }
+.srings { display: block; width: 100%; height: 100%; }
+.srings .ring-track { opacity: 0.18; }
+.srings .ring-lap { filter: brightness(0.72) drop-shadow(0 0 2px rgba(0, 0, 0, 0.5)); }
+.lgd { display: grid; gap: 7px; min-width: 0; flex: 1; }
+.lg-l { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; }
+.lg-v { font-size: 1.28rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lg-t { font-weight: 600; }
+.lg-u { font-size: 0.68rem; font-weight: 700; margin-left: 2px; letter-spacing: 0.03em; }
+.lg-h { font-size: 0.74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lg-h.done { color: var(--up); font-weight: 600; }
+.lg-h.over { color: var(--warn); font-weight: 600; }
+.lg-h.high { color: var(--down); font-weight: 600; }
+.lg-kcal .lg-l, .lg-kcal .lg-v { color: var(--c-kcal); }
+.lg-p .lg-l, .lg-p .lg-v { color: var(--c-p); }
+.lg-c .lg-l, .lg-c .lg-v { color: var(--c-c); }
+.lg-f .lg-l, .lg-f .lg-v { color: var(--c-f); }
+.fsum-foot { margin: 8px 2px 0; }
+.fsum-foot:empty { display: none; }
+/* section cards with a colored icon and title, like Apple Health */
+.fh { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; }
+.fh-i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.fh-c { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+.fh-pink { color: var(--c-kcal); } .fh-purple { color: var(--c-body); } .fh-green { color: var(--c-green); } .fh-orange { color: var(--c-orange); }
+.fpanel { border-radius: 16px; padding: 12px 14px; }
+/* charts in the section color */
+.food .fchart .bar rect:not(.hit) { fill: var(--c-kcal); }
+.food .fchart .tgt { stroke: var(--muted); stroke-dasharray: 3 4; stroke-width: 1.2; opacity: 0.9; }
+.food .fchart .tgtlbl { fill: var(--muted); }
+.food .fchart .wline { stroke: var(--c-body); }
+.food .fchart .wdot circle:not(.hit) { fill: var(--c-body); }
+.goal .nbar-fill.done { background: var(--c-green); }
+/* meals: inset grouped list */
+.fpanel .food-list li { border-bottom: 0.5px solid var(--line); }
+.fpanel .food-list li:last-child { border-bottom: 0; }
+.food-kc { font-weight: 600; }
+@media (max-width: 420px) {
+  .fsum { gap: 14px; }
+  .fsum-rings { width: 128px; height: 128px; }
+  .lg-v { font-size: 1.12rem; }
+}
+@media (min-width: 1000px) { .fh .fh-t { font-size: 0.92rem; } }
+.meal-t { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+@media (min-width: 1000px) {
+  .fsum { gap: 32px; padding: 10px 4px 4px; }
+  .fsum-rings { width: 176px; height: 176px; }
+  .lgd { grid-template-columns: 1fr 1fr; gap: 18px 24px; }
+  .lg-v { font-size: 1.45rem; }
+}

@@ -192,6 +192,42 @@ function ring(val, target, cls, size, stroke) {
   return svg;
 }
 
+// Apple-Watch-style stacked rings: calories outside, then protein, carbs, fat. Past 100 % a darker lap starts.
+function stackRings(parts, size) {
+  const stroke = Math.round(size * 0.1), gap = 3, c = size / 2;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, class: 'srings', 'aria-hidden': 'true' });
+  parts.forEach(([k, val, target], i) => {
+    const r = c - stroke / 2 - i * (stroke + gap), C = 2 * Math.PI * r, frac = target ? val / target : 0;
+    const g = svgEl('g', { class: 'r-' + k });
+    const arc = (f, extra) => svgEl('circle', { cx: c, cy: c, r, 'stroke-width': stroke, class: 'ring-arc' + extra,
+      'stroke-dasharray': (Math.min(f, 1) * C).toFixed(2) + ' ' + C.toFixed(2), transform: 'rotate(-90 ' + c + ' ' + c + ')' });
+    g.append(svgEl('circle', { cx: c, cy: c, r, 'stroke-width': stroke, class: 'ring-track' }));
+    if (frac > 0.005) g.append(arc(frac, ''));
+    if (frac > 1) g.append(arc(frac - 1, ' ring-lap'));
+    svg.append(g);
+  });
+  return svg;
+}
+
+// Small line icons for the section titles (24x24, stroke).
+const FICONS = {
+  meals: 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3',
+  weight: 'M5 7h14l2 13H3zM9 7a3 3 0 0 1 6 0M12 11l2 3',
+  goal: 'M5 21V4M5 4h11l-2 4 2 4H5',
+  check: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
+  bars: 'M5 20V10M10 20V4M15 20v-7M20 20V8',
+  line: 'M3 17l6-6 4 4 8-8M3 21h18',
+};
+
+// Health-style card: colored icon and title, optional caption on the right.
+function hcard(icon, tone, title, caption, ...kids) {
+  const svg = svgEl('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', class: 'fh-i' });
+  svg.append(svgEl('path', { d: FICONS[icon] }));
+  return el('section', { class: 'fpanel' },
+    el('div', { class: 'fh fh-' + tone }, svg, el('span', { class: 'fh-t' }, title), caption ? el('span', { class: 'fh-c' }, caption) : ''),
+    ...kids);
+}
+
 const hstat = (label, value, cls) => el('div', { class: 'hstat' }, el('div', { class: 'hstat-l' }, label), el('div', { class: 'hstat-v ' + (cls || '') }, value));
 const panel = (title, ...kids) => el('section', { class: 'fpanel' }, el('div', { class: 'food-sub' }, title), ...kids);
 
@@ -373,23 +409,17 @@ function renderFood() {
 
   const tg = targets();
   const left = tg.kcal - t.kcal;
-  const hero = el('div', { class: 'food-hero' },
-    el('div', { class: 'ring-wrap' }, ring(t.kcal, tg.kcal, 'r-kcal', 128, 14),
-      el('div', { class: 'ring-mid' }, el('div', { class: 'ring-num' + (left < 0 ? ' over' : '') }, fmtN(Math.abs(left))), el('div', { class: 'ring-cap' }, left < 0 ? 'kcal over' : 'kcal left'))),
-    el('div', { class: 'hero-stats' },
-      hstat('Eaten', fmtN(t.kcal) + ' kcal'),
-      hstat('Target', fmtN(tg.kcal) + ' kcal'),
-      avg7 ? hstat('7-day average', fmtN(avg7) + ' kcal', macroStatus('kcal', avg7, tg.kcal) === 'high' ? 'high' : '') : ''));
-  const macros = tg.p
-    ? el('div', { class: 'macros' }, ...NUTRI.slice(1).map(([k, label, unit]) => {
-      const h = macroHint(k, t[k], tg[k], unit);
-      return el('div', { class: 'macro m-' + k },
-        el('div', { class: 'ring-wrap' }, ring(t[k], tg[k], 'r-' + k, 64, 8), el('div', { class: 'ring-mid' }, el('span', { class: 'macro-num' }, fmtN(t[k])))),
-        el('div', { class: 'macro-l' }, label),
-        el('div', { class: 'macro-t' }, 'of ' + fmtN(tg[k]) + ' ' + unit),
-        el('div', { class: 'macro-h ' + h.cls }, h.hint));
-    }))
-    : el('p', { class: 'muted small' }, 'Enter your weight below to get protein, carb and fat targets.');
+  const parts = NUTRI.filter(([k]) => tg[k]).map(([k]) => [k, t[k], tg[k]]);
+  const legend = el('div', { class: 'lgd' }, ...NUTRI.filter(([k]) => tg[k]).map(([k, label, unit]) => {
+    const h = macroHint(k, t[k], tg[k], unit);
+    return el('div', { class: 'lg lg-' + k },
+      el('div', { class: 'lg-l' }, label),
+      el('div', { class: 'lg-v' }, fmtN(t[k]), el('span', { class: 'lg-t' }, '/' + fmtN(tg[k])), el('span', { class: 'lg-u' }, unit.toUpperCase())),
+      el('div', { class: 'lg-h ' + h.cls }, h.hint));
+  }));
+  const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
+  const macros = el('div', { class: 'muted small fsum-foot' },
+    tg.p ? (avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : '') : 'Enter your weight below to get protein, carb and fat targets.');
   const head = el('div', { class: 'food-today' }, hero, macros);
 
   const ul = el('ul', { class: 'list food-list' });
@@ -422,17 +452,17 @@ function renderFood() {
   const wNow = weightOn(today);
   const w30 = weightOn(days30[0]);
   const trends = el('div', { class: 'food-col food-trends' },
-    panel('Goal', goalBlock()),
-    panel('Last 7 days vs targets', weekCheck()),
-    panel('Calories · last 30 days', kcalChart(days30),
+    hcard('goal', 'green', 'Goal', '\u2212' + (nutri.goalPct || 10) + ' %', goalBlock()),
+    hcard('check', 'orange', 'Last 7 days', 'vs targets', weekCheck()),
+    hcard('bars', 'pink', 'Calories', '30 days', kcalChart(days30),
       el('div', { class: 'muted small food-stats' },
         [avg7 ? 'Ø 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? 'Ø 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' · '))),
-    panel('Weight trend', weightChart(days90),
+    hcard('line', 'purple', 'Weight', 'trend', weightChart(days90),
       el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
         ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '\u2212') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : '')));
 
   box.replaceChildren(
-    el('div', { class: 'food-col' }, form, head, panel('Meals today', ul), panel('Weight', wForm)),
+    el('div', { class: 'food-col' }, form, head, hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul), hcard('weight', 'purple', 'Weight', 'today', wForm)),
     trends);
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
