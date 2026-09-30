@@ -1107,11 +1107,7 @@ function toggleDictation() {
   const st = $('notes-status');
   if (dictation) { dictation.stop(); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    $('notes').focus();
-    st.textContent = 'Use keyboard 🎤';
-    return;
-  }
+  if (!SR || store.get('noWebSpeech', false)) { systemDictation(); return; }
   const rec = new SR();
   rec.lang = navigator.language || 'de-AT';
   rec.continuous = true;
@@ -1122,7 +1118,9 @@ function toggleDictation() {
     }
   };
   rec.onerror = (ev) => {
-    st.textContent = ev.error === 'not-allowed' ? 'Microphone not allowed' : ev.error === 'network' ? 'Dictation needs internet' : 'Dictation stopped';
+    // Brave and some others have the API but block the speech service behind it: use the system dictation from now on
+    if (ev.error === 'network' || ev.error === 'service-not-allowed') { store.set('noWebSpeech', true); systemDictation(); return; }
+    st.textContent = ev.error === 'not-allowed' ? 'Microphone not allowed' : 'Dictation stopped';
   };
   rec.onend = () => { dictation = null; btn.classList.remove('rec'); btn.setAttribute('aria-pressed', 'false'); };
   try {
@@ -1132,9 +1130,18 @@ function toggleDictation() {
     btn.setAttribute('aria-pressed', 'true');
     st.textContent = 'Listening…';
   } catch (e) {
-    $('notes').focus();
-    st.textContent = 'Use keyboard 🎤';
+    systemDictation();
   }
+}
+
+// No speech recognition in this browser: open the note and point to the device's own dictation.
+function systemDictation() {
+  const box = $('notes');
+  box.focus();
+  box.setSelectionRange(box.value.length, box.value.length);
+  const mac = /Mac/.test(navigator.platform) && !('ontouchend' in document);
+  $('notes-status').textContent = mac ? 'Press fn twice (or 🎤 key) to dictate' : 'Tap 🎤 on the keyboard';
+  setTimeout(() => { if (/dictate|keyboard/.test($('notes-status').textContent)) $('notes-status').textContent = ''; }, 8000);
 }
 
 // Clear button: empties the note at once; "Undo" brings it back for 10 seconds.
