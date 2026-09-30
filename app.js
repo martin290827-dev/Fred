@@ -1229,7 +1229,6 @@ function openSettings() {
   $('set-twelve').value = twelveKey;
   $('set-anthropic').value = anthropicKey;
   nutriFillSettings();
-  healthFillSettings();
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
@@ -1255,7 +1254,6 @@ function saveSettings() {
   twelveKey = $('set-twelve').value.trim();
   store.set('twelveKey', twelveKey);
   nutriSaveSettings();
-  healthSaveSettings();
   anthropicKey = $('set-anthropic').value.trim();
   store.set('anthropicKey', anthropicKey);
   const fxNew = { from: $('set-fx-from').value, to: $('set-fx-to').value };
@@ -1291,7 +1289,7 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'health', 'steps', 'training', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'food', 'weight'];
 
@@ -1430,13 +1428,6 @@ function initLayout() {
     if (n >= 0) { o.splice(n + 1, 0, 'card-food'); layout.order = o; store.set('layout', layout); }
     store.set('mig.newsFood', true);
   }
-  // one-time: the new Activity card goes right after Food
-  if (!store.get('mig.activity', false)) {
-    const o = layout.order.filter((id) => id !== 'card-activity');
-    const n = o.indexOf('card-food');
-    if (n >= 0) { o.splice(n + 1, 0, 'card-activity'); layout.order = o; store.set('layout', layout); }
-    store.set('mig.activity', true);
-  }
   // one-time change of the saved order: Shopping List and Calculator & Currency swap places
   if (!store.get('mig.swapCalcShop', false)) {
     const o = layout.order;
@@ -1462,7 +1453,6 @@ const CARD_ICONS = {
   'card-calc': ['#8e8e93', 'M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01'],
   'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
   'card-food': ['#30b0c7', 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3'],
-  'card-activity': ['#34c759', 'M13 4a1.5 1.5 0 1 0 0 .01M9 21l2-6 3 3v3M7 12l3-3 3 1 2 3h3M10 9l-1 4'],
   'card-news': ['#ff3b30', 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4'],
 };
 
@@ -1520,7 +1510,6 @@ function init() {
   renderShop();
   initNotes();
   initFood();
-  initActivity();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();

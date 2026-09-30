@@ -4,7 +4,7 @@
    Only Fred can see that folder; your other Drive files stay invisible to it.
    Every setting carries the time of its last change; the newer value wins. */
 
-const SYNC_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'food', 'weight', 'nutri', 'health', 'steps', 'training', 'anthropicKey'];
+const SYNC_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'food', 'weight', 'nutri', 'anthropicKey'];
 const SYNC_FILE = 'fred-sync.json';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -146,11 +146,6 @@ function syncApply(keys) {
   if (has('googleClientId')) googleClientId = store.get('googleClientId', googleClientId);
   if (has('anthropicKey')) anthropicKey = store.get('anthropicKey', '');
   if (has('food') || has('weight') || has('nutri')) { food = store.get('food', []); weight = store.get('weight', []); nutri = store.get('nutri', nutri); renderFood(); }
-  if (has('health') || has('steps') || has('training')) {
-    health = store.get('health', health); steps = store.get('steps', {}); training = store.get('training', []);
-    if (has('health')) loadSteps(true);
-    renderActivity();
-  }
   if (has('finnhubKey')) finnhubKey = store.get('finnhubKey', '');
   if (has('twelveKey')) twelveKey = store.get('twelveKey', '');
   if (has('tickers') || has('finnhubKey') || has('twelveKey')) {
