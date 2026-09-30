@@ -12,6 +12,7 @@ let weight = store.get('weight', []); // [{ d: 'YYYY-MM-DD', kg }]
 let anthropicKey = store.get('anthropicKey', '');
 let foodEditId = null;
 // Your goal (Settings). Personal values live only in your browser and your Drive sync, never in the code.
+let trendRange = store.get('trendRange', 30); // Trends: 7, 30 or 90 days (per device)
 let nutri = store.get('nutri', { kcal: 2500, goalPct: 10, startKg: null, height: null, birthYear: null, sex: '', activity: 1.45 });
 
 const AI_MODEL = 'claude-haiku-4-5-20251001';
@@ -268,35 +269,42 @@ function weekCheck() {
     ...(notes.length ? notes : ['All within range. Well done.']).map((l) => el('p', { class: 'small goal-line' }, l)));
 }
 
+// Where you stand: progress to the goal and four key numbers, like the tiles in Apple Health.
 function goalBlock() {
   const g = goalInfo();
-  if (!g) return el('p', { class: 'muted small' }, 'Enter your weight once (left) to see your goal and targets.');
+  if (!g) return el('p', { class: 'muted small' }, 'Enter your weight once above to see your goal and targets.');
   const done = Math.max(0, g.start - g.cur);
   const need = g.start - g.goal;
+  const left = Math.max(0, g.cur - g.goal);
   const pct = need > 0 ? Math.min(100, (done / need) * 100) : 0;
   const kcal = nutri.kcal || 2500;
-  const lines = [];
-  const fm = formulaMaintenance();
   const mm = measuredMaintenance();
-  const maint = mm ? mm.kcal : fm;
-  if (maint) {
-    const perWeek = ((maint - kcal) * 7) / 7700; // expected kg per week at your target
-    const left = g.cur - g.goal;
-    let when = '';
-    if (perWeek > 0.05 && left > 0) {
-      const weeks = left / perWeek;
-      when = ' \u2192 goal ' + (weeks > 104 ? 'in more than 2 years' : 'around ' + addDays(new Date(), weeks * 7).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }));
-    }
-    lines.push('Maintenance \u2248 ' + fmtN(maint) + ' kcal' + (mm ? ' (from your data)' : ' (estimate)') + '. At ' + fmtN(kcal) + ' kcal: ' +
-      (perWeek > 0.05 ? '\u2248 \u2212' + perWeek.toFixed(2) + ' kg/week' : perWeek < -0.05 ? '\u2248 +' + (-perWeek).toFixed(2) + ' kg/week' : 'about no change') + when + '.');
-    if (perWeek < 0.4 && left > 0) lines.push('For \u2248 \u22120.5 kg/week: about ' + fmtN(Math.round((maint - 550) / 50) * 50) + ' kcal per day.');
-  } else lines.push('Add height, birth year, sex and activity in Settings to estimate your maintenance calories.');
-  if (mm) lines.push('Your trend: ' + (mm.perWeek <= 0 ? '\u2212' : '+') + Math.abs(mm.perWeek).toFixed(2) + ' kg/week (last 4 weeks).');
+  const maint = mm ? mm.kcal : formulaMaintenance();
+  // pace: measured from your weights (4 weeks) if possible, else expected from calories
+  const slope = weightTrendPerDay(lastDays(28));
+  const measured = slope !== null ? -slope * 7 : null; // kg lost per week
+  const expected = maint ? ((maint - kcal) * 7) / 7700 : null;
+  const pace = measured !== null ? measured : expected;
+  let when = '–';
+  if (left <= 0) when = 'Reached';
+  else if (pace > 0.05) {
+    const weeks = left / pace;
+    when = weeks > 104 ? '> 2 years' : addDays(new Date(), weeks * 7).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  }
+  const tile = (label, value, sub, cls) => el('div', { class: 'kpi ' + (cls || '') }, el('div', { class: 'kpi-l' }, label), el('div', { class: 'kpi-v' }, value), el('div', { class: 'kpi-s' }, sub));
+  const kpis = el('div', { class: 'kpis' },
+    tile('Lost', fmtKg(done) + ' kg', 'of ' + fmtKg(need) + ' kg', 'k-green'),
+    tile('Pace', pace !== null ? (pace >= 0 ? '−' : '+') + Math.abs(pace).toFixed(2) + ' kg' : '–', measured !== null ? 'per week, measured' : expected !== null ? 'per week, expected' : 'needs Settings'),
+    tile('Goal date', when, left > 0 ? fmtKg(left) + ' kg to go' : 'well done'),
+    tile('For −0.5 kg/wk', maint ? fmtN(Math.round((maint - 550) / 50) * 50) : '–', 'kcal per day', 'k-pink'));
+  const note = maint
+    ? 'Maintenance ≈ ' + fmtN(maint) + ' kcal' + (mm ? ' (from your data)' : ' (estimate)') + '. Your target: ' + fmtN(kcal) + ' kcal.'
+    : 'Add height, birth year, sex and activity in Settings for your maintenance calories.';
   return el('div', { class: 'goal' },
-    el('div', { class: 'goal-hero' }, el('span', { class: 'goal-num' }, fmtKg(done)), el('span', { class: 'goal-of' }, ' of ' + fmtKg(need) + ' kg lost')),
     el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
-    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal) + ' kg (\u2212' + (nutri.goalPct || 10) + ' %)')),
-    ...lines.map((l) => el('p', { class: 'muted small goal-line' }, l)));
+    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal) + ' kg')),
+    kpis,
+    el('p', { class: 'muted small goal-line goal-note' }, note));
 }
 
 /* ---------- Settings: nutrition goal ---------- */
@@ -328,40 +336,51 @@ function svgEl(tag, attrs, text) {
   return n;
 }
 
-function kcalChart(days, h) {
-  const W = 600, H = h || 150, L = 46, B = 18, T = 8;
-  const vals = days.map((d) => dayTotals(d));
-  const max = Math.max(500, nutri.kcal || 0, ...vals.map((v) => v.kcal)) * 1.1;
+// Bars per day with a dashed target line and the average. get(dayTotals) returns the value or null.
+function barChart(days, { get, target, unit, h, cls, name }) {
+  const W = 600, H = h || 130, L = 46, B = 18, T = 8;
+  const vals = days.map((d) => get(dayTotals(d)));
+  const shown = vals.filter((v) => v !== null);
+  const max = Math.max(target || 0, ...shown, unit === 'kcal' ? 500 : 50) * 1.12;
+  const step = unit === 'kcal' ? 100 : 10;
   const y = (v) => T + (H - T - B) * (1 - v / max);
   const bw = (W - L) / days.length;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Calories per day, last ' + days.length + ' days' });
-  for (const g of [0.5, 1]) { // two quiet grid lines with labels
-    const v = Math.round((max / 1.1) * g / 100) * 100;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart ' + (cls || ''), role: 'img', 'aria-label': name + ' per day, last ' + days.length + ' days' });
+  for (const g of [0.5, 1]) {
+    const v = Math.round(((max / 1.12) * g) / step) * step;
     svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'grid' }), svgEl('text', { x: L - 6, y: y(v) + 4, class: 'ax', 'text-anchor': 'end' }, fmtN(v)));
   }
+  const every = days.length <= 7 ? 1 : days.length <= 31 ? 7 : 14;
   days.forEach((d, i) => {
     const v = vals[i];
-    const x = L + i * bw + 1.5;
-    const w = Math.max(2, bw - 3);
+    const w = Math.max(1.5, bw - (days.length > 40 ? 1.5 : 3));
+    const x = L + i * bw + (bw - w) / 2;
     const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v.n ? fmtN(v.kcal) + ' kcal' : 'no entries')));
-    g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' })); // bigger hover target
-    if (v.n) g.append(svgEl('rect', { x, y: y(v.kcal), width: w, height: Math.max(1, y(0) - y(v.kcal)), rx: Math.min(3, w / 2) }));
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit : 'no data')));
+    g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
+    if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
     svg.append(g);
     const last = i === days.length - 1;
-    if ((days.length - 1 - i) % 7 === 0) svg.append(svgEl('text', { x: last ? x + w : x + w / 2, y: H - 4, class: 'ax', 'text-anchor': last ? 'end' : 'middle' }, last ? 'today' : shortDay(d)));
+    if ((days.length - 1 - i) % every === 0) {
+      const lbl = last ? 'today' : days.length <= 7 ? new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2) : shortDay(d);
+      svg.append(svgEl('text', { x: last ? x + w : x + w / 2, y: H - 4, class: 'ax', 'text-anchor': last ? 'end' : 'middle' }, lbl));
+    }
   });
-  const tgt = nutri.kcal || 0;
-  if (tgt) svg.append(svgEl('line', { x1: L, x2: W, y1: y(tgt), y2: y(tgt), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(tgt) - 4, class: 'ax tgtlbl' }, 'target ' + fmtN(tgt)));
-  const avg = avgKcal(days);
-  if (avg) svg.append(svgEl('line', { x1: L, x2: W, y1: y(avg), y2: y(avg), class: 'avg' }), svgEl('text', { x: W - 2, y: y(avg) - 4, class: 'ax avglbl', 'text-anchor': 'end' }, 'Ø ' + fmtN(avg)));
+  if (target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target), y2: y(target), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(target) - 4, class: 'ax tgtlbl' }, 'target ' + fmtN(target)));
   return svg;
 }
+
+const avgOfDays = (days, get) => { const v = days.map((d) => get(dayTotals(d))).filter((x) => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+const getKcal = (t) => (t.n ? t.kcal : null);
+const getProtein = (t) => (t.n && !t.m ? t.p : null);
+
+function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Calories' }); }
+function proteinChart(days, h) { return barChart(days, { get: getProtein, target: targets().p, unit: 'g', h, cls: 'b-p', name: 'Protein' }); }
 
 function weightChart(all, h) {
   const pts = weight.filter((w) => w.d >= all[0]).sort((a, b) => a.d.localeCompare(b.d));
   // start the axis at the first weight (at least 14 days shown), so a new diary does not look empty
-  const days = pts.length ? all.slice(Math.min(Math.max(0, all.indexOf(pts[0].d)), all.length - 14)) : all;
+  const days = pts.length ? all.slice(Math.min(Math.max(0, all.indexOf(pts[0].d)), all.length - Math.min(14, all.length))) : all;
   const W = 600, H = h || 120, L = 46, B = 18, T = 10;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Weight since ' + days[0] });
   if (pts.length < 2) { svg.append(svgEl('text', { x: W / 2, y: H / 2, class: 'ax', 'text-anchor': 'middle' }, pts.length ? 'Enter your weight on more days to see a line.' : 'No weight entered yet.')); return svg; }
@@ -370,7 +389,14 @@ function weightChart(all, h) {
   const x = (d) => L + (W - L - 6) * (days.indexOf(d) / (days.length - 1));
   const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
   for (const v of [lo + 0.5, hi - 0.5]) svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'grid' }), svgEl('text', { x: L - 6, y: y(v) + 4, class: 'ax', 'text-anchor': 'end' }, fmtKg(v)));
-  svg.append(svgEl('polyline', { points: pts.map((p) => x(p.d).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline' }));
+  // 7-day average: the real trend without the daily water swings
+  const avgPts = days.map((d) => {
+    const from = toDateStr(addDays(new Date(d + 'T00:00'), -6));
+    const w = weight.filter((p) => p.d >= from && p.d <= d);
+    return w.length ? [d, w.reduce((a, p) => a + p.kg, 0) / w.length] : null;
+  }).filter(Boolean);
+  svg.append(svgEl('polyline', { points: pts.map((p) => x(p.d).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline raw' }));
+  if (avgPts.length > 1) svg.append(svgEl('polyline', { points: avgPts.map(([d, v]) => x(d).toFixed(1) + ',' + y(Math.min(hi, Math.max(lo, v))).toFixed(1)).join(' '), class: 'wavg' }));
   pts.forEach((p, i) => {
     const g = svgEl('g', { class: 'wdot' });
     g.append(svgEl('title', {}, shortDay(p.d) + ': ' + fmtKg(p.kg) + ' kg'));
@@ -432,8 +458,7 @@ function renderFood() {
       el('div', { class: 'lg-h ' + h.cls }, h.hint));
   }));
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
-  const macros = el('div', { class: 'muted small fsum-foot' },
-    tg.p ? (avg7 ? '7-day average ' + fmtN(avg7) + ' kcal' : '') : 'Enter your weight below to get protein, carb and fat targets.');
+  const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Health to get protein, carb and fat targets.');
   const head = el('div', { class: 'food-today' }, hero, macros);
 
   const ul = el('ul', { class: 'list food-list' });
@@ -460,25 +485,29 @@ function renderFood() {
     renderFood();
   });
 
-  const days30 = lastDays(30);
-  const days90 = lastDays(90);
-  const logged30 = days30.filter((d) => dayTotals(d).n).length;
-  const wNow = weightOn(today);
-  const w30 = weightOn(days30[0]);
-  const goalCard = hcard('goal', 'green', 'Goal', '\u2212' + (nutri.goalPct || 10) + ' %', goalBlock());
-  const weekCard = hcard('check', 'orange', 'Last 7 days', 'vs targets', weekCheck());
-  const kcalCard = hcard('bars', 'pink', 'Calories', '30 days', kcalChart(days30),
-    el('div', { class: 'muted small food-stats' },
-      [avg7 ? '\u00d8 7 days ' + fmtN(avg7) : '', avgKcal(days30) ? '\u00d8 30 days ' + fmtN(avgKcal(days30)) : '', logged30 + ' of 30 days logged'].filter(Boolean).join(' \u00b7 ')));
-  const trendCard = hcard('line', 'purple', 'Weight', 'trend', weightChart(days90),
-    el('div', { class: 'muted small food-stats' }, wNow && w30 && w30.d !== wNow.d
-      ? 'Change in 30 days: ' + (wNow.kg - w30.kg >= 0 ? '+' : '\u2212') + fmtKg(Math.abs(wNow.kg - w30.kg)) + ' kg' : ''));
+  const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %', goalBlock());
+  // Trends: one range for all charts, like Apple Health (W / M / 3M)
+  const n = trendRange;
+  const daysN = lastDays(n);
+  const seg = el('div', { class: 'seg', role: 'tablist', 'aria-label': 'Time range' }, ...[[7, 'W'], [30, 'M'], [90, '3M']].map(([v, l]) =>
+    el('button', { type: 'button', role: 'tab', 'aria-selected': String(v === n), class: v === n ? 'on' : '', onclick: () => { trendRange = v; store.set('trendRange', v); renderFood(); } }, l)));
+  const avgK = avgOfDays(daysN, getKcal), avgP = avgOfDays(daysN, getProtein);
+  const rangeTxt = n === 7 ? '7 days' : n === 30 ? '30 days' : '3 months';
+  const wRange = weight.filter((p) => p.d >= daysN[0]).sort((a, b) => a.d.localeCompare(b.d));
+  const wChange = wRange.length > 1 ? wRange[wRange.length - 1].kg - wRange[0].kg : null;
+  const trendCards = [
+    n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
+    hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120)),
+    tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
+    hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
+      el('div', { class: 'muted small food-stats' }, 'Dots: daily weight · line: 7-day average')),
+  ];
 
   // three cards: Food (today), Health (weight and goal), Trends (last days)
   box.replaceChildren(el('div', { class: 'food-col' }, form, head,
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
-  $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard, trendCard));
-  $('trends').replaceChildren(el('div', { class: 'food-col' }, weekCard, kcalCard));
+  $('health').replaceChildren(el('div', { class: 'food-col' }, hcard('weight', 'purple', 'Weight', 'today', wForm), goalCard));
+  $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
   fitRows(ul, 3); // the last three meals; the rest scrolls
   requestAnimationFrame(() => {
     // Food sets the height; Health and Trends take the same height (not on the phone, where cards stack)
@@ -486,8 +515,7 @@ function renderFood() {
     const fh = $('card-food').offsetHeight;
     for (const id of ['card-health', 'card-trends']) $(id).style.height = wide ? fh + 'px' : '';
     requestAnimationFrame(() => {
-      growChart($('health'), (h) => weightChart(days90, h));
-      growChart($('trends'), (h) => kcalChart(days30, h));
+      growChart($('trends'), (h) => weightChart(daysN, h));
     });
   });
   if (typing !== null) { input.value = typing; input.focus(); }

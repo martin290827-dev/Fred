@@ -877,3 +877,30 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 /* Market News: as tall as its content (up to a limit), no empty space */
 #card-news { height: auto; max-height: 640px; }
 .news { align-items: stretch; } /* all ticker boxes the same height */
+
+/* ---------- Health: key numbers ---------- */
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 4px; }
+.kpi { background: var(--card); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.kpi-l { font-size: 0.72rem; font-weight: 600; color: var(--muted); }
+.kpi-v { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; margin: 2px 0 1px; white-space: nowrap; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.kpi-s { font-size: 0.72rem; color: var(--muted); }
+.kpi.k-green .kpi-v { color: var(--c-green); }
+.kpi.k-pink .kpi-v { color: var(--c-kcal); }
+.goal .nbar-track { margin-top: 2px; }
+.goal-note { margin-top: auto !important; padding-top: 6px; }
+#health .fpanel:last-child .goal { display: flex; flex-direction: column; flex: 1; }
+/* ---------- Trends: segmented control W / M / 3M ---------- */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; flex: none; }
+.seg button { background: transparent; color: var(--text); font-size: 0.8rem; font-weight: 600; padding: 4px 0; border-radius: 7px; min-height: 0; box-shadow: none; }
+.seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04); }
+.fh-indigo { color: var(--c-p); }
+.food .fchart.b-p .bar rect:not(.hit) { fill: var(--c-p); }
+.food .fchart .bar rect:not(.hit) { opacity: 0.55; }
+.food .fchart .bar.today rect:not(.hit), .food .fchart .bar:hover rect:not(.hit) { opacity: 1; }
+.food .fchart .wline.raw { stroke: var(--c-body); stroke-width: 1; opacity: 0.35; }
+.food .fchart .wavg { fill: none; stroke: var(--c-body); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.food .fchart .wdot circle:not(.hit) { opacity: 0.6; }
+.seg { --seg-on: #636366; }
+:root[data-theme="light"] .seg { --seg-on: #ffffff; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .seg { --seg-on: #ffffff; } }
+.seg button.on { background: var(--seg-on); }
