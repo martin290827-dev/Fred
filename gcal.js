@@ -3,11 +3,14 @@
    Needs your own OAuth Client ID (Settings). The access token lives in memory only, it is never saved.
    Google hands out tokens for one hour, so after that you press "Connect" again. */
 
-const G_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+// calendar.events: read and write your events. drive.appdata: only Fred's own hidden sync file in your Drive.
+const G_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.appdata';
 const G_API = 'https://www.googleapis.com/calendar/v3/';
 const G_BIRTHDAYS = 'addressbook#contacts@group.v.calendar.google.com'; // Google's contact birthdays
 let gToken = null;
 let gExpiry = 0;
+let gScopes = '';
+function gHasDriveScope() { return gScopes.includes('drive.appdata'); }
 let gAgenda = []; // upcoming events from Google Calendar
 
 function gHasToken() { return !!gToken && Date.now() < gExpiry - 30000; }
@@ -51,6 +54,7 @@ async function gRequestToken(prompt) {
         clearTimeout(timer);
         if (r.error) { reject(new Error(r.error_description || r.error)); return; }
         gToken = r.access_token;
+        gScopes = r.scope || '';
         gExpiry = Date.now() + (parseInt(r.expires_in, 10) || 3600) * 1000;
         store.set('gConnected', true);
         clearTimeout(gEndTimer); // show the Reconnect button the moment the hour is over
@@ -189,6 +193,7 @@ async function gConnect() {
     gStatus('Waiting for Google...');
     await gRequestToken('');
     await gRefresh();
+    if (typeof syncNow === 'function') syncNow();
   } catch (e) {
     gStatus(e.message);
     renderCalendar();
@@ -228,7 +233,7 @@ function gcalInit() {
   $('g-disconnect').addEventListener('click', gDisconnect);
   renderCalendar();
   if (googleClientId && store.get('gConnected', false)) {
-    gRequestToken('none').then(gRefresh).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
+    gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
   setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes

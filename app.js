@@ -26,6 +26,7 @@ const store = {
   },
   set(key, value) {
     try { localStorage.setItem('fred.' + key, JSON.stringify(value)); } catch { /* ignore */ }
+    if (typeof syncTouch === 'function') syncTouch(key); // sync.js: send the change to your other devices
   },
 };
 
@@ -1393,6 +1394,7 @@ function init() {
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();
   gcalInit();
+  syncInit();
   tickTimer();
 
   $('timer-start').addEventListener('click', startTimer);

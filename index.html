@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <header>
@@ -211,6 +211,11 @@
         <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
         <span class="muted small" id="g-status"></span>
       </div>
+      <label class="check"><input id="set-sync" type="checkbox" checked> Sync settings, notes and shopping list between my devices (hidden file in my Google Drive)</label>
+      <div class="row wrap">
+        <button type="button" id="sync-now" class="ghost small">Sync now</button>
+        <span class="muted small" id="sync-status"></span>
+      </div>
 
       <h3>Backup</h3>
       <p class="muted small">Everything you entered lives only in this browser. Download it as a file, and load it again after clearing the browser data or on another device.</p>
@@ -229,7 +234,8 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=47"></script>
-  <script src="gcal.js?v=47"></script>
+  <script src="app.js?v=48"></script>
+  <script src="gcal.js?v=48"></script>
+  <script src="sync.js?v=48"></script>
 </body>
 </html>

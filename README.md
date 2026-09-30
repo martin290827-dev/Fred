@@ -8,9 +8,9 @@ Fred is my Buttler, who help me with all kind of things
 Fred braucht dafür eine eigene "Client-ID". Sie ist kein Geheimnis, wird aber nur im Browser gespeichert (Settings), nie im Code.
 
 1. Öffne https://console.cloud.google.com und lege ein neues Projekt an (Name z. B. "Fred").
-2. Menü "APIs & Dienste" → "Bibliothek" → **Google Calendar API** suchen → **Aktivieren**.
+2. Menü "APIs & Dienste" → "Bibliothek" → **Google Calendar API** suchen → **Aktivieren**. Genauso **Google Drive API** aktivieren (für den Abgleich zwischen deinen Geräten).
 3. "APIs & Dienste" → "OAuth-Zustimmungsbildschirm" (auch "Google Auth Platform"): Nutzertyp **Extern**, App-Name "Fred", deine E-Mail als Support- und Kontakt-Adresse.
-4. Bei "Bereiche" (Scopes) den Bereich `https://www.googleapis.com/auth/calendar.events` hinzufügen.
+4. Bei "Bereiche" (Scopes / Datenzugriff) diese zwei Bereiche hinzufügen: `https://www.googleapis.com/auth/calendar.events` und `https://www.googleapis.com/auth/drive.appdata`.
 5. Bei "Testnutzer" deine eigene Google-Adresse eintragen. Veröffentlichungsstatus: **Testing** (reicht für dich allein).
 6. "Anmeldedaten" → "Anmeldedaten erstellen" → **OAuth-Client-ID** → Anwendungstyp **Webanwendung**.
 7. Bei "Autorisierte JavaScript-Quellen" genau eintragen: `https://martin290827-dev.github.io` (ohne Pfad, ohne Schrägstrich am Ende). Weiterleitungs-URIs bleiben leer.
@@ -18,6 +18,6 @@ Fred braucht dafür eine eigene "Client-ID". Sie ist kein Geheimnis, wird aber n
 9. Google warnt evtl. "App nicht bestätigt": **Erweitert** → "Weiter zu Fred". Das ist deine eigene App.
 
 Hinweise:
-- Google gibt Zugriff nur für eine Stunde. Danach in der Karte "Calendar" einmal **Connect** klicken.
-- Fred liest deine Termine und schreibt nichts in den Kalender. "Tasks & reminders" zeigt Termine mit Uhrzeit (30 Tage), "Events" zeigt ganztägige und mehrtägige Termine (ein Jahr).
-- Erinnerungen: Aufgaben mit Uhrzeit werden als Kalendereintrag mit Pop-up-Erinnerung angelegt. Die Erinnerung sendet Google, auch wenn Fred geschlossen ist (Google-Kalender-App am Handy nötig).
+- Google gibt Zugriff nur für eine Stunde. Danach erscheint in Fred ein **Reconnect**-Knopf.
+- Fred liest und schreibt nur deine Termine: "Tasks & Reminders" zeigt Termine mit Uhrzeit (30 Tage), "Events" ganztägige und mehrtägige Termine (ein Jahr). Mit **+**, Stift und Mülleimer legst du Termine direkt in Google an, änderst oder löschst sie.
+- Abgleich zwischen Geräten: Fred speichert Einstellungen, Notizen und Einkaufsliste in einer versteckten Datei in deinem Google Drive (Ordner "App-Daten", nur für Fred sichtbar). Auf einem neuen Gerät nur die Client-ID eintragen und Connect drücken.
