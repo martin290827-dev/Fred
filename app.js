@@ -1118,9 +1118,11 @@ function toggleDictation() {
     }
   };
   rec.onerror = (ev) => {
-    // Brave and some others have the API but block the speech service behind it: use the system dictation from now on
-    if (ev.error === 'network' || ev.error === 'service-not-allowed') { store.set('noWebSpeech', true); systemDictation(); return; }
-    st.textContent = ev.error === 'not-allowed' ? 'Microphone not allowed' : 'Dictation stopped';
+    // Brave blocks the speech service, iPhone home-screen apps are not allowed to use it:
+    // on this device use the system dictation from now on
+    if (ev.error === 'no-speech' || ev.error === 'aborted') { st.textContent = ''; return; }
+    store.set('noWebSpeech', true);
+    systemDictation();
   };
   rec.onend = () => { dictation = null; btn.classList.remove('rec'); btn.setAttribute('aria-pressed', 'false'); };
   try {
@@ -1134,14 +1136,20 @@ function toggleDictation() {
   }
 }
 
-// No speech recognition in this browser: open the note and point to the device's own dictation.
+// No speech recognition in this browser: open the note and show how to use the device's own dictation.
 function systemDictation() {
   const box = $('notes');
   box.focus();
   box.setSelectionRange(box.value.length, box.value.length);
+  $('notes-status').textContent = '';
   const mac = /Mac/.test(navigator.platform) && !('ontouchend' in document);
-  $('notes-status').textContent = mac ? 'Press fn twice (or 🎤 key) to dictate' : 'Tap 🎤 on the keyboard';
-  setTimeout(() => { if (/dictate|keyboard/.test($('notes-status').textContent)) $('notes-status').textContent = ''; }, 8000);
+  const hint = $('notes-hint');
+  hint.textContent = mac
+    ? 'Press the fn key twice (or the 🎤 key) and speak. If nothing happens: System Settings → Keyboard → Dictation → On.'
+    : 'Tap 🎤 at the bottom right of the keyboard and speak.';
+  hint.hidden = false;
+  clearTimeout(hint.timer);
+  hint.timer = setTimeout(() => { hint.hidden = true; }, 10000);
 }
 
 // Clear button: empties the note at once; "Undo" brings it back for 10 seconds.

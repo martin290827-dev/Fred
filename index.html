@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=67">
+  <link rel="stylesheet" href="style.css?v=68">
 </head>
 <body>
   <header>
@@ -145,6 +145,7 @@
 
     <section class="card" id="card-notes">
       <h2>Notes <span class="hacts"><span id="notes-status" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="Dictate into the note" title="Dictate" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Clear note" title="Clear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Share note (for example to Apple Notes)" title="Share to Notes, Mail, ..."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
+      <p id="notes-hint" class="notes-hint" hidden></p>
       <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
     </section>
 
@@ -260,9 +261,9 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=67"></script>
-  <script src="gcal.js?v=67"></script>
-  <script src="sync.js?v=67"></script>
-  <script src="food.js?v=67"></script>
+  <script src="app.js?v=68"></script>
+  <script src="gcal.js?v=68"></script>
+  <script src="sync.js?v=68"></script>
+  <script src="food.js?v=68"></script>
 </body>
 </html>
