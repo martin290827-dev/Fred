@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=77">
+  <link rel="stylesheet" href="style.css?v=78">
 </head>
 <body>
   <header>
@@ -42,12 +42,6 @@
   <div id="banners"></div>
 
   <main class="grid">
-    <section class="card" id="card-cal">
-      <h2>Tasks &amp; Reminders <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
-      <div id="cal-edit" hidden></div>
-      <ul id="cal-list" class="list"></ul>
-      <p class="muted small" id="cal-status"></p>
-    </section>
 
     <section class="card" id="card-weather">
       <h2>Weather <span id="weather-place" class="muted"></span></h2>
@@ -55,22 +49,22 @@
       <div id="weather2" class="wx2"></div>
     </section>
 
-    <section class="card" id="card-tickers">
-      <h2>Tickers <button id="btn-refresh" class="ghost small">Refresh</button></h2>
-      <div id="tickers">Loading...</div>
-      <p class="muted small" id="tickers-status"></p>
-    </section>
-
     <section class="card" id="card-events">
       <h2>Events <span class="hacts"><button id="ev-add" class="hicon" type="button" aria-label="New event" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
       <div id="ev-edit" hidden></div>
       <ul id="events" class="list"></ul>
     </section>
+    <section class="card" id="card-cal">
+      <h2>Tasks &amp; Reminders <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
+      <div id="cal-edit" hidden></div>
+      <ul id="cal-list" class="list"></ul>
+      <p class="muted small" id="cal-status"></p>
+    </section>
 
-    <section class="card" id="card-clock">
-      <h2>Time</h2>
-      <div id="clocks"></div>
-      <div id="markets" class="markets" aria-label="Stock exchanges"></div>
+    <section class="card" id="card-notes">
+      <h2>Notes <span class="hacts"><span id="notes-status" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="Dictate into the note" title="Dictate" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Clear note" title="Clear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Share note (for example to Apple Notes)" title="Share to Notes, Mail, ..."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
+      <p id="notes-hint" class="notes-hint" hidden></p>
+      <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
     </section>
 
     <section class="card" id="card-shop">
@@ -80,6 +74,33 @@
         <input id="shop-text" type="text" placeholder="Add item" required maxlength="60">
         <button type="submit">Add</button>
       </form>
+    </section>
+
+    <section class="card" id="card-tickers">
+      <h2>Tickers <button id="btn-refresh" class="ghost small">Refresh</button></h2>
+      <div id="tickers">Loading...</div>
+      <p class="muted small" id="tickers-status"></p>
+    </section>
+
+    <section class="card" id="card-food">
+      <h2>Food <span id="food-status" class="muted small"></span></h2>
+      <div id="food" class="food"></div>
+    </section>
+
+    <section class="card" id="card-health">
+      <h2>Health</h2>
+      <div id="health" class="food"></div>
+    </section>
+
+    <section class="card" id="card-trends">
+      <h2>Trends</h2>
+      <div id="trends" class="food"></div>
+    </section>
+
+    <section class="card" id="card-clock">
+      <h2>Time</h2>
+      <div id="clocks"></div>
+      <div id="markets" class="markets" aria-label="Stock exchanges"></div>
     </section>
 
     <section class="card" id="card-timer">
@@ -143,31 +164,10 @@
       <p class="muted small" id="fx-status"></p>
     </section>
 
-    <section class="card" id="card-notes">
-      <h2>Notes <span class="hacts"><span id="notes-status" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="Dictate into the note" title="Dictate" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Clear note" title="Clear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Share note (for example to Apple Notes)" title="Share to Notes, Mail, ..."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
-      <p id="notes-hint" class="notes-hint" hidden></p>
-      <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
-    </section>
-
     <section class="card card-wide" id="card-news">
       <h2>Market News <button id="news-refresh" class="ghost small" type="button">Refresh</button></h2>
       <div id="news" class="news"></div>
       <p class="muted small" id="news-status"></p>
-    </section>
-
-    <section class="card" id="card-food">
-      <h2>Food <span id="food-status" class="muted small"></span></h2>
-      <div id="food" class="food"></div>
-    </section>
-
-    <section class="card" id="card-health">
-      <h2>Health</h2>
-      <div id="health" class="food"></div>
-    </section>
-
-    <section class="card" id="card-trends">
-      <h2>Trends</h2>
-      <div id="trends" class="food"></div>
     </section>
   </main>
 
@@ -271,9 +271,9 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=77"></script>
-  <script src="gcal.js?v=77"></script>
-  <script src="sync.js?v=77"></script>
-  <script src="food.js?v=77"></script>
+  <script src="app.js?v=78"></script>
+  <script src="gcal.js?v=78"></script>
+  <script src="sync.js?v=78"></script>
+  <script src="food.js?v=78"></script>
 </body>
 </html>
