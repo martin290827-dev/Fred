@@ -79,7 +79,11 @@ async function syncWrite(data) {
 async function syncNow() {
   clearTimeout(syncTimer);
   if (!syncReady()) {
-    if (syncOn() && typeof gHasToken === 'function' && gHasToken() && !gHasDriveScope()) syncStatus('Sync needs Drive access: press Connect again.');
+    // say plainly why nothing happens
+    if (!syncOn()) syncStatus('Sync is off on this device.');
+    else if (!googleClientId) syncStatus('Not synced: enter the Google Client ID above, Save, then Connect.');
+    else if (!gHasToken()) syncStatus('Not synced: Google is not connected on this device. Press Connect.');
+    else if (!gHasDriveScope()) syncStatus('Not synced: Drive access missing. Press Connect and allow access to app data.');
     return;
   }
   if (syncBusy) { syncAgain = true; return; }

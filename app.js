@@ -1127,6 +1127,7 @@ function openSettings() {
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
   $('set-gclient').value = googleClientId;
+  if (typeof syncNow === 'function') syncNow(); // shows the sync state when Settings opens
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
   $('bk-status').textContent = '';
   $('dlg-settings').showModal();
