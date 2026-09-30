@@ -333,7 +333,50 @@ function renderWeatherAlt(box, p, w) {
     el('span', { class: 'wx-alt-swap', 'aria-hidden': 'true' }, '⇄')));
 }
 
+/* ---------- Current location as the main place (per device, never synced) ---------- */
+let useGeo = store.get('useGeo', false);
+let geoPlace = store.get('geoPlace', null); // last known { name, lat, lon, t }, only on this device
+let geoSwapped = false;                     // you clicked the second place: show it on top until reload
+let geoNote = '';
+
+function geoPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('no location in this browser')); return; }
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 12000, maximumAge: 15 * 60000 });
+  });
+}
+
+// Where am I? Rounded to about 1 km before anything is sent out. The name comes from a free reverse lookup.
+async function currentPlace() {
+  if (geoPlace && Date.now() - geoPlace.t < 15 * 60000) return geoPlace;
+  const pos = await geoPosition();
+  const lat = Math.round(pos.coords.latitude * 100) / 100;
+  const lon = Math.round(pos.coords.longitude * 100) / 100;
+  let name = geoPlace && Math.abs(geoPlace.lat - lat) < 0.05 && Math.abs(geoPlace.lon - lon) < 0.05 ? geoPlace.name : '';
+  if (!name) {
+    try {
+      const r = await getJSON('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en');
+      name = [r.city || r.locality, r.countryCode].filter(Boolean).join(', ');
+    } catch { /* no name: fine */ }
+  }
+  geoPlace = { name: name || 'Current location', lat, lon, t: Date.now() };
+  store.set('geoPlace', geoPlace);
+  return geoPlace;
+}
+
+function hereIcon() {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('class', 'here-ico');
+  s.setAttribute('aria-label', 'Current location');
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', 'M21 3 3 10.5l7.5 3L13.5 21z');
+  s.append(p);
+  return s;
+}
+
 function swapPlaces() {
+  if (useGeo) { geoSwapped = !geoSwapped; loadWeather(); return; } // do not touch the saved places
   const t = place;
   place = place2;
   place2 = t;
@@ -346,13 +389,28 @@ async function loadWeather() {
   const box = $('weather');
   const alt = $('weather2');
   alt.replaceChildren();
-  if (!place) { $('weather-place').textContent = ''; box.textContent = 'Set your location in Settings.'; return; }
-  $('weather-place').textContent = place.name;
-  const [main, second] = await Promise.allSettled([fetchWeather(place), place2 ? fetchWeather(place2) : Promise.resolve(null)]);
+  let top = place;
+  let low = place2;
+  let here = false;
+  geoNote = '';
+  if (useGeo) {
+    try {
+      top = await currentPlace();
+      here = true;
+      low = place2 || place; // with no second place, your saved place shows small below
+    } catch (e) {
+      geoNote = e && e.code === 1 ? 'Location not allowed' : 'Location not available';
+    }
+  }
+  if (here && geoSwapped && low) { const t = top; top = low; low = t; }
+  if (!top) { $('weather-place').textContent = ''; box.textContent = 'Set your location in Settings.'; return; }
+  const title = $('weather-place');
+  title.replaceChildren(here && !geoSwapped ? hereIcon() : '', top.name, geoNote ? el('span', { class: 'small' }, ' \u00b7 ' + geoNote) : '');
+  const [main, second] = await Promise.allSettled([fetchWeather(top), low ? fetchWeather(low) : Promise.resolve(null)]);
   if (main.status === 'fulfilled') renderWeatherMain(box, main.value);
   else box.textContent = 'Weather not available. ' + main.reason.message;
-  if (place2) {
-    if (second.status === 'fulfilled') renderWeatherAlt(alt, place2, second.value);
+  if (low) {
+    if (second.status === 'fulfilled') renderWeatherAlt(alt, low, second.value);
     else alt.textContent = 'Second place not available.';
   }
 }
@@ -1122,6 +1180,7 @@ function openSettings() {
   pendingPlace = null;
   pendingPlace2 = null;
   $('set-place').value = place ? place.name : '';
+  $('set-geo').checked = useGeo;
   $('set-place-status').textContent = '';
   $('set-place2').value = place2 ? place2.name : '';
   $('set-place2-status').textContent = '';
@@ -1141,6 +1200,7 @@ function openSettings() {
 
 function saveSettings() {
   if (pendingPlace) { place = pendingPlace; store.set('place', place); }
+  if ($('set-geo').checked !== useGeo) { useGeo = $('set-geo').checked; store.set('useGeo', useGeo); geoSwapped = false; geoPlace = null; }
   if (pendingPlace2) place2 = pendingPlace2;
   else if (!$('set-place2').value.trim()) place2 = null;
   store.set('place2', place2);
@@ -1466,6 +1526,7 @@ function init() {
   });
   $('bk-export').addEventListener('click', exportSettings);
   $('bk-import').addEventListener('click', () => $('bk-file').click());
+  $('set-geo').addEventListener('change', () => { if ($('set-geo').checked) geoPosition().catch(() => { $('set-place-status').textContent = 'Location not allowed. iPhone: Settings \u2192 Privacy \u2192 Location Services \u2192 Safari Websites.'; }); });
   $('bk-file').addEventListener('change', (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); });
   $('dlg-settings').addEventListener('close', () => {
     if ($('dlg-settings').returnValue === 'ok') saveSettings();

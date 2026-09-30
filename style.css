@@ -427,6 +427,7 @@ button.danger { background: var(--down); color: #fff; }
 @media (max-width: 800px) { .food { grid-template-columns: 1fr; } }
 
 /* ---------- weather ---------- */
+.here-ico { width: 11px; height: 11px; fill: var(--accent); margin-right: 4px; vertical-align: -1px; }
 .wxi { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--muted); }
 .wxi.lg { width: 48px; height: 48px; }
 .wxi.md { width: 28px; height: 28px; }
