@@ -233,7 +233,7 @@ async function fetchWeather(p) {
   return getJSON('https://api.open-meteo.com/v1/forecast?latitude=' + p.lat + '&longitude=' + p.lon +
     '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m' +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
-    '&hourly=temperature_2m,precipitation' +
+    '&hourly=temperature_2m,precipitation,weather_code' +
     '&timezone=auto&forecast_days=2');
 }
 
@@ -298,6 +298,22 @@ function wxIcon(code, cls) {
   return s;
 }
 
+// Next hours as a small strip (like the Weather app). Shown on the phone, where the card has room for it.
+function hourStrip(w) {
+  const h = w.hourly;
+  if (!h || !h.time || !h.weather_code || !w.current || !w.current.time) return '';
+  const from = h.time.findIndex((t) => t.slice(0, 13) >= w.current.time.slice(0, 13));
+  if (from < 0) return '';
+  const cells = [];
+  for (let i = from; i < Math.min(from + 8, h.time.length); i++) {
+    cells.push(el('div', { class: 'wx-hour' },
+      el('span', { class: 'wx-h-t' }, i === from ? 'Now' : h.time[i].slice(11, 13)),
+      wxIcon(h.weather_code[i], 'sm'),
+      el('span', { class: 'wx-h-v' }, Math.round(h.temperature_2m[i]) + '\u00b0')));
+  }
+  return el('div', { class: 'wx-hours', 'aria-label': 'Next hours' }, ...cells);
+}
+
 function renderWeatherMain(box, w) {
   const warn = weatherWarnings(w).map((x) => el('div', { class: 'wx-warn ' + x.kind }, x.text));
   const day = (label, i) => el('div', { class: 'wx-tile' },
@@ -316,7 +332,8 @@ function renderWeatherMain(box, w) {
         el('div', { class: 'wx-cond-t' }, WMO[w.current.weather_code] || 'Unknown'),
         el('div', { class: 'muted small' }, 'Feels ' + Math.round(w.current.apparent_temperature) + '\u00b0'),
         el('div', { class: 'muted small' }, 'Wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
-    el('div', { class: 'wx-days' }, day('Today', 0), day('Tomorrow', 1)));
+    el('div', { class: 'wx-days' }, day('Today', 0), day('Tomorrow', 1)),
+    hourStrip(w));
 }
 
 // Second place as a quiet block at the bottom of the card. Click it to make it the main place.
@@ -907,23 +924,12 @@ function fitRows(ul, n) {
   });
 }
 
-// Phone: Weather, Tasks & Reminders and Events get one common height,
-// tall enough for the weather and for 5 rows in each list.
+// Phone: Tasks & Reminders and Events get the height of the Weather card; their lists scroll inside.
 function matchWeatherHeight() {
   requestAnimationFrame(() => {
-    const ids = ['card-weather', 'card-cal', 'card-events'];
-    for (const id of ids) $(id).style.height = '';
-    if (!window.matchMedia('(max-width: 699px)').matches) return;
-    const need = (cardId, listId) => {
-      const card = $(cardId);
-      const ul = $(listId);
-      const rows = [...ul.children].slice(0, 5);
-      if (!rows.length) return 0;
-      const last = rows[rows.length - 1];
-      return (last.getBoundingClientRect().bottom - card.getBoundingClientRect().top) + 44; // + status line and padding
-    };
-    const h = Math.ceil(Math.max($('card-weather').offsetHeight, need('card-cal', 'cal-list'), need('card-events', 'events')));
-    if (h > 200) for (const id of ids) $(id).style.height = h + 'px';
+    const phone = window.matchMedia('(max-width: 699px)').matches;
+    const h = $('card-weather').offsetHeight;
+    for (const id of ['card-cal', 'card-events']) $(id).style.height = phone && h > 200 ? h + 'px' : '';
   });
 }
 
