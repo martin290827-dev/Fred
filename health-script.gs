@@ -7,6 +7,7 @@
 // Fred calls: <link>?key=KEY&days=120  and reads the last days.
 
 const KEY = 'CHANGE_ME';
+const SHEET_ID = ''; // only if the script is NOT created from inside the sheet: the id from the sheet's link (docs.google.com/spreadsheets/d/<ID>/edit)
 const TAB = 'fred'; // own tab, created by the script
 
 function doGet(e) {
@@ -27,7 +28,7 @@ function doGet(e) {
 }
 
 function tab() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(TAB);
   if (!sh) { sh = ss.insertSheet(TAB); sh.appendRow(['date', 'steps', 'sleep_h', 'updated']); }
   return sh;
