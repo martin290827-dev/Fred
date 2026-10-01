@@ -396,8 +396,8 @@ button.danger { background: var(--down); color: #fff; }
 /* Food, Health and Trends: the same fixed height; longer content scrolls inside the card. Recovery and Sleep likewise. */
 #card-food, #card-health, #card-trends { height: 560px; max-height: none; }
 #card-recovery, #card-sleep { height: 680px; max-height: none; }
-#food, #health, #trends { flex: none; display: flex; flex-direction: column; }
-#food > .food-col, #health > .food-col, #trends > .food-col { flex: none; }
+#food, #health, #trends, #recovery, #sleep { flex: 1 0 auto; display: flex; flex-direction: column; }
+#food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, #sleep > .food-col { flex: 1 0 auto; }
 .food-col > .fpanel:last-child { display: flex; flex-direction: column; }
 #food .food-list { overflow: auto; scrollbar-width: thin; }
 .food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -455,7 +455,7 @@ button.danger { background: var(--down); color: #fff; }
 .nutri-grid .wide { grid-column: 1 / -1; }
 .nutri-grid select, .nutri-grid input { width: 100%; }
 .fchart .grid { stroke: var(--line); stroke-width: 1; }
-.fchart .ax { fill: var(--muted); font-size: 11px; }
+.fchart .ax { fill: var(--muted); font-size: 16px; } /* viewBox units: about 11 px on screen */
 .fchart .bar rect:not(.hit) { fill: var(--accent); opacity: 0.55; }
 .fchart .bar.today rect:not(.hit) { opacity: 1; }
 .fchart .bar:hover rect:not(.hit) { opacity: 1; }
@@ -981,7 +981,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .rc-dotc { stroke: var(--panel); stroke-width: 2; }
 .rc-guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
 .rc-grid { stroke: var(--line); stroke-width: 1; }
-.rc-ax { fill: var(--muted); font-size: 11px; }
+.rc-ax { fill: var(--muted); font-size: 16px; } /* viewBox units: about 11 px on screen */
 .rc-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 4px 0 6px; align-items: center; }
 .rc-key { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: baseline; }
 .rc-stages { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin: 10px 0 6px; background: var(--fill); }
@@ -998,3 +998,25 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #recovery .rc-avg b { font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .rc-stale { margin: 0 0 8px; padding: 8px 10px; border-left: 4px solid var(--warn); border-radius: 6px; font-size: .9em; font-weight: 600; background: color-mix(in srgb, var(--warn) 16%, transparent); }
+
+/* Health cards (Food, Health, Trends, Recovery, Sleep): one look */
+.fh-gray { color: var(--muted); }
+#card-food .cardbody, #card-health .cardbody, #card-trends .cardbody, #card-recovery .cardbody, #card-sleep .cardbody {
+  overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
+/* soft fade at the bottom while there is more to scroll (class set in recovery.js) */
+.cardbody.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
+#recovery .rc-score { font-size: 2.4rem; }
+#recovery .rc-hero, #sleep .kpis { margin-top: 2px; }
+
+/* Recovery/Sleep charts: HTML labels over the SVG (stay 11 px at any width) */
+.rc-plot { margin: 6px 0 2px; }
+.rc-area { position: relative; }
+.rc-area .rc-chart { margin: 0; }
+.rc-mark { position: absolute; transform: translateY(-115%); font-size: 11px; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 1px 3px; border-radius: 4px; }
+.rc-mark-r { right: 0; } .rc-mark-l { left: 0; transform: translateY(-50%); }
+.rc-xax { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.rc-xax-in { padding-left: 14%; } /* = L of rcDots (84 of 600) */
+.rc-li { display: inline-flex; align-items: center; white-space: nowrap; }
+.rc-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+.rc-key { flex: none; margin-right: 5px; }
+.rc-legend { gap: 4px 14px; }

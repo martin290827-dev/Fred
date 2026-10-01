@@ -438,7 +438,7 @@ function svgEl(tag, attrs, text) {
 
 // Bars per day with a dashed target line and the average. get(dayTotals) returns the value or null.
 function barChart(days, { get, target, unit, h, cls, name, judge }) {
-  const W = 600, H = h || 130, L = 46, B = 18, T = 8;
+  const W = 600, H = h || 136, L = 56, B = 24, T = 8;
   const vals = days.map((d) => get(dayTotals(d)));
   const shown = vals.filter((v) => v !== null);
   const max = Math.max(target || 0, ...shown, unit === 'kcal' ? 500 : 50) * 1.12;
@@ -486,7 +486,7 @@ function weightChart(all, h) {
   const pts = weight.filter((w) => w.d >= all[0]).sort((a, b) => a.d.localeCompare(b.d));
   // start the axis at the first weight (at least 14 days shown), so a new diary does not look empty
   const days = pts.length ? all.slice(Math.min(Math.max(0, all.indexOf(pts[0].d)), all.length - Math.min(14, all.length))) : all;
-  const W = 600, H = h || 120, L = 46, B = 18, T = 10;
+  const W = 600, H = h || 124, L = 56, B = 24, T = 10;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Weight since ' + days[0] });
   if (pts.length < 2) { svg.append(svgEl('text', { x: W / 2, y: H / 2, class: 'ax', 'text-anchor': 'middle' }, pts.length ? 'Enter your weight on more days to see a line.' : 'No weight entered yet.')); return svg; }
   const lo = Math.min(...pts.map((p) => p.kg)) - 0.5;
