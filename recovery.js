@@ -157,17 +157,25 @@ const rcMin = (hhmm, night) => { if (!hhmm) return null; const m = parseInt(hhmm
 
 /* ---------- charts: plain SVG, bars coloured by the rules above ---------- */
 
+// Labels are HTML on top of the SVG, so they keep a readable size however wide the chart is.
+// marks: [{top (0..1 of the height), text, side: 'l' | 'r'}]
+function rcPlot(svg, H, marks, first) {
+  const area = el('div', { class: 'rc-area' }, svg,
+    ...marks.map((m) => el('span', { class: 'rc-mark rc-mark-' + m.side, style: 'top:' + (100 * m.top / H).toFixed(2) + '%' }, m.text)));
+  return el('div', { class: 'rc-plot' }, area,
+    el('div', { class: 'rc-xax' + (first.indent ? ' rc-xax-in' : '') }, el('span', {}, first.text), el('span', {}, 'heute')));
+}
+
 // items: [{d, v}]. judge(v) -> 'g'|'o'|'r'. guides: [{v, label}] dashed reference lines.
 function rcBars(items, { judge, fmt, max, guides, h }) {
-  const W = 600, H = h || 96, T = 6, B = 16;
+  const W = 600, H = h || 84, T = 6, B = 2;
   const shown = items.map((x) => x.v).filter((v) => v != null);
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'rc-chart', role: 'img', 'aria-label': 'Verlauf der letzten ' + items.length + ' Nächte' });
   if (!shown.length) return svg;
   const top = (max || Math.max(...shown)) * 1.08 || 1;
   const y = (v) => T + (H - T - B) * (1 - Math.min(v, top) / top);
   for (const g of guides || []) {
-    svg.append(svgEl('line', { x1: 0, x2: W, y1: y(g.v), y2: y(g.v), class: 'rc-guide' }),
-      svgEl('text', { x: W - 2, y: y(g.v) - 3, class: 'rc-ax', 'text-anchor': 'end' }, g.label));
+    svg.append(svgEl('line', { x1: 0, x2: W, y1: y(g.v), y2: y(g.v), class: 'rc-guide' }));
   }
   const bw = W / items.length;
   items.forEach((it, i) => {
@@ -177,13 +185,12 @@ function rcBars(items, { judge, fmt, max, guides, h }) {
     r.append(svgEl('title', {}, rcShort(it.d) + ': ' + fmt(it.v) + ' · ' + RC_NAME[judge(it.v)]));
     svg.append(r);
   });
-  svg.append(svgEl('text', { x: 0, y: H - 3, class: 'rc-ax' }, rcShort(items[0].d)), svgEl('text', { x: W, y: H - 3, class: 'rc-ax', 'text-anchor': 'end' }, 'heute'));
-  return svg;
+  return rcPlot(svg, H, (guides || []).map((g) => ({ top: y(g.v), text: g.label, side: 'r' })), { text: rcShort(items[0].d) });
 }
 
 // Bedtime per night as dots, colour = distance to the median bedtime of the shown nights.
 function rcDots(items) {
-  const W = 600, H = 120, L = 44, T = 8, B = 16;
+  const W = 600, H = 160, L = 84, T = 12, B = 12;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'rc-chart', role: 'img', 'aria-label': 'Einschlafzeit der letzten Nächte' });
   const vals = items.map((x) => x.v).filter((v) => v != null);
   if (vals.length < 3) return svg;
@@ -192,10 +199,13 @@ function rcDots(items) {
   const lo = Math.floor((sorted[0] - 20) / 60) * 60, hi = Math.ceil((sorted[sorted.length - 1] + 20) / 60) * 60;
   const y = (v) => T + (H - T - B) * ((v - lo) / (hi - lo)); // earlier at the top
   const step = hi - lo > 360 ? 120 : 60;
+  const marks = [];
   for (let v = lo; v <= hi; v += step) {
-    svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'rc-grid' }), svgEl('text', { x: L - 6, y: y(v) + 4, class: 'rc-ax', 'text-anchor': 'end' }, rcClock(v)));
+    svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'rc-grid' }));
+    marks.push({ top: y(v), text: rcClock(v), side: 'l' });
   }
-  svg.append(svgEl('line', { x1: L, x2: W, y1: y(med), y2: y(med), class: 'rc-guide' }), svgEl('text', { x: W - 2, y: y(med) - 3, class: 'rc-ax', 'text-anchor': 'end' }, 'Median ' + rcClock(med)));
+  svg.append(svgEl('line', { x1: L, x2: W, y1: y(med), y2: y(med), class: 'rc-guide' }));
+  marks.push({ top: y(med), text: 'Median ' + rcClock(med), side: 'r' });
   const bw = (W - L) / items.length;
   items.forEach((it, i) => {
     if (it.v == null) return;
@@ -204,8 +214,7 @@ function rcDots(items) {
     c.append(svgEl('title', {}, rcShort(it.d) + ': ins Bett um ' + rcClock(it.v) + ' · ' + Math.round(Math.abs(it.v - med)) + ' min vom Median · ' + RC_NAME[cls]));
     svg.append(c);
   });
-  svg.append(svgEl('text', { x: L, y: H - 3, class: 'rc-ax' }, rcShort(items[0].d)), svgEl('text', { x: W, y: H - 3, class: 'rc-ax', 'text-anchor': 'end' }, 'heute'));
-  return svg;
+  return rcPlot(svg, H, marks, { text: rcShort(items[0].d), indent: true });
 }
 
 // One bar split into deep / REM / light / awake.
@@ -232,9 +241,17 @@ function rcDelta(v, base, unit, higherIsBetter) {
 }
 
 // A coloured dot + text: how to read the colours of the chart above.
-const rcLegend = (...bits) => el('p', { class: 'muted small rc-legend' }, ...bits.flatMap(([c, t]) => [el('span', { class: 'rc-key rc-' + c }), t + ' ']));
+const rcLegend = (...bits) => el('p', { class: 'muted small rc-legend' }, ...bits.map(([c, t]) => el('span', { class: 'rc-li' }, el('span', { class: 'rc-key rc-' + c }), t)));
 
-const rcPanel = (title, ...kids) => el('section', { class: 'fpanel' }, el('div', { class: 'food-sub' }, title), ...kids);
+// Section icons in the same line style as Food/Health/Trends (hcard and FICONS from food.js).
+Object.assign(FICONS, {
+  pulse: 'M3 12h4l2-5 4 10 2-5h6',
+  moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  tray: 'M4 13h4l1.5 3h5L16 13h4M4 13l2.5-8h11L20 13v6H4z',
+});
+// Same header as the Food/Health/Trends sections: coloured icon and title, caption on the right.
+const rcPanel = (icon, tone, title, caption, ...kids) => hcard(icon, tone, title, caption, ...kids);
 
 // Reminder when the newest night is more than 10 days old.
 const RC_STALE_DAYS = 10;
@@ -271,8 +288,8 @@ function renderRecovery() {
   const scored = computeScores(rows);
 
   if (!scored.length) {
-    box.replaceChildren(el('div', { class: 'food-col' }, rcPanel('Recovery', el('p', { class: 'muted small' }, 'Noch keine Daten. Lade eine Whoop-CSV, um Recovery und Schlaf zu sehen.'), importRow())));
-    sbox.replaceChildren(el('div', { class: 'food-col' }, rcPanel('Schlaf', el('p', { class: 'muted small' }, 'Noch keine Daten. Die Whoop-CSV lädst du in der Karte Recovery.'))));
+    box.replaceChildren(el('div', { class: 'food-col' }, rcPanel('pulse', 'indigo', 'Recovery', '', el('p', { class: 'muted small' }, 'Noch keine Daten. Lade eine Whoop-CSV, um Recovery und Schlaf zu sehen.'), importRow())));
+    sbox.replaceChildren(el('div', { class: 'food-col' }, rcPanel('moon', 'purple', 'Schlaf', '', el('p', { class: 'muted small' }, 'Noch keine Daten. Die Whoop-CSV lädst du in der Karte Recovery.'))));
     return;
   }
 
@@ -325,7 +342,7 @@ function renderRecovery() {
       el('div', { class: 'rc-chips' }, chip('deep', last.deepMin, dShare, RC_RULES.deep(dShare)), chip('rem', last.remMin, rShare, RC_RULES.rem(rShare)), chip('light', last.lightMin, null, ''), chip('awake', last.awakeMin || 0, null, '')),
       el('p', { class: 'muted small' }, 'Tief grün ab 15 %, REM grün ab 20 % des Schlafs. Phasen sind Schätzungen des Armbands.'));
   }
-  const sleepPanel = rcPanel('Schlafdauer', sleepTiles,
+  const sleepPanel = rcPanel('moon', 'purple', 'Schlafdauer', 'Nacht auf ' + rcShort(last.d), sleepTiles,
     rcBars(series((r) => r.sleepMin), { judge: RC_RULES.sleep, fmt: rcHm, max: 600, guides: [{ v: 420, label: '7 h' }] }),
     rcLegend(['g', '7 h oder mehr'], ['o', '6–7 h'], ['r', 'unter 6 h']), stageBlock);
 
@@ -334,7 +351,7 @@ function renderRecovery() {
   const debtN = winRows.filter((r) => r.sleepDebtMin != null);
   const debtShare = debtN.length >= 7 ? Math.round((100 * debtN.filter((r) => r.sleepDebtMin > 60).length) / debtN.length) : null;
   const capped = debtAll.length >= 14 && debtAll.filter((r) => r.sleepDebtMin >= 127).length >= 5;
-  const debtPanel = rcPanel('Schlafschuld, letzte ' + N + ' Nächte',
+  const debtPanel = rcPanel('bars', 'orange', 'Schlafschuld', N + ' Nächte',
     rcBars(series((r) => r.sleepDebtMin), { judge: RC_RULES.debt, fmt: (v) => v + ' min', max: 130 }),
     rcLegend(['g', 'bis 45 min'], ['o', '46–90 min'], ['r', 'über 90 min']),
     el('p', { class: 'muted small' }, 'Min. Schlafdefizit pro Nacht' + (debtShare != null ? ' · ' + debtShare + ' % der letzten ' + N + ' Nächte liegen über 60 min.' : '') + (capped ? ' Whoop scheint das Defizit bei 127 min zu deckeln: 127 heißt "127 oder mehr".' : '')));
@@ -347,7 +364,7 @@ function renderRecovery() {
   let rhythmPanel;
   if (bedN.length >= 5) {
     const mN = rcMean(bedN), spread = Math.round(rcStd(bedN, mN));
-    rhythmPanel = rcPanel('Schlafrhythmus, letzte ' + N + ' Nächte',
+    rhythmPanel = rcPanel('clock', 'teal', 'Schlafrhythmus', N + ' Nächte',
       el('div', { class: 'kpis' },
         rcTile('Ins Bett', bedN.length ? rcClock(rcMean(bedN)) : '–', 'Ø ' + N + ' Tage'),
         rcTile('Aufstehen', wakeN.length ? rcClock(rcMean(wakeN)) : '–', 'Ø ' + N + ' Tage'),
@@ -360,20 +377,34 @@ function renderRecovery() {
   }
 
   /* Fred-Score */
-    const trendPanel = rcPanel('Fred-Score, letzte ' + N + ' Nächte',
+    const trendPanel = rcPanel('bars', 'indigo', 'Fred-Score', N + ' Nächte',
     rcBars(series((r) => r.score), { judge: RC_RULES.score, fmt: (v) => String(v), max: 100, guides: [{ v: 67, label: '67' }, { v: 34, label: '34' }], h: 100 }),
     rcLegend(['g', '67 und mehr'], ['o', '34–66'], ['r', 'unter 34']));
 
   box.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(),
-    rcPanel('Heute', scoreBlock, tiles, strainHint),
+    rcPanel('pulse', 'indigo', 'Heute', 'Nacht auf ' + rcShort(last.d), scoreBlock, tiles, strainHint),
     trendPanel,
-    rcPanel('Daten', importRow(),
+    rcPanel('tray', 'gray', 'Daten', '', importRow(),
       el('p', { class: 'muted small' }, 'Fred-Score ist eine eigene Näherung (HRV- und Ruhepuls-Abweichung von deiner rollenden Basis, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel pendelt sich die Basis innerhalb von ca. 1–2 Wochen neu ein.'))));
   sbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(), sleepPanel, debtPanel, rhythmPanel));
 }
 
+// Fade the bottom edge of the health cards while more content sits below.
+function rcWatchScroll() {
+  for (const id of ['card-food', 'card-health', 'card-trends', 'card-recovery', 'card-sleep']) {
+    const b = document.querySelector('#' + id + ' .cardbody');
+    if (!b) continue;
+    const upd = () => b.classList.toggle('more', b.scrollHeight - b.scrollTop - b.clientHeight > 4);
+    b.addEventListener('scroll', upd, { passive: true });
+    new MutationObserver(() => requestAnimationFrame(upd)).observe(b, { childList: true, subtree: true });
+    window.addEventListener('resize', upd);
+    requestAnimationFrame(upd);
+  }
+}
+
 function initRecovery() {
   renderRecovery();
+  rcWatchScroll();
   let rt = null;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderRecovery, 250); });
 }
