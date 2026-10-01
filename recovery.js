@@ -261,7 +261,7 @@ function renderRecovery() {
     : el('div', {},
       el('div', { class: 'rc-hero' },
         el('div', { class: 'rc-score rc-t-' + RC_RULES.score(last.score) }, String(last.score)),
-        el('div', { class: 'muted small' }, BAND_LABEL[scoreBand(last.score)] + (last.whoopRecovery != null ? ' · Whoop-Wert heute: ' + last.whoopRecovery + ' %' : ''))),
+        el('div', { class: 'muted small' }, BAND_LABEL[scoreBand(last.score)])),
       el('div', { class: 'rc-avgs' }, avgChip('Ø 7 Tage', avgScore(7)), avgChip('Ø 15 Tage', avgScore(15)), avgChip('Ø 30 Tage', avgScore(30))));
   const tiles = el('div', { class: 'kpis' },
     rcTile('HRV', last.hrv != null ? last.hrv + ' ms' : '–', rcDelta(last.hrv, last.baseHrv, 'ms', true)),
