@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=108">
+  <link rel="stylesheet" href="style.css?v=109">
 </head>
 <body>
   <header>
@@ -49,16 +49,17 @@
       <div id="weather2" class="wx2"></div>
     </section>
 
-    <section class="card" id="card-events">
-      <h2>Events <span class="hacts"><button id="ev-add" class="hicon" type="button" aria-label="New event" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
-      <div id="ev-edit" hidden></div>
-      <ul id="events" class="list"></ul>
-    </section>
     <section class="card" id="card-cal">
       <h2>Tasks &amp; Reminders <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
       <div id="cal-edit" hidden></div>
       <ul id="cal-list" class="list"></ul>
       <p class="muted small" id="cal-status"></p>
+    </section>
+
+    <section class="card" id="card-events">
+      <h2>Events <span class="hacts"><button id="ev-add" class="hicon" type="button" aria-label="New event" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
+      <div id="ev-edit" hidden></div>
+      <ul id="events" class="list"></ul>
     </section>
 
     <section class="card" id="card-notes">
@@ -80,37 +81,6 @@
       <h2>Tickers <button id="btn-refresh" class="ghost small">Refresh</button></h2>
       <div id="tickers">Loading...</div>
       <p class="muted small" id="tickers-status"></p>
-    </section>
-
-    <section class="card" id="card-food">
-      <h2>Food <span id="food-status" class="muted small"></span></h2>
-      <div id="food" class="food"></div>
-    </section>
-
-    <section class="card" id="card-health">
-      <h2>Health</h2>
-      <div id="health" class="food"></div>
-    </section>
-
-    <section class="card" id="card-trends">
-      <h2>Trends</h2>
-      <div id="trends" class="food"></div>
-    </section>
-
-    <section class="card" id="card-recovery">
-      <h2>Recovery</h2>
-      <div id="recovery" class="food"></div>
-    </section>
-
-    <section class="card" id="card-sleep">
-      <h2>Sleep</h2>
-      <div id="sleep" class="food"></div>
-    </section>
-
-    <section class="card" id="card-clock">
-      <h2>Time</h2>
-      <div id="clocks"></div>
-      <div id="markets" class="markets" aria-label="Stock exchanges"></div>
     </section>
 
     <section class="card" id="card-timer">
@@ -147,6 +117,12 @@
       </div>
     </section>
 
+    <section class="card" id="card-clock">
+      <h2>Time</h2>
+      <div id="clocks"></div>
+      <div id="markets" class="markets" aria-label="Stock exchanges"></div>
+    </section>
+
     <section class="card" id="card-calc">
       <h2>Calculator &amp; Currency</h2>
       <div class="calc-display">
@@ -172,6 +148,31 @@
       </div>
       <p class="muted small fx-rate" id="fx-rate"></p>
       <p class="muted small" id="fx-status"></p>
+    </section>
+
+    <section class="card" id="card-food">
+      <h2>Food <span id="food-status" class="muted small"></span></h2>
+      <div id="food" class="food"></div>
+    </section>
+
+    <section class="card" id="card-health">
+      <h2>Health</h2>
+      <div id="health" class="food"></div>
+    </section>
+
+    <section class="card" id="card-trends">
+      <h2>Trends</h2>
+      <div id="trends" class="food"></div>
+    </section>
+
+    <section class="card" id="card-recovery">
+      <h2>Recovery</h2>
+      <div id="recovery" class="food"></div>
+    </section>
+
+    <section class="card" id="card-sleep">
+      <h2>Sleep</h2>
+      <div id="sleep" class="food"></div>
     </section>
 
     <section class="card card-wide" id="card-news">
@@ -282,11 +283,11 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=108"></script>
-  <script src="gcal.js?v=108"></script>
-  <script src="sync.js?v=108"></script>
-  <script src="food.js?v=108"></script>
-  <script src="archive.js?v=108"></script>
-  <script src="recovery.js?v=108"></script>
+  <script src="app.js?v=109"></script>
+  <script src="gcal.js?v=109"></script>
+  <script src="sync.js?v=109"></script>
+  <script src="food.js?v=109"></script>
+  <script src="archive.js?v=109"></script>
+  <script src="recovery.js?v=109"></script>
 </body>
 </html>
