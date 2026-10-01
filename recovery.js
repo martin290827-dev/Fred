@@ -249,17 +249,20 @@ function renderRecovery() {
   }
 
   const last = scored[scored.length - 1];
-  const recent7 = scored.slice(-7).filter((r) => r.score != null);
-  const avg7 = recent7.length ? Math.round(rcMean(recent7.map((r) => r.score))) : null;
   const avgOf = (list, key) => { const v = list.map((r) => r[key]).filter((x) => x != null); return v.length ? rcMean(v) : null; };
   const avgDebt7 = avgOf(rows.slice(-7), 'sleepDebtMin');
 
   /* Heute */
+  // average score over the last n nights (only nights that have a score)
+  const avgScore = (n) => { const v = scored.slice(-n).filter((r) => r.score != null).map((r) => r.score); return v.length ? Math.round(rcMean(v)) : null; };
+  const avgChip = (label, v) => el('span', { class: 'rc-avg' }, label + ' ', el('b', { class: v != null ? 'rc-t-' + RC_RULES.score(v) : '' }, v != null ? String(v) : '–'));
   const scoreBlock = last.score == null
     ? el('div', { class: 'muted small' }, 'Noch ' + Math.max(1, RC_BASELINE_MIN - rows.length + 1) + ' Nächte bis zur ersten Basiswert-Berechnung.')
-    : el('div', { class: 'rc-hero' },
-      el('div', { class: 'rc-score rc-t-' + RC_RULES.score(last.score) }, String(last.score)),
-      el('div', { class: 'muted small' }, BAND_LABEL[scoreBand(last.score)] + (avg7 != null ? ' · Ø 7 Tage: ' + avg7 : '') + (last.whoopRecovery != null ? ' · Whoop an dem Tag: ' + last.whoopRecovery + '%' : '')));
+    : el('div', {},
+      el('div', { class: 'rc-hero' },
+        el('div', { class: 'rc-score rc-t-' + RC_RULES.score(last.score) }, String(last.score)),
+        el('div', { class: 'muted small' }, BAND_LABEL[scoreBand(last.score)] + (last.whoopRecovery != null ? ' · Whoop-Wert heute: ' + last.whoopRecovery + ' %' : ''))),
+      el('div', { class: 'rc-avgs' }, avgChip('Ø 7 Tage', avgScore(7)), avgChip('Ø 15 Tage', avgScore(15)), avgChip('Ø 30 Tage', avgScore(30))));
   const tiles = el('div', { class: 'kpis' },
     rcTile('HRV', last.hrv != null ? last.hrv + ' ms' : '–', rcDelta(last.hrv, last.baseHrv, 'ms', true)),
     rcTile('Ruhepuls', last.rhr != null ? last.rhr + ' bpm' : '–', rcDelta(last.rhr, last.baseRhr, 'bpm', false)),

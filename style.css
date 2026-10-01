@@ -995,3 +995,5 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #recovery .kpi-s, #sleep .kpi-s { min-height: 0; }
 #recovery .kpi-l, #recovery .kpi-v, #sleep .kpi-l, #sleep .kpi-v { white-space: nowrap; }
 #recovery .kpi-v, #sleep .kpi-v { font-size: 1rem; }
+#recovery .rc-avgs { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
+#recovery .rc-avg b { font-weight: 700; font-variant-numeric: tabular-nums; }
