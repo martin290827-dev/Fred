@@ -648,8 +648,10 @@ function foodEditRow(e) {
   const text = el('input', { type: 'text', 'aria-label': 'Food' }); text.value = e.text;
   const time = el('input', { type: 'time', 'aria-label': 'Time' }); time.value = e.at.slice(11, 16);
   const kcal = el('input', { type: 'text', inputmode: 'numeric', 'aria-label': 'kcal', placeholder: 'kcal' }); kcal.value = e.kcal ?? '';
-  const done = () => { foodEditId = null; renderFood(); };
+  const leave = () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }; // focus leaves the edit row, so the card may redraw
+  const done = () => { leave(); foodEditId = null; renderFood(); };
   const save = () => {
+    leave();
     const newText = text.value.trim() || e.text;
     const newKcal = kcal.value === '' ? null : parseInt(kcal.value, 10);
     const textChanged = newText !== e.text;
@@ -659,7 +661,9 @@ function foodEditRow(e) {
     foodEditId = null;
     if (kcalChanged && newKcal !== null) Object.assign(e, { kcal: newKcal, p: null, c: null, f: null, src: 'manual', err: null });
     saveFood();
-    if (textChanged && !kcalChanged) estimateEntry(e); else renderFood();
+    if (newKcal === null && (textChanged || kcalChanged)) estimateEntry(e); // calories cleared or new text without own calories: estimate again
+    else if (textChanged && !kcalChanged) estimateEntry(e);
+    else renderFood();
   };
   for (const n of [text, time, kcal]) n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } if (ev.key === 'Escape') done(); });
   requestAnimationFrame(() => text.focus());
