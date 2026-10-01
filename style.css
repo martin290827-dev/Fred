@@ -959,3 +959,10 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .ctip[hidden] { display: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ctip { background: rgba(72, 72, 74, 0.95); } }
 :root[data-theme="dark"] .ctip { background: rgba(72, 72, 74, 0.95); }
+
+/* tip kind label: what to cut, swap, add, or keep */
+.tip-k { flex: none; width: 46px; padding: 0 !important; height: 20px; padding: 0 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; display: grid; place-items: center; margin-top: 1px; box-sizing: border-box; background: color-mix(in srgb, var(--c-yellow) 25%, transparent); color: var(--text); }
+.tip-k.k-cut { background: color-mix(in srgb, var(--down) 18%, transparent); color: var(--down); }
+.tip-k.k-swap { background: color-mix(in srgb, var(--c-orange) 20%, transparent); color: var(--c-orange); }
+.tip-k.k-add { background: color-mix(in srgb, var(--c-p) 18%, transparent); color: var(--c-p); }
+.tip-k.k-good { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); }

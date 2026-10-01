@@ -77,11 +77,13 @@ async function estimateEntry(e) {
 let tips = store.get('tips', { day: '', list: [], err: '' });
 let tipsBusy = false;
 
-const TIPS_SYSTEM = 'You are a friendly, evidence-based nutrition coach. You get one adult\'s food diary for the last days, ' +
-  'the daily targets and the goal (lose weight while keeping muscle). Give 5 short, practical tips based on what this person ' +
-  'actually eats: name the real foods and drinks from the diary, suggest concrete swaps or additions with rough numbers ' +
-  '(kcal or grams of protein). Start with the tip that has the biggest effect. No medical advice, no moralizing. ' +
-  'Reply with JSON only: {"tips":[{"title":"max 5 words","text":"max 22 words"}]}';
+const TIPS_SYSTEM = 'You are a direct, evidence-based nutrition coach. You get one adult\'s food diary for the last days, ' +
+  'the daily targets and the goal (lose weight while keeping muscle). Your main job: say honestly what in this diet is working against the goal ' +
+  'and what should be left out or reduced. Name the real foods and drinks from the diary, how often they appear and what they cost ' +
+  '(kcal per week), and give a concrete replacement. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
+  '(protein, vegetables, fibre), then a swap or addition. If something is good, say so briefly; never invent problems. ' +
+  'Be frank and specific, no moralizing, no medical advice. 5 tips. ' +
+  'Reply with JSON only: {"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}]}';
 
 function tipsInput() {
   const tg = targets();
@@ -92,9 +94,13 @@ function tipsInput() {
       .map((e) => e.at.slice(11, 16) + ' ' + e.text + (e.kcal != null ? ' (' + e.kcal + ' kcal' + (e.p != null ? ', P' + e.p + ' C' + e.c + ' F' + e.f : '') + ')' : ''));
     return d + ': total ' + Math.round(t.kcal) + ' kcal, protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g\n  ' + meals.join('\n  ');
   });
+  const kc = days.map((d) => dayTotals(d).kcal);
+  const over = kc.filter((v) => v > tg.kcal).length;
+  const avg = kc.length ? Math.round(kc.reduce((x, y) => x + y, 0) / kc.length) : 0;
+  const week = 'Average ' + avg + ' kcal per logged day, ' + over + ' of ' + kc.length + ' days above the target.\n';
   return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
     'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + '\n' +
-    'Diary:\n' + lines.join('\n');
+    week + 'Diary:\n' + lines.join('\n');
 }
 
 async function loadTips(force) {
@@ -107,7 +113,7 @@ async function loadTips(force) {
   renderFood();
   try {
     const j = await aiJSON(TIPS_SYSTEM, tipsInput(), 900);
-    tips = { day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ title: String(t.title || ''), text: String(t.text) })), err: '' };
+    tips = { day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
   } catch (e) {
     tips = Object.assign({}, tips, { err: e.message });
   }
@@ -116,6 +122,8 @@ async function loadTips(force) {
   renderFood();
 }
 
+const TIP_KINDS = { cut: 'Cut', swap: 'Swap', add: 'Add', good: 'Good' };
+
 function tipsBlock() {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
   const logged = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n).length;
@@ -123,7 +131,7 @@ function tipsBlock() {
     return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : '');
   }
   const ul = el('ul', { class: 'tips' }, ...tips.list.map((t, i) => el('li', { class: 'tip' },
-    el('span', { class: 'tip-n' }, String(i + 1)),
+    el('span', { class: 'tip-k k-' + (t.kind || 'none'), title: t.kind ? TIP_KINDS[t.kind] : '' }, t.kind ? TIP_KINDS[t.kind] : String(i + 1)),
     el('span', { class: 'tip-b' }, t.title ? el('span', { class: 'tip-t' }, t.title) : '', el('span', { class: 'tip-x' }, t.text)))));
   fitRows(ul, 2); // two tips; the rest scrolls
   return ul;
