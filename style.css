@@ -968,12 +968,12 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-k.k-good { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); }
 
 /* ---------- Sleep & Recovery card ---------- */
-#card-recovery { height: auto; max-height: none; } /* show every panel, no inner scrolling */
-#card-recovery .cardbody { overflow: visible; }
+#card-recovery, #card-sleep { height: auto; max-height: none; } /* show every panel, no inner scrolling */
+#card-recovery .cardbody, #card-sleep .cardbody { overflow: visible; }
 #recovery .rc-hero { display: flex; align-items: baseline; gap: 12px; margin: 0 0 10px; flex-wrap: wrap; }
 .rc-score { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
 /* traffic light: g good, o watch, r poor (same colours in text, bars, dots and keys) */
-#recovery .rc-t-g { color: var(--up); } #recovery .rc-t-o { color: var(--warn); } #recovery .rc-t-r { color: var(--down); }
+#recovery .rc-t-g, #sleep .rc-t-g { color: var(--up); } #recovery .rc-t-o, #sleep .rc-t-o { color: var(--warn); } #recovery .rc-t-r, #sleep .rc-t-r { color: var(--down); }
 .rc-chart { display: block; width: 100%; height: auto; margin: 4px 0 2px; }
 .rc-bar.rc-g, .rc-dotc.rc-g, .rc-key.rc-g { fill: var(--up); background: var(--up); }
 .rc-bar.rc-o, .rc-dotc.rc-o, .rc-key.rc-o { fill: var(--warn); background: var(--warn); }
@@ -991,7 +991,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .rc-chip { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .rc-hint { margin: 8px 0 0; color: var(--warn); }
 .rc-file-input { display: none; }
-#recovery .kpis { margin-top: 6px; margin-bottom: 4px; }
-#recovery .kpi-s { min-height: 0; }
-#recovery .kpi-l, #recovery .kpi-v { white-space: nowrap; }
-#recovery .kpi-v { font-size: 1rem; }
+#recovery .kpis, #sleep .kpis { margin-top: 6px; margin-bottom: 4px; }
+#recovery .kpi-s, #sleep .kpi-s { min-height: 0; }
+#recovery .kpi-l, #recovery .kpi-v, #sleep .kpi-l, #sleep .kpi-v { white-space: nowrap; }
+#recovery .kpi-v, #sleep .kpi-v { font-size: 1rem; }
+#card-recovery, #card-sleep { align-self: start; } /* each card as tall as its content, no empty space at the bottom */

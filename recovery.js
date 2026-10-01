@@ -235,14 +235,16 @@ function importRow() {
     rcMirrorMsg ? el('p', { class: 'muted small' }, rcMirrorMsg) : '');
 }
 
+// Two cards: Recovery (score, HRV, resting HR, data import) and Sleep (duration, stages, debt, rhythm).
 function renderRecovery() {
-  const box = $('recovery');
-  if (!box) return;
+  const box = $('recovery'), sbox = $('sleep');
+  if (!box || !sbox) return;
   const rows = [...whoop].sort((a, b) => a.d.localeCompare(b.d));
   const scored = computeScores(rows);
 
   if (!scored.length) {
-    box.replaceChildren(el('div', { class: 'food-col' }, rcPanel('Sleep & Recovery', el('p', { class: 'muted small' }, 'Noch keine Daten. Lade eine Whoop-CSV, um Schlaf und Recovery zu sehen.'), importRow())));
+    box.replaceChildren(el('div', { class: 'food-col' }, rcPanel('Recovery', el('p', { class: 'muted small' }, 'Noch keine Daten. Lade eine Whoop-CSV, um Recovery und Schlaf zu sehen.'), importRow())));
+    sbox.replaceChildren(el('div', { class: 'food-col' }, rcPanel('Schlaf', el('p', { class: 'muted small' }, 'Noch keine Daten. Die Whoop-CSV lädst du in der Karte Recovery.'))));
     return;
   }
 
@@ -326,9 +328,10 @@ function renderRecovery() {
 
   box.replaceChildren(el('div', { class: 'food-col' },
     rcPanel('Heute', scoreBlock, tiles, strainHint),
-    sleepPanel, debtPanel, rhythmPanel, trendPanel,
+    trendPanel,
     rcPanel('Daten', importRow(),
       el('p', { class: 'muted small' }, 'Fred-Score ist eine eigene Näherung (HRV- und Ruhepuls-Abweichung von deiner rollenden Basis, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel pendelt sich die Basis innerhalb von ca. 1–2 Wochen neu ein.'))));
+  sbox.replaceChildren(el('div', { class: 'food-col' }, sleepPanel, debtPanel, rhythmPanel));
 }
 
 /* ---------- mirror raw fields to a Google Sheet in your Drive (for your own analysis) ---------- */
