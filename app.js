@@ -1366,7 +1366,7 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'whoop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'food', 'weight'];
 
@@ -1570,6 +1570,7 @@ const CARD_ICONS = {
   'card-food': ['#30b0c7', 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3'],
   'card-health': ['#af52de', 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z'],
   'card-trends': ['#ff9500', 'M5 20V10M10 20V4M15 20v-7M20 20V8'],
+  'card-recovery': ['#5e5ce6', 'M3 12h4l2-6 4 12 2-6h6'],
   'card-news': ['#ff3b30', 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4'],
 };
 
@@ -1671,6 +1672,7 @@ function init() {
     li.classList.toggle('show-act', on);
   });
   initFood();
+  initRecovery();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();
