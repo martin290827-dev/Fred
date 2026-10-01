@@ -623,7 +623,7 @@ function renderFood() {
   goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
   $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
-  fitRows(ul, 3); // the last three meals; the rest scrolls
+  fitRows(ul, 1); // the last meal; the rest scrolls
   requestAnimationFrame(() => {
     // card height is fixed in CSS; more content scrolls inside the card
     growChart($('trends'), (h) => weightChart(daysN, h));
