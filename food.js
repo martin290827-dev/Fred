@@ -299,7 +299,6 @@ const FICONS = {
   check: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
   bars: 'M5 20V10M10 20V4M15 20v-7M20 20V8',
   line: 'M3 17l6-6 4 4 8-8M3 21h18',
-  steps: 'M8 4c1.5 0 2.5 1.5 2.5 3.5S9.5 11 8 11 5.5 9.5 5.5 7.5 6.5 4 8 4zM16 11c1.5 0 2.5 1.5 2.5 3.5S17.5 18 16 18s-2.5-1.5-2.5-3.5 1-3.5 2.5-3.5zM6 14h4v2.5H6zM14 20h4',
   bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z',
 };
 
@@ -430,13 +429,12 @@ function svgEl(tag, attrs, text) {
 }
 
 // Bars per day with a dashed target line and the average. get(dayTotals) returns the value or null.
-function barChart(days, { get, raw, target, unit, h, cls, name, judge, reach, fmt }) {
+function barChart(days, { get, target, unit, h, cls, name, judge }) {
   const W = 600, H = h || 130, L = 46, B = 18, T = 8;
-  const vals = days.map((d) => (raw ? raw(d) : get(dayTotals(d))));
-  const show = fmt || fmtN;
+  const vals = days.map((d) => get(dayTotals(d)));
   const shown = vals.filter((v) => v !== null);
-  const max = Math.max(target || 0, ...shown, unit === 'kcal' ? 500 : unit === 'steps' ? 5000 : unit === 'h' ? 9 : 50) * 1.12;
-  const step = unit === 'kcal' ? 100 : unit === 'steps' ? 2000 : unit === 'h' ? 2 : 10;
+  const max = Math.max(target || 0, ...shown, unit === 'kcal' ? 500 : 50) * 1.12;
+  const step = unit === 'kcal' ? 100 : 10;
   const y = (v) => T + (H - T - B) * (1 - v / max);
   const bw = (W - L) / days.length;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart ' + (cls || ''), role: 'img', 'aria-label': name + ' per day, last ' + days.length + ' days' });
@@ -450,8 +448,8 @@ function barChart(days, { get, raw, target, unit, h, cls, name, judge, reach, fm
     const w = Math.max(1.5, bw - (days.length > 40 ? 1.5 : 3));
     const x = L + i * bw + (bw - w) / 2;
     const over = judge && target && v > target; // judge: red above the target, green up to it
-    const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') + (reach && v >= target ? ' met' : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? (fmt ? show(v) : fmtN(v) + ' ' + unit) + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data')));
+    const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') });
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data')));
     g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
     if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
     svg.append(g);
@@ -461,7 +459,7 @@ function barChart(days, { get, raw, target, unit, h, cls, name, judge, reach, fm
       svg.append(svgEl('text', { x: last ? x + w : x + w / 2, y: H - 4, class: 'ax', 'text-anchor': last ? 'end' : 'middle' }, lbl));
     }
   });
-  if (target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target), y2: y(target), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(target) - 4, class: 'ax tgtlbl' }, 'target ' + (fmt ? show(target) : fmtN(target))));
+  if (target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target), y2: y(target), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(target) - 4, class: 'ax tgtlbl' }, 'target ' + fmtN(target)));
   return svg;
 }
 
@@ -599,8 +597,6 @@ function renderFood() {
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
     tg.c !== null ? hcard('bars', 'teal', 'Carbs', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
     tg.f ? hcard('bars', 'gold', 'Fat', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
-    typeof stepsChart === 'function' ? hcard('bars', 'green', 'Steps', avgVals(daysN, steps) !== null ? '\u00d8 ' + fmtN(avgVals(daysN, steps)) : rangeTxt, stepsChart(daysN, 100)) : '',
-    typeof sleepChart === 'function' ? hcard('bars', 'indigo', 'Sleep', avgVals(daysN, sleepH) !== null ? '\u00d8 ' + fmtHM(avgVals(daysN, sleepH)) : rangeTxt, sleepChart(daysN, 100)) : '',
     hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
       el('div', { class: 'muted small food-stats w-cap' }, '')),
     n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
@@ -617,7 +613,7 @@ function renderFood() {
   const tipsCard = hcard('bulb', 'yellow', 'Tips', '', tipsBlock());
   tipsCard.querySelector('.fh').append(refresh);
   goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
-  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, typeof activityPanel === 'function' ? activityPanel() : '', tipsCard));
+  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
   fitRows(ul, 3); // the last three meals; the rest scrolls
   requestAnimationFrame(() => {
