@@ -1468,6 +1468,7 @@ function applyLayout() {
 function renderJumpbar(visible) {
   const bar = $('jumpbar');
   if (!bar) return;
+  initJumpbarWheel();
   bar.replaceChildren(...visible.map((id) => {
     const c = $(id);
     const title = cardTitle(c);
@@ -1475,6 +1476,18 @@ function renderJumpbar(visible) {
       cardIcon(id) || '', el('span', { class: 'jl' }, shortTitle(title)));
   }));
   document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px');
+}
+
+// Mouse wheel scrolls the chip row sideways (no trackpad needed). Set up once.
+function initJumpbarWheel() {
+  const bar = $('jumpbar');
+  if (!bar || bar.dataset.wheel) return;
+  bar.dataset.wheel = '1';
+  bar.addEventListener('wheel', (e) => {
+    if (bar.scrollWidth <= bar.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    bar.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
 }
 
 function shortTitle(t) { return t.split(/\s*&\s*/)[0]; } // "Calculator & Currency" -> "Calculator"
