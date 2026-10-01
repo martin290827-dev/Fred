@@ -393,8 +393,9 @@ button.danger { background: var(--down); color: #fff; }
 /* ---------- food diary (wide card: today left, trends right) ---------- */
 /* Food, Health and Trends: as tall as their content; in a row they share the height of the tallest,
    and the last section of each fills the rest (see growChart in food.js) */
-/* Food, Health, Trends, Recovery and Sleep: all the same fixed height; longer content scrolls inside the card */
-#card-food, #card-health, #card-trends, #card-recovery, #card-sleep { height: 700px; max-height: none; }
+/* Food, Health and Trends: the same fixed height; longer content scrolls inside the card. Recovery and Sleep likewise. */
+#card-food, #card-health, #card-trends { height: 560px; max-height: none; }
+#card-recovery, #card-sleep { height: 680px; max-height: none; }
 #food, #health, #trends { flex: none; display: flex; flex-direction: column; }
 #food > .food-col, #health > .food-col, #trends > .food-col { flex: none; }
 .food-col > .fpanel:last-child { display: flex; flex-direction: column; }
