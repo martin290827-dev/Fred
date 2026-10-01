@@ -1618,7 +1618,43 @@ function initCards() {
   }
 }
 
+/* ---------- Chart tooltips: hover (mouse) or tap (touch) a bar or point to see its value at once ---------- */
+function initChartTips() {
+  const tip = el('div', { class: 'ctip', role: 'tooltip', hidden: '' });
+  document.body.append(tip);
+  let hideTimer = null, shownAt = 0;
+  // the text of the nearest SVG element with a <title>; the title moves to data-tip so the slow browser tooltip does not double it
+  const textFor = (t) => {
+    if (!t.closest || !t.closest('svg')) return '';
+    for (let n = t; n && n.nodeType === 1; n = n.parentNode) {
+      const ti = [...n.children].find((c) => c.tagName === 'title');
+      if (ti) { n.dataset.tip = ti.textContent; ti.remove(); }
+      if (n.dataset && n.dataset.tip) return n.dataset.tip;
+      if (n.tagName === 'svg') break;
+    }
+    return '';
+  };
+  const show = (ev) => {
+    const text = textFor(ev.target);
+    if (!text) { tip.hidden = true; return; }
+    tip.textContent = text;
+    tip.hidden = false;
+    shownAt = Date.now();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const x = Math.min(window.innerWidth - w - 8, Math.max(8, ev.clientX - w / 2));
+    const y = ev.clientY - h - 14 < 8 ? ev.clientY + 18 : ev.clientY - h - 14; // above the pointer, below if no room
+    tip.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+    clearTimeout(hideTimer);
+    if (ev.pointerType === 'touch') hideTimer = setTimeout(() => { tip.hidden = true; }, 3000);
+  };
+  document.addEventListener('pointermove', (ev) => { if (ev.pointerType !== 'touch') show(ev); });
+  document.addEventListener('pointerdown', (ev) => { if (ev.pointerType === 'touch') show(ev); });
+  document.addEventListener('pointerleave', (ev) => { if (ev.pointerType !== 'touch') tip.hidden = true; }); // a finger lifting also 'leaves'; the timer hides it then
+  document.addEventListener('scroll', () => { if (Date.now() - shownAt > 400) tip.hidden = true; }, true); // scrolling hides it (not the settling right after a tap)
+}
+
 function init() {
+  initChartTips();
   initCards();
   renderClocks();
   renderEvents();
