@@ -22,8 +22,8 @@ const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input i
   '"kcal":0,"protein":0,"carbs":0,"fat":0}. protein, carbs and fat in grams. Whole numbers. ' +
   'If the text is not about food or drink, reply with kcal 0 and an empty items list.';
 
-function saveFood() { store.set('food', food); foodMirrorSoon(); }
-function saveWeight() { store.set('weight', weight); foodMirrorSoon(); }
+function saveFood() { store.set('food', food); foodMirrorSoon(); arcScan(); }
+function saveWeight() { store.set('weight', weight); foodMirrorSoon(); arcScan(); }
 
 /* ---------- estimating ---------- */
 
@@ -648,7 +648,7 @@ function foodRow(e) {
     kc,
     el('span', { class: 'meal-act' },
       iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
-      iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); saveFood(); renderFood(); })));
+      iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); })));
 }
 
 // Change text, time or calories. A changed text is estimated again (unless you typed the calories).

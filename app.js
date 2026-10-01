@@ -1680,6 +1680,7 @@ function init() {
     li.classList.toggle('show-act', on);
   });
   initFood();
+  initArchive();
   initRecovery();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));

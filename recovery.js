@@ -5,16 +5,15 @@
    score from raw, provider-neutral fields (HRV, resting HR, sleep debt) so the
    same logic keeps working after a provider switch - only the CSV parser below
    needs to change, not this score or the card.
-   One row per night, keyed by the wake-up date. Mirrored (raw fields only) to a
-   Google Sheet for your own analysis, same pattern as the food/weight log. */
+   One row per night, keyed by the wake-up date. The full raw CSV rows (all three
+   exports) go to the hidden history in archive.js. */
 
 let whoop = store.get('whoop', []); // [{d:'YYYY-MM-DD', hrv, rhr, resp, skinTemp, spo2, sleepMin, sleepNeedMin, sleepDebtMin, sleepEff, sleepConsist, strain, whoopRecovery}]
 let rcRange = store.get('rcRange', 15); // rolling window in nights for the charts and averages (per device)
 if (![7, 15, 30].includes(rcRange)) rcRange = 15;
 let rcImportMsg = '';
-let rcMirrorMsg = '';
 
-function saveWhoop() { store.set('whoop', whoop); rcMirrorSoon(); }
+function saveWhoop() { store.set('whoop', whoop); }
 
 /* ---------- CSV import (Whoop export: "Physiologische Zyklen") ---------- */
 
@@ -24,17 +23,6 @@ function rcRowDate(get) {
   const wake = get('Beginn des Aufwachens');
   const start = get('Startzeit des Zyklus');
   return (wake || start || '').slice(0, 10) || null;
-}
-
-function rcParseCsv(text) {
-  const lines = text.replace(/\r/g, '').split('\n').filter((l) => l.trim());
-  if (lines.length < 2) return [];
-  const header = lines[0].split(',').map((h) => h.trim());
-  return lines.slice(1).map((line) => {
-    const cells = line.split(','); // plain numeric/date fields in this export, no quoting needed
-    const get = (name) => { const i = header.indexOf(name); const v = i >= 0 ? cells[i] : ''; return v === undefined ? '' : v.trim(); };
-    return { get };
-  });
 }
 
 const rcNum = (s) => (s === '' || s === undefined ? null : Number(s));
@@ -66,30 +54,52 @@ function rowToEntry(get) {
   };
 }
 
-function importWhoopCsv(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const rows = rcParseCsv(String(reader.result)).map(({ get }) => rowToEntry(get)).filter(Boolean);
-      if (!rows.length) { rcImportMsg = 'Keine verwertbaren Zeilen in der Datei gefunden.'; renderRecovery(); return; }
-      const byDate = new Map(whoop.map((r) => [r.d, r]));
-      let added = 0, updated = 0;
-      for (const r of rows) {
-        const existing = byDate.get(r.d);
-        // two rows can share a wake-up date (e.g. a short extra nap cycle); keep the one with the longer main sleep
-        if (!existing) { byDate.set(r.d, r); added++; }
-        else if ((r.sleepMin || 0) >= (existing.sleepMin || 0)) { byDate.set(r.d, r); updated++; }
+// Which Whoop export is this? Decided by its column names, so file names do not matter.
+function rcFileType(header) {
+  if (header.includes('Startzeit des Trainings')) return 'workouts';
+  if (header.includes('Nickerchen')) return 'sleep';
+  if (header.includes('Erholungswert %')) return 'cycles';
+  return null;
+}
+const RC_KEY_COL = { cycles: 'Startzeit des Zyklus', sleep: 'Beginn des Schlafs', workouts: 'Startzeit des Trainings' };
+const RC_TYPE_LABEL = { cycles: 'Zyklen', sleep: 'Schlaf', workouts: 'Training' };
+
+// Every raw row of every file goes to the hidden archive (archive.js); cycles also feed the cards.
+async function importWhoopFiles(files) {
+  try {
+    const counts = {}, skipped = [];
+    const entries = [];
+    for (const file of files) {
+      const { header, rows } = arcParseCsv(await file.text());
+      const type = rcFileType(header);
+      if (!type) { skipped.push(file.name); continue; }
+      for (const raw of rows) {
+        const key = raw[RC_KEY_COL[type]];
+        if (!key) continue;
+        const clean = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== ''));
+        arcPut(type, key, clean);
+        counts[type] = (counts[type] || 0) + 1;
+        if (type === 'cycles') { const e = rowToEntry((n) => raw[n] || ''); if (e) entries.push(e); }
       }
-      whoop = [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d));
-      saveWhoop();
-      rcImportMsg = added + ' neu, ' + updated + ' aktualisiert \u00b7 ' + whoop.length + ' N\u00e4chte insgesamt.';
-    } catch (e) {
-      rcImportMsg = 'Import fehlgeschlagen: ' + e.message;
     }
-    renderRecovery();
-  };
-  reader.onerror = () => { rcImportMsg = 'Datei konnte nicht gelesen werden.'; renderRecovery(); };
-  reader.readAsText(file);
+    arcCommit();
+    const byDate = new Map(whoop.map((r) => [r.d, r]));
+    let added = 0, updated = 0;
+    for (const r of entries) {
+      const existing = byDate.get(r.d);
+      // two rows can share a wake-up date (e.g. a short extra nap cycle); keep the one with the longer main sleep
+      if (!existing) { byDate.set(r.d, r); added++; }
+      else if ((r.sleepMin || 0) >= (existing.sleepMin || 0)) { byDate.set(r.d, r); updated++; }
+    }
+    if (entries.length) { whoop = [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d)); saveWhoop(); }
+    const read = Object.keys(counts).map((t) => RC_TYPE_LABEL[t] + ' ' + counts[t]).join(' \u00b7 ');
+    rcImportMsg = (read ? 'Gelesen: ' + read + '. ' : '') + (entries.length ? added + ' neue, ' + updated + ' aktualisierte Nächte in der Anzeige (' + whoop.length + ' gesamt). ' : '') +
+      (skipped.length ? 'Nicht erkannt: ' + skipped.join(', ') + '.' : '');
+    if (!read) rcImportMsg = 'Keine verwertbaren Zeilen gefunden. ' + rcImportMsg;
+  } catch (e) {
+    rcImportMsg = 'Import fehlgeschlagen: ' + e.message;
+  }
+  renderRecovery();
 }
 
 /* ---------- Fred-Score: provider-neutral, from HRV/RHF-Abweichung und Schlafschuld ----------
@@ -227,14 +237,14 @@ const rcLegend = (...bits) => el('p', { class: 'muted small rc-legend' }, ...bit
 const rcPanel = (title, ...kids) => el('section', { class: 'fpanel' }, el('div', { class: 'food-sub' }, title), ...kids);
 
 function importRow() {
-  const input = el('input', { type: 'file', accept: '.csv', id: 'rc-file', class: 'rc-file-input' });
-  input.addEventListener('change', () => { if (input.files[0]) importWhoopCsv(input.files[0]); input.value = ''; });
-  const btn = el('button', { type: 'button', class: 'ghost small', onclick: () => input.click() }, whoop.length ? 'Neue CSV laden' : 'Whoop-CSV laden');
+  const input = el('input', { type: 'file', accept: '.csv', multiple: true, id: 'rc-file', class: 'rc-file-input' });
+  input.addEventListener('change', () => { if (input.files.length) importWhoopFiles([...input.files]); input.value = ''; });
+  const btn = el('button', { type: 'button', class: 'ghost small', onclick: () => input.click() }, whoop.length ? 'Neue CSVs laden' : 'Whoop-CSVs laden');
   return el('div', {},
     el('div', { class: 'row' }, btn, input),
-    el('p', { class: 'muted small' }, 'Whoop-App → Export → "Physiologische Zyklen" (CSV).'),
+    el('p', { class: 'muted small' }, 'Whoop-App → Export: Physiologische Zyklen, Schlaf, Training (CSV, auch mehrere zugleich).'),
     rcImportMsg ? el('p', { class: 'small' }, rcImportMsg) : '',
-    rcMirrorMsg ? el('p', { class: 'muted small' }, rcMirrorMsg) : '');
+    typeof arcStatus === 'function' && arcStatus() ? el('p', { class: 'muted small' }, arcStatus()) : '');
 }
 
 // 7 / 15 / 30 nights, always the last n nights counted back from the newest one (rolling).
@@ -350,29 +360,6 @@ function renderRecovery() {
     rcPanel('Daten', importRow(),
       el('p', { class: 'muted small' }, 'Fred-Score ist eine eigene Näherung (HRV- und Ruhepuls-Abweichung von deiner rollenden Basis, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel pendelt sich die Basis innerhalb von ca. 1–2 Wochen neu ein.'))));
   sbox.replaceChildren(el('div', { class: 'food-col' }, rcRangeSeg(), sleepPanel, debtPanel, rhythmPanel));
-}
-
-/* ---------- mirror raw fields to a Google Sheet in your Drive (for your own analysis) ---------- */
-
-let rcMirrorTimer = null;
-
-function rcMirrorSoon() {
-  clearTimeout(rcMirrorTimer);
-  rcMirrorTimer = setTimeout(rcMirror, 8000);
-}
-
-async function rcMirror() {
-  if (typeof gHasToken !== 'function' || !gHasToken()) return;
-  if (!gScopes.includes('drive.file')) { rcMirrorMsg = 'Sheet in Drive braucht eine weitere Google-Berechtigung: Connect drücken.'; renderRecovery(); return; }
-  try {
-    const rows = [['date', 'hrv_ms', 'rhr_bpm', 'resp_rate', 'skin_temp_c', 'spo2_pct', 'sleep_min', 'sleep_need_min', 'sleep_debt_min', 'sleep_eff_pct', 'sleep_consistency_pct', 'strain', 'whoop_recovery_pct', 'bed_time', 'wake_time', 'light_min', 'deep_min', 'rem_min', 'awake_min']]
-      .concat([...whoop].sort((a, b) => a.d.localeCompare(b.d)).map((r) => [r.d, r.hrv, r.rhr, r.resp, r.skinTemp, r.spo2, r.sleepMin, r.sleepNeedMin, r.sleepDebtMin, r.sleepEff, r.sleepConsist, r.strain, r.whoopRecovery, r.bed, r.wake, r.lightMin, r.deepMin, r.remMin, r.awakeMin]));
-    await sheetWrite('Fred Recovery Log', csv(rows)); // sheetWrite/csv: shared helpers from food.js
-    rcMirrorMsg = 'In Google Sheets gesichert ' + new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
-    rcMirrorMsg = 'Sheet: ' + e.message;
-  }
-  renderRecovery();
 }
 
 function initRecovery() {

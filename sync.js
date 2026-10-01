@@ -145,7 +145,7 @@ function syncApply(keys) {
   if (has('layout')) { layout = store.get('layout', layout); applyLayout(); }
   if (has('googleClientId')) googleClientId = store.get('googleClientId', googleClientId);
   if (has('anthropicKey')) anthropicKey = store.get('anthropicKey', '');
-  if (has('food') || has('weight') || has('nutri') || has('tips')) { food = store.get('food', []); weight = store.get('weight', []); nutri = store.get('nutri', nutri); tips = store.get('tips', tips); renderFood(); }
+  if (has('food') || has('weight') || has('nutri') || has('tips')) { food = store.get('food', []); weight = store.get('weight', []); nutri = store.get('nutri', nutri); tips = store.get('tips', tips); arcScan(); renderFood(); }
   if (has('finnhubKey')) finnhubKey = store.get('finnhubKey', '');
   if (has('twelveKey')) twelveKey = store.get('twelveKey', '');
   if (has('tickers') || has('finnhubKey') || has('twelveKey')) {
