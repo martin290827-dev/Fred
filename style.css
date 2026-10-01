@@ -393,11 +393,11 @@ button.danger { background: var(--down); color: #fff; }
 /* ---------- food diary (wide card: today left, trends right) ---------- */
 /* Food, Health and Trends: as tall as their content; in a row they share the height of the tallest,
    and the last section of each fills the rest (see growChart in food.js) */
-#card-food, #card-health, #card-trends { height: auto; max-height: none; }
-#card-food { align-self: start; } /* Food keeps its own height; Health and Trends copy it (food.js) */
-#food, #health, #trends { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-#food > .food-col, #health > .food-col, #trends > .food-col { flex: 1; min-height: 0; }
-.food-col > .fpanel:last-child { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* Food, Health, Trends, Recovery and Sleep: all the same fixed height; longer content scrolls inside the card */
+#card-food, #card-health, #card-trends, #card-recovery, #card-sleep { height: 700px; max-height: none; }
+#food, #health, #trends { flex: none; display: flex; flex-direction: column; }
+#food > .food-col, #health > .food-col, #trends > .food-col { flex: none; }
+.food-col > .fpanel:last-child { display: flex; flex-direction: column; }
 #food .food-list { overflow: auto; scrollbar-width: thin; }
 .food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .food-col { min-width: 0; }
@@ -828,7 +828,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .meal-t { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
 /* Food, Health and Trends: one column each; on the phone they show everything */
 .food { grid-template-columns: minmax(0, 1fr) !important; }
-@media (max-width: 700px) { #card-food, #card-health, #card-trends { height: auto; max-height: none; } }
 /* Food card is a normal-width card: slightly smaller rings and numbers so "KCAL" always fits */
 #card-food .fsum { gap: 14px; }
 #card-food .fsum-rings { width: 132px; height: 132px; }
@@ -968,7 +967,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-k.k-good { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); }
 
 /* ---------- Sleep & Recovery card ---------- */
-#card-recovery, #card-sleep { height: 680px; max-height: none; } /* both cards the same height; longer content scrolls inside */
 #card-recovery .cardbody, #card-sleep .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
 #recovery .rc-hero { display: flex; align-items: baseline; gap: 12px; margin: 0 0 10px; flex-wrap: wrap; }
 .rc-score { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
