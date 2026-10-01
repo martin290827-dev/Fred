@@ -236,6 +236,15 @@ const rcLegend = (...bits) => el('p', { class: 'muted small rc-legend' }, ...bit
 
 const rcPanel = (title, ...kids) => el('section', { class: 'fpanel' }, el('div', { class: 'food-sub' }, title), ...kids);
 
+// Reminder when the newest night is more than 10 days old.
+const RC_STALE_DAYS = 10;
+function rcStaleNote(last) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.floor((today - new Date(last.d + 'T00:00:00')) / 86400000);
+  if (days <= RC_STALE_DAYS) return '';
+  return el('p', { class: 'rc-stale' }, 'Letzte Daten vom ' + last.d.slice(8, 10) + '.' + last.d.slice(5, 7) + '. \u2013 vor ' + days + ' Tagen. Bitte neue Whoop-CSVs laden (Recovery \u2192 Daten).');
+}
+
 function importRow() {
   const input = el('input', { type: 'file', accept: '.csv', multiple: true, id: 'rc-file', class: 'rc-file-input' });
   input.addEventListener('change', () => { if (input.files.length) importWhoopFiles([...input.files]); input.value = ''; });
@@ -244,7 +253,8 @@ function importRow() {
     el('div', { class: 'row' }, btn, input),
     el('p', { class: 'muted small' }, 'Whoop-App → Export: Physiologische Zyklen, Schlaf, Training (CSV, auch mehrere zugleich).'),
     rcImportMsg ? el('p', { class: 'small' }, rcImportMsg) : '',
-    typeof arcStatus === 'function' && arcStatus() ? el('p', { class: 'muted small' }, arcStatus()) : '');
+    el('p', { class: 'muted small' }, arcStatus()),
+    el('div', { class: 'row' }, el('button', { type: 'button', class: 'ghost small', onclick: arcNow }, 'Archiv jetzt speichern')));
 }
 
 // 7 / 15 / 30 nights, always the last n nights counted back from the newest one (rolling).
@@ -354,12 +364,12 @@ function renderRecovery() {
     rcBars(series((r) => r.score), { judge: RC_RULES.score, fmt: (v) => String(v), max: 100, guides: [{ v: 67, label: '67' }, { v: 34, label: '34' }], h: 100 }),
     rcLegend(['g', '67 und mehr'], ['o', '34–66'], ['r', 'unter 34']));
 
-  box.replaceChildren(el('div', { class: 'food-col' }, rcRangeSeg(),
+  box.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(),
     rcPanel('Heute', scoreBlock, tiles, strainHint),
     trendPanel,
     rcPanel('Daten', importRow(),
       el('p', { class: 'muted small' }, 'Fred-Score ist eine eigene Näherung (HRV- und Ruhepuls-Abweichung von deiner rollenden Basis, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel pendelt sich die Basis innerhalb von ca. 1–2 Wochen neu ein.'))));
-  sbox.replaceChildren(el('div', { class: 'food-col' }, rcRangeSeg(), sleepPanel, debtPanel, rhythmPanel));
+  sbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(), sleepPanel, debtPanel, rhythmPanel));
 }
 
 function initRecovery() {

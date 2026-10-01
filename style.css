@@ -997,3 +997,5 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #recovery .kpi-v, #sleep .kpi-v { font-size: 1rem; }
 #recovery .rc-avgs { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
 #recovery .rc-avg b { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.rc-stale { margin: 0 0 8px; padding: 8px 10px; border-left: 4px solid var(--warn); border-radius: 6px; font-size: .9em; font-weight: 600; background: color-mix(in srgb, var(--warn) 16%, transparent); }

@@ -199,11 +199,21 @@ const ARC_LABELS = { cycles: 'Zyklen', sleep: 'Schlaf', workouts: 'Training', fo
 
 function arcStatus() {
   if (arcMsg) return arcMsg;
+  if (arcBusy) return 'Archiv wird gespeichert \u2026';
   const open = Object.keys(arcQueue).length;
   const parts = [];
-  if (arcInfo) parts.push('Archiv: ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' · '));
-  if (open) parts.push(open + ' Änderung' + (open > 1 ? 'en' : '') + ' warten auf Google');
-  return parts.join(' · ');
+  if (arcInfo) parts.push('Archiv: ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
+  else parts.push('Archiv: noch nichts in Google Drive gespeichert');
+  if (open) parts.push(open + ' Änderung' + (open > 1 ? 'en' : '') + ' warten' + (gHasToken() ? '' : ' \u2013 Google ist nicht verbunden (Connect drücken)'));
+  return parts.join(' \u00b7 ');
+}
+
+// Button: save now instead of waiting for the timer.
+function arcNow() {
+  arcMsg = '';
+  arcScan();
+  arcFlush();
+  renderRecovery();
 }
 
 function initArchive() {
