@@ -593,19 +593,19 @@ function renderFood() {
   const wRange = weight.filter((p) => p.d >= daysN[0]).sort((a, b) => a.d.localeCompare(b.d));
   const wChange = wRange.length > 1 ? wRange[wRange.length - 1].kg - wRange[0].kg : null;
   const trendCards = [
-    n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
     hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120)),
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
     tg.c !== null ? hcard('bars', 'teal', 'Carbs', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
     tg.f ? hcard('bars', 'gold', 'Fat', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
     hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
       el('div', { class: 'muted small food-stats w-cap' }, '')),
+    n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
   ];
 
   // three cards: Food (today), Health (weight and goal), Trends (last days)
   box.replaceChildren(el('div', { class: 'food-col' }, form, head,
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
-  const wcard = trendCards[trendCards.length - 1];
+  const wcard = trendCards.find((c) => c && c.classList && c.querySelector('.w-cap'));
   const wsvg = wcard.querySelector('svg.fchart');
   const wcap = wcard.querySelector('.w-cap');
   if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
