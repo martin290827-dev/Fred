@@ -23,6 +23,7 @@ let arcSeen = store.get('arcSeen', {});     // { 'set\tkey': fingerprint of the 
 let arcDirty = store.get('arcDirty', []);   // sets whose Sheet still has to be rewritten
 let arcInfo = store.get('arcInfo', null);   // { at, counts } after the last successful save
 let arcMsg = '';
+let arcNote = ''; // short feedback after pressing the button
 let arcBusy = false;
 let arcTimer = null;
 
@@ -173,6 +174,7 @@ async function arcFlush() {
     }
     await arcWriteSheets();
     arcMsg = '';
+    if (arcNote) arcNote = 'Gespeichert \u2713';
   } catch (e) {
     arcMsg = 'Archiv: ' + e.message;
   }
@@ -202,7 +204,8 @@ function arcStatus() {
   if (arcBusy) return 'Archiv wird gespeichert \u2026';
   const open = Object.keys(arcQueue).length;
   const parts = [];
-  if (arcInfo) parts.push('Archiv: ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
+  if (arcNote) parts.push(arcNote);
+  if (arcInfo) parts.push('Archiv, zuletzt gespeichert ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
   else parts.push('Archiv: noch nichts in Google Drive gespeichert');
   if (open) parts.push(open + ' Änderung' + (open > 1 ? 'en' : '') + ' warten' + (gHasToken() ? '' : ' \u2013 Google ist nicht verbunden (Connect drücken)'));
   return parts.join(' \u00b7 ');
@@ -212,6 +215,9 @@ function arcStatus() {
 function arcNow() {
   arcMsg = '';
   arcScan();
+  const nothing = !Object.keys(arcQueue).length && !arcDirty.length;
+  arcNote = !gHasToken() ? 'Nicht gespeichert: Google ist nicht verbunden.' : nothing ? 'Nichts Neues: alles ist schon gespeichert.' : 'Speichere \u2026';
+  setTimeout(() => { arcNote = ''; renderRecovery(); }, 8000);
   arcFlush();
   renderRecovery();
 }
