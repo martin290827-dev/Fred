@@ -429,7 +429,7 @@ function svgEl(tag, attrs, text) {
 }
 
 // Bars per day with a dashed target line and the average. get(dayTotals) returns the value or null.
-function barChart(days, { get, target, unit, h, cls, name }) {
+function barChart(days, { get, target, unit, h, cls, name, judge }) {
   const W = 600, H = h || 130, L = 46, B = 18, T = 8;
   const vals = days.map((d) => get(dayTotals(d)));
   const shown = vals.filter((v) => v !== null);
@@ -447,8 +447,9 @@ function barChart(days, { get, target, unit, h, cls, name }) {
     const v = vals[i];
     const w = Math.max(1.5, bw - (days.length > 40 ? 1.5 : 3));
     const x = L + i * bw + (bw - w) / 2;
-    const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit : 'no data')));
+    const over = judge && target && v > target; // judge: red above the target, green up to it
+    const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') });
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data')));
     g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
     if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
     svg.append(g);
@@ -466,7 +467,7 @@ const avgOfDays = (days, get) => { const v = days.map((d) => get(dayTotals(d))).
 const getKcal = (t) => (t.n ? t.kcal : null);
 const getProtein = (t) => (t.n && !t.m ? t.p : null);
 
-function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Calories' }); }
+function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Calories', judge: true }); }
 function proteinChart(days, h) { return barChart(days, { get: getProtein, target: targets().p, unit: 'g', h, cls: 'b-p', name: 'Protein' }); }
 
 function weightChart(all, h) {

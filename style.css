@@ -947,3 +947,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-n { width: 20px; height: 20px; font-size: 0.7rem; }
 #health .fh { margin-bottom: 6px; }
 #health .fpanel { padding: 10px 12px; }
+/* Trends > Calories: green up to the target, red above it */
+.food .fchart.b-kcal .bar.under rect:not(.hit) { fill: var(--up); }
+.food .fchart.b-kcal .bar.over rect:not(.hit) { fill: var(--down); }
