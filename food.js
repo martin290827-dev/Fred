@@ -466,8 +466,12 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
 const avgOfDays = (days, get) => { const v = days.map((d) => get(dayTotals(d))).filter((x) => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
 const getKcal = (t) => (t.n ? t.kcal : null);
 const getProtein = (t) => (t.n && !t.m ? t.p : null);
+const getCarbs = (t) => (t.n && !t.m ? t.c : null);
+const getFat = (t) => (t.n && !t.m ? t.f : null);
 
 function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Calories', judge: true }); }
+function carbsChart(days, h) { return barChart(days, { get: getCarbs, target: targets().c, unit: 'g', h, cls: 'b-c', name: 'Carbs' }); }
+function fatChart(days, h) { return barChart(days, { get: getFat, target: targets().f, unit: 'g', h, cls: 'b-f', name: 'Fat' }); }
 function proteinChart(days, h) { return barChart(days, { get: getProtein, target: targets().p, unit: 'g', h, cls: 'b-p', name: 'Protein' }); }
 
 function weightChart(all, h) {
@@ -584,7 +588,7 @@ function renderFood() {
   const daysN = lastDays(n);
   const seg = el('div', { class: 'seg', role: 'tablist', 'aria-label': 'Time range' }, ...[[7, 'W'], [30, 'M'], [90, '3M']].map(([v, l]) =>
     el('button', { type: 'button', role: 'tab', 'aria-selected': String(v === n), class: v === n ? 'on' : '', onclick: () => { trendRange = v; store.set('trendRange', v); renderFood(); } }, l)));
-  const avgK = avgOfDays(daysN, getKcal), avgP = avgOfDays(daysN, getProtein);
+  const avgK = avgOfDays(daysN, getKcal), avgP = avgOfDays(daysN, getProtein), avgC = avgOfDays(daysN, getCarbs), avgF = avgOfDays(daysN, getFat);
   const rangeTxt = n === 7 ? '7 days' : n === 30 ? '30 days' : '3 months';
   const wRange = weight.filter((p) => p.d >= daysN[0]).sort((a, b) => a.d.localeCompare(b.d));
   const wChange = wRange.length > 1 ? wRange[wRange.length - 1].kg - wRange[0].kg : null;
@@ -592,6 +596,8 @@ function renderFood() {
     n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
     hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120)),
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
+    tg.c !== null ? hcard('bars', 'teal', 'Carbs', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
+    tg.f ? hcard('bars', 'gold', 'Fat', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
     hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
       el('div', { class: 'muted small food-stats w-cap' }, '')),
   ];
@@ -599,8 +605,9 @@ function renderFood() {
   // three cards: Food (today), Health (weight and goal), Trends (last days)
   box.replaceChildren(el('div', { class: 'food-col' }, form, head,
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
-  const wsvg = trendCards[3] && trendCards[3].querySelector && trendCards[3].querySelector('svg.fchart');
-  const wcap = trendCards[3] && trendCards[3].querySelector && trendCards[3].querySelector('.w-cap');
+  const wcard = trendCards[trendCards.length - 1];
+  const wsvg = wcard.querySelector('svg.fchart');
+  const wcap = wcard.querySelector('.w-cap');
   if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
   const refresh = el('button', { type: 'button', class: 'tip-refresh', title: 'New tips', 'aria-label': 'New tips', onclick: () => loadTips(true) }, tipsBusy ? '\u2026' : '\u21bb');
   const tipsCard = hcard('bulb', 'yellow', 'Tips', '', tipsBlock());

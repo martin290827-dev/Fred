@@ -950,3 +950,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 /* Trends > Calories: green up to the target, red above it */
 .food .fchart.b-kcal .bar.under rect:not(.hit) { fill: var(--up); }
 .food .fchart.b-kcal .bar.over rect:not(.hit) { fill: var(--down); }
+.fh-teal { color: var(--c-c); } .fh-gold { color: var(--c-f); }
+.food .fchart.b-c .bar rect:not(.hit) { fill: var(--c-c); }
+.food .fchart.b-f .bar rect:not(.hit) { fill: var(--c-f); }
