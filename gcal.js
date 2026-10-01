@@ -307,6 +307,12 @@ function gOpenEditor(kind, item) {
     date.addEventListener('change', () => { to.min = date.value; });
     f.append(el('div', { class: 'grow-row' }, el('label', { class: 'mini' }, 'From', date), el('label', { class: 'mini' }, 'Until (optional)', to)));
   }
+  if (!item || !item.series) {
+    // new or single items can become repeating (Google keeps the rule)
+    const rep = el('select', { name: 'repeat', 'aria-label': 'Repeat' });
+    for (const [v, t] of [['', 'Repeat: never'], ['DAILY', 'Repeat: every day'], ['WEEKLY', 'Repeat: every week'], ['MONTHLY', 'Repeat: every month'], ['YEARLY', 'Repeat: every year']]) rep.append(el('option', { value: v }, t));
+    f.append(rep);
+  }
   if (item && item.series) {
     const one = el('input', { type: 'radio', name: 'scope', value: 'one' }); one.checked = true;
     const all = el('input', { type: 'radio', name: 'scope', value: 'all' });
@@ -380,6 +386,8 @@ async function gSave(kind, item, fd) {
     body.start = { date: at };
     body.end = { date: toDateStr(addDays(new Date(to + 'T00:00'), 1)) }; // Google's end date is exclusive
   }
+  const rule = fd.get('repeat');
+  if (rule) body.recurrence = ['RRULE:FREQ=' + rule]; // only offered for new or single items
   if (item) await gApi('PATCH', gEvPath(target), body);
   else await gApi('POST', 'calendars/primary/events', body);
 }
