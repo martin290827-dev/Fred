@@ -968,14 +968,30 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-k.k-good { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); }
 
 /* ---------- Sleep & Recovery card ---------- */
-#recovery .rc-hero { display: flex; align-items: baseline; gap: 12px; margin: 0 0 10px; }
+#card-recovery { height: auto; max-height: none; } /* show every panel, no inner scrolling */
+#card-recovery .cardbody { overflow: visible; }
+#recovery .rc-hero { display: flex; align-items: baseline; gap: 12px; margin: 0 0 10px; flex-wrap: wrap; }
 .rc-score { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
-.rc-score.rc-low { color: var(--down); } .rc-score.rc-mid { color: var(--warn); } .rc-score.rc-high { color: var(--up); }
-.rc-spark { display: block; width: 100%; height: 70px; color: var(--accent); }
-.rc-line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.rc-dot { fill: currentColor; }
-.rc-bar { fill: currentColor; opacity: 0.85; }
-.rc-target { stroke: var(--line-2); stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+/* traffic light: g good, o watch, r poor (same colours in text, bars, dots and keys) */
+#recovery .rc-t-g { color: var(--up); } #recovery .rc-t-o { color: var(--warn); } #recovery .rc-t-r { color: var(--down); }
+.rc-chart { display: block; width: 100%; height: auto; margin: 4px 0 2px; }
+.rc-bar.rc-g, .rc-dotc.rc-g, .rc-key.rc-g { fill: var(--up); background: var(--up); }
+.rc-bar.rc-o, .rc-dotc.rc-o, .rc-key.rc-o { fill: var(--warn); background: var(--warn); }
+.rc-bar.rc-r, .rc-dotc.rc-r, .rc-key.rc-r { fill: var(--down); background: var(--down); }
+.rc-bar { opacity: 0.9; } .rc-bar:hover { opacity: 1; }
+.rc-dotc { stroke: var(--panel); stroke-width: 2; }
+.rc-guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
+.rc-grid { stroke: var(--line); stroke-width: 1; }
+.rc-ax { fill: var(--muted); font-size: 11px; }
+.rc-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 4px 0 6px; align-items: center; }
+.rc-key { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: baseline; }
+.rc-stages { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin: 10px 0 6px; background: var(--fill); }
+.rc-st-deep { background: var(--c-p); } .rc-st-rem { background: var(--c-body); } .rc-st-light { background: #64b5f6; } .rc-st-awake { background: var(--line-2); }
+.rc-chips { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.82rem; margin: 2px 0 4px; }
+.rc-chip { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .rc-hint { margin: 8px 0 0; color: var(--warn); }
 .rc-file-input { display: none; }
-#recovery .kpis { margin-top: 6px; }
+#recovery .kpis { margin-top: 6px; margin-bottom: 4px; }
+#recovery .kpi-s { min-height: 0; }
+#recovery .kpi-l, #recovery .kpi-v { white-space: nowrap; }
+#recovery .kpi-v { font-size: 1rem; }
