@@ -395,9 +395,9 @@ button.danger { background: var(--down); color: #fff; }
    and the last section of each fills the rest (see growChart in food.js) */
 /* Food, Health and Trends: the same fixed height (Food fits one meal); longer content scrolls inside the card. Recovery and Sleep likewise. */
 #card-food, #card-health, #card-trends { height: 450px; max-height: none; }
-#card-recovery, #card-sleep { height: 680px; max-height: none; }
-#food, #health, #trends, #recovery, #sleep { flex: 1 0 auto; display: flex; flex-direction: column; }
-#food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, #sleep > .food-col { flex: 1 0 auto; }
+#card-recovery, :is(#card-sleep, #card-habits) { height: 680px; max-height: none; }
+#food, #health, #trends, #recovery, :is(#sleep, #habits), #habits { flex: 1 0 auto; display: flex; flex-direction: column; }
+#food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, :is(#sleep, #habits) > .food-col { flex: 1 0 auto; }
 .food-col > .fpanel:last-child { display: flex; flex-direction: column; }
 #food .food-list { overflow: auto; scrollbar-width: thin; }
 .food { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -968,11 +968,11 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-k.k-good { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); }
 
 /* ---------- Sleep & Recovery card ---------- */
-#card-recovery .cardbody, #card-sleep .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
+#card-recovery .cardbody, :is(#card-sleep, #card-habits) .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
 #recovery .rc-hero { display: flex; align-items: baseline; gap: 12px; margin: 0 0 10px; flex-wrap: wrap; }
 .rc-score { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
 /* traffic light: g good, o watch, r poor (same colours in text, bars, dots and keys) */
-#recovery .rc-t-g, #sleep .rc-t-g { color: var(--up); } #recovery .rc-t-o, #sleep .rc-t-o { color: var(--warn); } #recovery .rc-t-r, #sleep .rc-t-r { color: var(--down); }
+#recovery .rc-t-g, :is(#sleep, #habits) .rc-t-g { color: var(--up); } #recovery .rc-t-o, :is(#sleep, #habits) .rc-t-o { color: var(--warn); } #recovery .rc-t-r, :is(#sleep, #habits) .rc-t-r { color: var(--down); }
 .rc-chart { display: block; width: 100%; height: auto; margin: 4px 0 2px; }
 .rc-bar.rc-g, .rc-dotc.rc-g, .rc-key.rc-g { fill: var(--up); background: var(--up); }
 .rc-bar.rc-o, .rc-dotc.rc-o, .rc-key.rc-o { fill: var(--warn); background: var(--warn); }
@@ -990,10 +990,10 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .rc-chip { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .rc-hint { margin: 8px 0 0; color: var(--warn); }
 .rc-file-input { display: none; }
-#recovery .kpis, #sleep .kpis { margin-top: 6px; margin-bottom: 4px; }
-#recovery .kpi-s, #sleep .kpi-s { min-height: 0; }
-#recovery .kpi-l, #recovery .kpi-v, #sleep .kpi-l, #sleep .kpi-v { white-space: nowrap; }
-#recovery .kpi-v, #sleep .kpi-v { font-size: 1rem; }
+#recovery .kpis, :is(#sleep, #habits) .kpis { margin-top: 6px; margin-bottom: 4px; }
+#recovery .kpi-s, :is(#sleep, #habits) .kpi-s { min-height: 0; }
+#recovery .kpi-l, #recovery .kpi-v, :is(#sleep, #habits) .kpi-l, :is(#sleep, #habits) .kpi-v { white-space: nowrap; }
+#recovery .kpi-v, :is(#sleep, #habits) .kpi-v { font-size: 1rem; }
 #recovery .rc-avgs { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
 #recovery .rc-avg b { font-weight: 700; font-variant-numeric: tabular-nums; }
 
@@ -1001,12 +1001,12 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 
 /* Health cards (Food, Health, Trends, Recovery, Sleep): one look */
 .fh-gray { color: var(--muted); }
-#card-food .cardbody, #card-health .cardbody, #card-trends .cardbody, #card-recovery .cardbody, #card-sleep .cardbody {
+#card-food .cardbody, #card-health .cardbody, #card-trends .cardbody, #card-recovery .cardbody, :is(#card-sleep, #card-habits) .cardbody {
   overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
 /* soft fade at the bottom while there is more to scroll (class set in recovery.js) */
 .cardbody.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
 #recovery .rc-score { font-size: 2.4rem; }
-#recovery .rc-hero, #sleep .kpis { margin-top: 2px; }
+#recovery .rc-hero, :is(#sleep, #habits) .kpis { margin-top: 2px; }
 
 /* Recovery/Sleep charts: HTML labels over the SVG (stay 11 px at any width) */
 .rc-plot { margin: 6px 0 2px; }

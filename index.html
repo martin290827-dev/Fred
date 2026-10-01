@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=113">
+  <link rel="stylesheet" href="style.css?v=114">
 </head>
 <body>
   <header>
@@ -175,6 +175,11 @@
       <div id="sleep" class="food"></div>
     </section>
 
+    <section class="card" id="card-habits">
+      <h2>Sleep Habits</h2>
+      <div id="habits" class="food"></div>
+    </section>
+
     <section class="card card-wide" id="card-news">
       <h2>Market News <button id="news-refresh" class="ghost small" type="button">Refresh</button></h2>
       <div id="news" class="news"></div>
@@ -283,11 +288,11 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=113"></script>
-  <script src="gcal.js?v=113"></script>
-  <script src="sync.js?v=113"></script>
-  <script src="food.js?v=113"></script>
-  <script src="archive.js?v=113"></script>
-  <script src="recovery.js?v=113"></script>
+  <script src="app.js?v=114"></script>
+  <script src="gcal.js?v=114"></script>
+  <script src="sync.js?v=114"></script>
+  <script src="food.js?v=114"></script>
+  <script src="archive.js?v=114"></script>
+  <script src="recovery.js?v=114"></script>
 </body>
 </html>

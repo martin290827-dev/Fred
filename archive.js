@@ -144,7 +144,7 @@ function arcRows(a, set) {
 async function arcFlush() {
   if (arcBusy || (!Object.keys(arcQueue).length && !arcDirty.length)) return;
   if (!gHasToken()) return; // later, when connected
-  if (!gScopes.includes('drive.file')) { arcMsg = 'Archiv braucht eine weitere Google-Berechtigung: Connect drücken.'; renderRecovery(); return; }
+  if (!gScopes.includes('drive.file')) { arcMsg = 'Archive needs one more Google permission: press Connect.'; renderRecovery(); return; }
   arcBusy = true;
   try {
     const snap = Object.assign({}, arcQueue);
@@ -176,7 +176,7 @@ async function arcFlush() {
     arcMsg = '';
     if (arcNote) arcNote = 'Gespeichert \u2713';
   } catch (e) {
-    arcMsg = 'Archiv: ' + e.message;
+    arcMsg = 'Archive: ' + e.message;
   }
   arcBusy = false;
   renderRecovery();
@@ -197,17 +197,17 @@ async function arcWriteSheets() {
 
 /* ---------- status line for the Recovery card ---------- */
 
-const ARC_LABELS = { cycles: 'Zyklen', sleep: 'Schlaf', workouts: 'Training', food: 'Essen', weight: 'Gewicht' };
+const ARC_LABELS = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts', food: 'food', weight: 'weight' };
 
 function arcStatus() {
   if (arcMsg) return arcMsg;
-  if (arcBusy) return 'Archiv wird gespeichert \u2026';
+  if (arcBusy) return 'Saving archive \u2026';
   const open = Object.keys(arcQueue).length;
   const parts = [];
   if (arcNote) parts.push(arcNote);
-  if (arcInfo) parts.push('Archiv, zuletzt gespeichert ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
-  else parts.push('Archiv: noch nichts in Google Drive gespeichert');
-  if (open) parts.push(open + ' Änderung' + (open > 1 ? 'en' : '') + ' warten' + (gHasToken() ? '' : ' \u2013 Google ist nicht verbunden (Connect drücken)'));
+  if (arcInfo) parts.push('Archive, last saved ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
+  else parts.push('Archive: nothing saved to Google Drive yet');
+  if (open) parts.push(open + ' change' + (open > 1 ? 's' : '') + ' waiting' + (gHasToken() ? '' : ' \u2013 Google is not connected (press Connect)'));
   return parts.join(' \u00b7 ');
 }
 
