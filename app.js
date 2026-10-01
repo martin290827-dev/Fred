@@ -1306,6 +1306,7 @@ function openSettings() {
   $('set-twelve').value = twelveKey;
   $('set-anthropic').value = anthropicKey;
   nutriFillSettings();
+  actFillSettings();
   $('set-fx-from').value = fxDefault.from;
   $('set-fx-to').value = fxDefault.to;
   $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
@@ -1331,6 +1332,7 @@ function saveSettings() {
   twelveKey = $('set-twelve').value.trim();
   store.set('twelveKey', twelveKey);
   nutriSaveSettings();
+  actSaveSettings();
   anthropicKey = $('set-anthropic').value.trim();
   store.set('anthropicKey', anthropicKey);
   const fxNew = { from: $('set-fx-from').value, to: $('set-fx-to').value };
@@ -1635,6 +1637,7 @@ function init() {
     li.classList.toggle('show-act', on);
   });
   initFood();
+  initActivity();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();

@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=90">
+  <link rel="stylesheet" href="style.css?v=91">
 </head>
 <body>
   <header>
@@ -222,6 +222,16 @@
       </div>
       <span class="muted small">Used for your protein, carbs and fat targets and the time to your goal. Stored only in your browser and your own Google Drive sync.</span>
 
+      <h3>Steps and sleep</h3>
+      <label>Apple Health link (from your own Apps Script)
+        <input id="set-health-url" type="password" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec?key=...">
+        <span class="muted small">Stored only in your browser and your Google Drive sync. The iPhone Shortcut sends steps and sleep to it.</span>
+      </label>
+      <div class="nutri-grid">
+        <label>Step goal per day <input id="set-stepgoal" type="text" inputmode="numeric" placeholder="8000"></label>
+        <label>Sleep goal (hours) <input id="set-sleepgoal" type="text" inputmode="decimal" placeholder="7.5"></label>
+      </div>
+
       <label>Anthropic API key (optional, for calorie estimates)
         <input id="set-anthropic" type="password" autocomplete="off" placeholder="Stored only in your browser and your Google Drive sync">
         <span class="muted small">From console.anthropic.com. Food texts are sent to Anthropic for the estimate and, once a day, the last 7 days for tips. Without a key, say "... 500 kcal" yourself.</span>
@@ -272,9 +282,10 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=90"></script>
-  <script src="gcal.js?v=90"></script>
-  <script src="sync.js?v=90"></script>
-  <script src="food.js?v=90"></script>
+  <script src="app.js?v=91"></script>
+  <script src="gcal.js?v=91"></script>
+  <script src="sync.js?v=91"></script>
+  <script src="food.js?v=91"></script>
+  <script src="health.js?v=91"></script>
 </body>
 </html>

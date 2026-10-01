@@ -953,3 +953,11 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .fh-teal { color: var(--c-c); } .fh-gold { color: var(--c-f); }
 .food .fchart.b-c .bar rect:not(.hit) { fill: var(--c-c); }
 .food .fchart.b-f .bar rect:not(.hit) { fill: var(--c-f); }
+
+/* steps and sleep */
+.food .fchart.b-steps .bar rect:not(.hit) { fill: var(--muted); opacity: 0.45; }
+.food .fchart.b-steps .bar.met rect:not(.hit) { fill: var(--up); opacity: 1; }
+.food .fchart.b-sleep .bar rect:not(.hit) { fill: var(--c-p); opacity: 0.55; }
+.food .fchart.b-sleep .bar.met rect:not(.hit) { fill: var(--c-p); opacity: 1; }
+.act-manual .act-in { width: 5.5rem; }
+.kpis2 { grid-template-columns: 1fr 1fr; }

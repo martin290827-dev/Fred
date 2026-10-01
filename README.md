@@ -22,3 +22,12 @@ Hinweise:
 - Fred liest und schreibt nur deine Termine: "Tasks & Reminders" zeigt Termine mit Uhrzeit (30 Tage), "Events" ganztägige und mehrtägige Termine (ein Jahr). Mit **+**, Stift und Mülleimer legst du Termine direkt in Google an, änderst oder löschst sie.
 - Abgleich zwischen Geräten: Fred speichert Einstellungen, Notizen und Einkaufsliste in einer versteckten Datei in deinem Google Drive (Ordner "App-Daten", nur für Fred sichtbar). Auf einem neuen Gerät nur die Client-ID eintragen und Connect drücken.
 - Food: Fred schreibt dein Essensprotokoll und dein Gewicht in zwei Google Sheets in deinem Drive ("Fred Food Log", "Fred Weight Log"). Mit `drive.file` sieht Fred nur Dateien, die Fred selbst angelegt hat. Kalorien schätzt Claude über deinen eigenen Anthropic-Key (Settings); die Texte gehen dafür an Anthropic.
+
+## Schritte und Schlaf aus Apple Health (optional)
+
+Fred kann Apple Health nicht direkt lesen. Weg: iPhone-Kurzbefehl → kleines Google Apps Script im eigenen Google-Konto (`health-script.gs`) → Fred.
+1. Google Sheet anlegen, Erweiterungen → Apps Script, Inhalt von `health-script.gs` einfügen, `KEY` auf ein eigenes langes Zufallswort ändern.
+2. Bereitstellen → Web-App, Ausführen als „Ich“, Zugriff „Jeder“. Link (endet auf `/exec`) kopieren.
+3. In Fred: Settings → Steps and sleep: `<Link>?key=<KEY>` eintragen.
+4. Kurzbefehle senden `<Link>?key=<KEY>&steps=<Zahl>` bzw. `&sleep=<Stunden>`; das Datum setzt das Script selbst (heute).
+Die Daten liegen nur im eigenen Google Sheet und im Browser, nie im Repo.
