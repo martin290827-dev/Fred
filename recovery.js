@@ -230,7 +230,7 @@ function importRow() {
   const btn = el('button', { type: 'button', class: 'ghost small', onclick: () => input.click() }, whoop.length ? 'Neue CSV laden' : 'Whoop-CSV laden');
   return el('div', {},
     el('div', { class: 'row' }, btn, input),
-    el('p', { class: 'muted small' }, 'Whoop-App → Export → "Physiologische Zyklen" (CSV). Kein Login, keine laufende Verbindung - du lädst die Datei, wann du willst.'),
+    el('p', { class: 'muted small' }, 'Whoop-App → Export → "Physiologische Zyklen" (CSV).'),
     rcImportMsg ? el('p', { class: 'small' }, rcImportMsg) : '',
     rcMirrorMsg ? el('p', { class: 'muted small' }, rcMirrorMsg) : '');
 }
@@ -281,7 +281,7 @@ function renderRecovery() {
     rcTile('Letzte Nacht', last.sleepMin != null ? rcHmShort(last.sleepMin) : '–', '', last.sleepMin != null ? RC_RULES.sleep(last.sleepMin) : ''),
     rcTile('Ø 7 Tage', avgSleep7 != null ? rcHmShort(avgSleep7) : '–', '', avgSleep7 != null ? RC_RULES.sleep(avgSleep7) : ''),
     rcTile('Effizienz', last.sleepEff != null ? last.sleepEff + ' %' : '–', 'im Bett schlafend', last.sleepEff != null ? RC_RULES.eff(last.sleepEff) : ''));
-  let stageBlock = el('p', { class: 'muted small' }, 'Für Schlafphasen und Rhythmus lade die CSV einmal neu.');
+  let stageBlock = '';
   if (hasStages && last.sleepMin) {
     const dShare = Math.round((100 * last.deepMin) / last.sleepMin), rShare = Math.round((100 * last.remMin) / last.sleepMin);
     const chip = (name, min, share, cls) => el('div', { class: 'rc-chip' }, el('span', { class: 'rc-key rc-st-' + name }), el('span', {}, ({ deep: 'Tief', rem: 'REM', light: 'Leicht', awake: 'Wach' })[name] + ' '),
@@ -320,7 +320,7 @@ function renderRecovery() {
       rcLegend(['g', 'bis 30 min vom Median'], ['o', '31–60 min'], ['r', 'über 60 min']),
       el('p', { class: 'muted small' }, 'Je gleichmäßiger die Einschlafzeit, desto besser; Streuung bis 30 min gilt als gut.'));
   } else {
-    rhythmPanel = rcPanel('Schlafrhythmus', el('p', { class: 'muted small' }, 'Für den Rhythmus lade die CSV einmal neu (Einschlafzeiten fehlen noch).'));
+    rhythmPanel = ''; // no bedtimes in the loaded data: no rhythm panel
   }
 
   /* Fred-Score */
