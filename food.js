@@ -617,10 +617,9 @@ function renderFood() {
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
   fitRows(ul, 3); // the last three meals; the rest scrolls
   requestAnimationFrame(() => {
-    // Food sets the height; Health and Trends take the same height (not on the phone, where cards stack)
-    const wide = window.matchMedia('(min-width: 700px)').matches;
+    // Food sets the height; Health and Trends take the same height (phone and desktop); more content scrolls inside
     const fh = $('card-food').offsetHeight;
-    for (const id of ['card-health', 'card-trends']) $(id).style.height = wide ? fh + 'px' : '';
+    for (const id of ['card-health', 'card-trends']) $(id).style.height = fh + 'px';
     requestAnimationFrame(() => {
       growChart($('trends'), (h) => weightChart(daysN, h));
     });
