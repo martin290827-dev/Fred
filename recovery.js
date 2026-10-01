@@ -9,6 +9,8 @@
    Google Sheet for your own analysis, same pattern as the food/weight log. */
 
 let whoop = store.get('whoop', []); // [{d:'YYYY-MM-DD', hrv, rhr, resp, skinTemp, spo2, sleepMin, sleepNeedMin, sleepDebtMin, sleepEff, sleepConsist, strain, whoopRecovery}]
+let rcRange = store.get('rcRange', 15); // rolling window in nights for the charts and averages (per device)
+if (![7, 15, 30].includes(rcRange)) rcRange = 15;
 let rcImportMsg = '';
 let rcMirrorMsg = '';
 
@@ -235,6 +237,12 @@ function importRow() {
     rcMirrorMsg ? el('p', { class: 'muted small' }, rcMirrorMsg) : '');
 }
 
+// 7 / 15 / 30 nights, always the last n nights counted back from the newest one (rolling).
+function rcRangeSeg() {
+  return el('div', { class: 'seg rc-seg', role: 'tablist', 'aria-label': 'Zeitraum in Tagen' }, ...[7, 15, 30].map((n) =>
+    el('button', { type: 'button', role: 'tab', 'aria-selected': String(n === rcRange), class: n === rcRange ? 'on' : '', onclick: () => { rcRange = n; store.set('rcRange', n); renderRecovery(); } }, n + ' Tage')));
+}
+
 // Two cards: Recovery (score, HRV, resting HR, data import) and Sleep (duration, stages, debt, rhythm).
 function renderRecovery() {
   const box = $('recovery'), sbox = $('sleep');
@@ -249,12 +257,19 @@ function renderRecovery() {
   }
 
   const last = scored[scored.length - 1];
+  const N = rcRange;
+  // rolling window of N calendar days ending at the newest night; days without data stay empty (a gap, not skipped)
+  const lastD = new Date(last.d + 'T00:00');
+  const dayList = Array.from({ length: N }, (_, i) => toDateStr(addDays(lastD, -(N - 1 - i))));
+  const byDate = new Map(scored.map((r) => [r.d, r]));
+  const winRows = dayList.map((d) => byDate.get(d)).filter(Boolean);
+  const series = (fn) => dayList.map((d) => ({ d, v: byDate.has(d) ? fn(byDate.get(d)) : null }));
   const avgOf = (list, key) => { const v = list.map((r) => r[key]).filter((x) => x != null); return v.length ? rcMean(v) : null; };
-  const avgDebt7 = avgOf(rows.slice(-7), 'sleepDebtMin');
+  const avgDebtN = avgOf(winRows, 'sleepDebtMin');
 
   /* Heute */
   // average score over the last n nights (only nights that have a score)
-  const avgScore = (n) => { const v = scored.slice(-n).filter((r) => r.score != null).map((r) => r.score); return v.length ? Math.round(rcMean(v)) : null; };
+  const avgScore = (n) => { const from = toDateStr(addDays(lastD, -(n - 1))); const v = scored.filter((r) => r.d >= from && r.score != null).map((r) => r.score); return v.length ? Math.round(rcMean(v)) : null; };
   const avgChip = (label, v) => el('span', { class: 'rc-avg' }, label + ' ', el('b', { class: v != null ? 'rc-t-' + RC_RULES.score(v) : '' }, v != null ? String(v) : '–'));
   const scoreBlock = last.score == null
     ? el('div', { class: 'muted small' }, 'Noch ' + Math.max(1, RC_BASELINE_MIN - rows.length + 1) + ' Nächte bis zur ersten Basiswert-Berechnung.')
@@ -266,7 +281,7 @@ function renderRecovery() {
   const tiles = el('div', { class: 'kpis' },
     rcTile('HRV', last.hrv != null ? last.hrv + ' ms' : '–', rcDelta(last.hrv, last.baseHrv, 'ms', true)),
     rcTile('Ruhepuls', last.rhr != null ? last.rhr + ' bpm' : '–', rcDelta(last.rhr, last.baseRhr, 'bpm', false)),
-    rcTile('Schlafschuld', last.sleepDebtMin != null ? last.sleepDebtMin + ' min' : '–', avgDebt7 != null ? 'Ø 7 Tage: ' + Math.round(avgDebt7) + ' min' : '', last.sleepDebtMin != null ? RC_RULES.debt(last.sleepDebtMin) : ''));
+    rcTile('Schlafschuld', last.sleepDebtMin != null ? last.sleepDebtMin + ' min' : '–', avgDebtN != null ? 'Ø ' + N + ' Tage: ' + Math.round(avgDebtN) + ' min' : '', last.sleepDebtMin != null ? RC_RULES.debt(last.sleepDebtMin) : ''));
   const strainHint = (() => {
     const strains = rows.filter((r) => r.strain != null).map((r) => r.strain);
     if (strains.length < 10 || last.strain == null) return '';
@@ -276,10 +291,10 @@ function renderRecovery() {
 
   /* Schlafdauer und Phasen */
   const hasStages = last.deepMin != null && last.remMin != null && last.lightMin != null;
-  const avgSleep7 = avgOf(rows.slice(-7), 'sleepMin');
+  const avgSleepN = avgOf(winRows, 'sleepMin');
   const sleepTiles = el('div', { class: 'kpis' },
     rcTile('Letzte Nacht', last.sleepMin != null ? rcHmShort(last.sleepMin) : '–', '', last.sleepMin != null ? RC_RULES.sleep(last.sleepMin) : ''),
-    rcTile('Ø 7 Tage', avgSleep7 != null ? rcHmShort(avgSleep7) : '–', '', avgSleep7 != null ? RC_RULES.sleep(avgSleep7) : ''),
+    rcTile('Ø ' + N + ' Tage', avgSleepN != null ? rcHmShort(avgSleepN) : '–', '', avgSleepN != null ? RC_RULES.sleep(avgSleepN) : ''),
     rcTile('Effizienz', last.sleepEff != null ? last.sleepEff + ' %' : '–', 'im Bett schlafend', last.sleepEff != null ? RC_RULES.eff(last.sleepEff) : ''));
   let stageBlock = '';
   if (hasStages && last.sleepMin) {
@@ -291,32 +306,33 @@ function renderRecovery() {
       el('p', { class: 'muted small' }, 'Tief grün ab 15 %, REM grün ab 20 % des Schlafs. Phasen sind Schätzungen des Armbands.'));
   }
   const sleepPanel = rcPanel('Schlafdauer', sleepTiles,
-    rcBars(rows.slice(-14).map((r) => ({ d: r.d, v: r.sleepMin })), { judge: RC_RULES.sleep, fmt: rcHm, max: 600, guides: [{ v: 420, label: '7 h' }] }),
+    rcBars(series((r) => r.sleepMin), { judge: RC_RULES.sleep, fmt: rcHm, max: 600, guides: [{ v: 420, label: '7 h' }] }),
     rcLegend(['g', '7 h oder mehr'], ['o', '6–7 h'], ['r', 'unter 6 h']), stageBlock);
 
   /* Schlafschuld */
   const debtAll = rows.filter((r) => r.sleepDebtMin != null);
-  const debtShare = debtAll.length >= 14 ? Math.round((100 * debtAll.filter((r) => r.sleepDebtMin > 60).length) / debtAll.length) : null;
+  const debtN = winRows.filter((r) => r.sleepDebtMin != null);
+  const debtShare = debtN.length >= 7 ? Math.round((100 * debtN.filter((r) => r.sleepDebtMin > 60).length) / debtN.length) : null;
   const capped = debtAll.length >= 14 && debtAll.filter((r) => r.sleepDebtMin >= 127).length >= 5;
-  const debtPanel = rcPanel('Schlafschuld, letzte 14 Nächte',
-    rcBars(rows.slice(-14).map((r) => ({ d: r.d, v: r.sleepDebtMin })), { judge: RC_RULES.debt, fmt: (v) => v + ' min', max: 130 }),
+  const debtPanel = rcPanel('Schlafschuld, letzte ' + N + ' Nächte',
+    rcBars(series((r) => r.sleepDebtMin), { judge: RC_RULES.debt, fmt: (v) => v + ' min', max: 130 }),
     rcLegend(['g', 'bis 45 min'], ['o', '46–90 min'], ['r', 'über 90 min']),
-    el('p', { class: 'muted small' }, 'Min. Schlafdefizit pro Nacht' + (debtShare != null ? ' · ' + debtShare + ' % aller geladenen Nächte liegen über 60 min.' : '') + (capped ? ' Whoop scheint das Defizit bei 127 min zu deckeln: 127 heißt "127 oder mehr".' : '')));
+    el('p', { class: 'muted small' }, 'Min. Schlafdefizit pro Nacht' + (debtShare != null ? ' · ' + debtShare + ' % der letzten ' + N + ' Nächte liegen über 60 min.' : '') + (capped ? ' Whoop scheint das Defizit bei 127 min zu deckeln: 127 heißt "127 oder mehr".' : '')));
 
   /* Schlafrhythmus */
-  const rh14 = rows.slice(-14).map((r) => ({ d: r.d, v: rcMin(r.bed, true) }));
-  const bed7 = rows.slice(-7).map((r) => rcMin(r.bed, true)).filter((v) => v != null);
-  const wake7 = rows.slice(-7).map((r) => rcMin(r.wake, false)).filter((v) => v != null);
-  const bed14 = rh14.map((x) => x.v).filter((v) => v != null);
+  const rhN = series((r) => rcMin(r.bed, true));
+  const bedN = winRows.map((r) => rcMin(r.bed, true)).filter((v) => v != null);
+  const wakeN = winRows.map((r) => rcMin(r.wake, false)).filter((v) => v != null);
+  
   let rhythmPanel;
-  if (bed14.length >= 5) {
-    const m14 = rcMean(bed14), spread = Math.round(rcStd(bed14, m14));
-    rhythmPanel = rcPanel('Schlafrhythmus, letzte 14 Nächte',
+  if (bedN.length >= 5) {
+    const mN = rcMean(bedN), spread = Math.round(rcStd(bedN, mN));
+    rhythmPanel = rcPanel('Schlafrhythmus, letzte ' + N + ' Nächte',
       el('div', { class: 'kpis' },
-        rcTile('Ins Bett', bed7.length ? rcClock(rcMean(bed7)) : '–', 'Ø 7 Tage'),
-        rcTile('Aufstehen', wake7.length ? rcClock(rcMean(wake7)) : '–', 'Ø 7 Tage'),
+        rcTile('Ins Bett', bedN.length ? rcClock(rcMean(bedN)) : '–', 'Ø ' + N + ' Tage'),
+        rcTile('Aufstehen', wakeN.length ? rcClock(rcMean(wakeN)) : '–', 'Ø ' + N + ' Tage'),
         rcTile('Streuung', '±' + spread + ' min', 'Einschlafzeit', RC_RULES.spread(spread))),
-      rcDots(rh14),
+      rcDots(rhN),
       rcLegend(['g', 'bis 30 min vom Median'], ['o', '31–60 min'], ['r', 'über 60 min']),
       el('p', { class: 'muted small' }, 'Je gleichmäßiger die Einschlafzeit, desto besser; Streuung bis 30 min gilt als gut.'));
   } else {
@@ -324,17 +340,16 @@ function renderRecovery() {
   }
 
   /* Fred-Score */
-  const scoreDays = scored.slice(-30);
-  const trendPanel = rcPanel('Fred-Score, letzte 30 Nächte',
-    rcBars(scoreDays.map((r) => ({ d: r.d, v: r.score })), { judge: RC_RULES.score, fmt: (v) => String(v), max: 100, guides: [{ v: 67, label: '67' }, { v: 34, label: '34' }], h: 100 }),
+    const trendPanel = rcPanel('Fred-Score, letzte ' + N + ' Nächte',
+    rcBars(series((r) => r.score), { judge: RC_RULES.score, fmt: (v) => String(v), max: 100, guides: [{ v: 67, label: '67' }, { v: 34, label: '34' }], h: 100 }),
     rcLegend(['g', '67 und mehr'], ['o', '34–66'], ['r', 'unter 34']));
 
-  box.replaceChildren(el('div', { class: 'food-col' },
+  box.replaceChildren(el('div', { class: 'food-col' }, rcRangeSeg(),
     rcPanel('Heute', scoreBlock, tiles, strainHint),
     trendPanel,
     rcPanel('Daten', importRow(),
       el('p', { class: 'muted small' }, 'Fred-Score ist eine eigene Näherung (HRV- und Ruhepuls-Abweichung von deiner rollenden Basis, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel pendelt sich die Basis innerhalb von ca. 1–2 Wochen neu ein.'))));
-  sbox.replaceChildren(el('div', { class: 'food-col' }, sleepPanel, debtPanel, rhythmPanel));
+  sbox.replaceChildren(el('div', { class: 'food-col' }, rcRangeSeg(), sleepPanel, debtPanel, rhythmPanel));
 }
 
 /* ---------- mirror raw fields to a Google Sheet in your Drive (for your own analysis) ---------- */
