@@ -968,8 +968,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-k.k-good { background: color-mix(in srgb, var(--up) 20%, transparent); color: var(--up); }
 
 /* ---------- Sleep & Recovery card ---------- */
-#card-recovery, #card-sleep { height: auto; max-height: none; } /* show every panel, no inner scrolling */
-#card-recovery .cardbody, #card-sleep .cardbody { overflow: visible; }
+#card-recovery, #card-sleep { height: 680px; max-height: none; } /* both cards the same height; longer content scrolls inside */
+#card-recovery .cardbody, #card-sleep .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
 #recovery .rc-hero { display: flex; align-items: baseline; gap: 12px; margin: 0 0 10px; flex-wrap: wrap; }
 .rc-score { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
 /* traffic light: g good, o watch, r poor (same colours in text, bars, dots and keys) */
@@ -995,4 +995,3 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #recovery .kpi-s, #sleep .kpi-s { min-height: 0; }
 #recovery .kpi-l, #recovery .kpi-v, #sleep .kpi-l, #sleep .kpi-v { white-space: nowrap; }
 #recovery .kpi-v, #sleep .kpi-v { font-size: 1rem; }
-#card-recovery, #card-sleep { align-self: start; } /* each card as tall as its content, no empty space at the bottom */
