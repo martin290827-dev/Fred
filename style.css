@@ -1020,3 +1020,11 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .rc-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
 .rc-key { flex: none; margin-right: 5px; }
 .rc-legend { gap: 4px 14px; }
+
+/* Jump chips: centred under the header; on wide screens they wrap into centred rows instead of being cut off */
+.jumpbar { flex-wrap: wrap; justify-content: center; overflow-x: visible; }
+@media (max-width: 700px) {
+  .jumpbar { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; }
+  .jumpbar > :first-child { margin-left: auto; } /* centred while it fits, scrolls from the left when it does not */
+  .jumpbar > :last-child { margin-right: auto; }
+}
