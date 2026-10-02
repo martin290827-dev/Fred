@@ -18,6 +18,7 @@ const SH_SETS = {
     get: () => tickers.map((s, i) => ({ symbol: s, position: i })),
     set: (rows) => { tickers = rows.map((r) => r.symbol); },
     order: (a, b) => a.position - b.position,
+    save: () => store.set('tickers', tickers),
     show: () => { if (typeof tickerEditor === 'function') tickerEditor(); loadQuotes(); earn.t = 0; loadEarnings(); loadNews(true); },
   },
   food: {
@@ -36,6 +37,7 @@ const SH_SETS = {
       }).concat(food.filter((e) => e.busy)); // meals still being estimated stay as they are
     },
     order: (a, b) => (a.date + a.time).localeCompare(b.date + b.time),
+    save: () => store.set('food', food),
     show: () => renderFood(),
   },
   weight: {
@@ -43,6 +45,7 @@ const SH_SETS = {
     get: () => weight.map((w) => ({ date: w.d, weight_kg: w.kg })),
     set: (rows) => { weight = rows.map((r) => ({ d: r.date, kg: num(r.weight_kg) })); },
     order: (a, b) => a.date.localeCompare(b.date),
+    save: () => store.set('weight', weight),
     show: () => renderFood(),
   },
   poker: {
@@ -50,10 +53,40 @@ const SH_SETS = {
     get: () => poker.map((e) => ({ id: e.id, date: e.d, place: e.place || '', game: e.game || '', result_eur: e.amt })),
     set: (rows) => { poker = rows.map((r) => ({ id: r.id, d: r.date, place: r.place, game: r.game, amt: num(r.result_eur) })); },
     order: (a, b) => a.date.localeCompare(b.date),
+    save: () => store.set('poker', poker),
     show: () => renderPoker(),
   },
+  // daily Whoop values that feed the Recovery and Sleep cards
+  whoop: {
+    tab: 'Whoop Tage', key: 'd',
+    cols: ['d', 'hrv', 'rhr', 'resp', 'skinTemp', 'spo2', 'sleepMin', 'sleepNeedMin', 'sleepDebtMin', 'sleepEff', 'sleepConsist', 'lightMin', 'deepMin', 'remMin', 'awakeMin', 'bed', 'wake', 'strain', 'whoopRecovery'],
+    get: () => whoop,
+    set: (rows) => { whoop = rows.map((r) => Object.fromEntries(SH_SETS.whoop.cols.map((c) => [c, c === 'd' ? r.d : r[c] === '' || r[c] == null ? null : (c === 'bed' || c === 'wake' ? String(r[c]) : Number(r[c]))]))); },
+    order: (a, b) => String(a.d).localeCompare(String(b.d)),
+    save: () => store.set('whoop', whoop),
+    show: () => { if (typeof renderRecovery === 'function') renderRecovery(); if (typeof renderWeekly === 'function') renderWeekly(); },
+  },
+  // goals, daily tips, tolerance result and weekly texts: one row each, the value is JSON text
+  settings: {
+    tab: 'Einstellungen', cols: ['name', 'json'], key: 'name',
+    get: () => [['nutri', nutri], ['tips', tips], ['tolerance', tol], ['weekly', weeklyAi]].map(([name, v]) => ({ name, json: JSON.stringify(v) })),
+    set: (rows) => {
+      for (const r of rows) {
+        let v; try { v = JSON.parse(r.json); } catch { continue; }
+        if (r.name === 'nutri') nutri = v; else if (r.name === 'tips') tips = v; else if (r.name === 'tolerance') tol = v; else if (r.name === 'weekly') weeklyAi = v;
+      }
+    },
+    order: (a, b) => String(a.name).localeCompare(String(b.name)),
+    save: () => { store.set('nutri', nutri); store.set('tips', tips); store.set('tolerance', tol); store.set('weekly', weeklyAi); },
+    show: () => { renderFood(); if (typeof renderWeekly === 'function') renderWeekly(); },
+    keys: ['nutri', 'tips', 'tolerance', 'weekly'], // local storage keys that belong to this set
+  },
 };
-const SH_KEYS = Object.keys(SH_SETS); // data set name = name of the local storage key
+const SH_KEYS = Object.keys(SH_SETS);
+// the raw Whoop exports (every column of the CSV files), kept as history only
+const SH_RAW = { cycles: 'Whoop Zyklen', sleep: 'Whoop Schlaf', workouts: 'Whoop Training' };
+const SH_TABS = SH_KEYS.map((k) => SH_SETS[k].tab).concat(Object.values(SH_RAW));
+const shSetOf = (key) => SH_KEYS.find((k) => k === key || (SH_SETS[k].keys || []).includes(key));
 
 const num = (v) => (v === '' || v === null || v === undefined ? 0 : Number(v));
 
@@ -75,7 +108,10 @@ async function shApi(path, opts) {
 const shJson = (body) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 // Open the Sheet (find or create) and make sure every tab exists.
-async function shOpen() {
+let shOpening = null;
+function shOpen() { return shOpening || (shOpening = shOpen1().finally(() => { shOpening = null; })); }
+
+async function shOpen1() {
   if (shId && shTabsOk) return shId;
   if (!shId) {
     const q = encodeURIComponent("name='" + SH_TITLE + "' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
@@ -84,15 +120,15 @@ async function shOpen() {
   }
   if (!shId) {
     const r = await shApi('', Object.assign({ method: 'POST' }, shJson({
-      properties: { title: SH_TITLE }, sheets: SH_KEYS.map((k) => ({ properties: { title: SH_SETS[k].tab } })),
+      properties: { title: SH_TITLE }, sheets: SH_TABS.map((t) => ({ properties: { title: t } })),
     })));
     shId = r.spreadsheetId;
   }
   store.set('shId', shId);
   const meta = await shApi('/' + shId + '?fields=sheets.properties.title');
   const have = (meta.sheets || []).map((s) => s.properties.title);
-  const missing = SH_KEYS.filter((k) => !have.includes(SH_SETS[k].tab));
-  if (missing.length) await shApi('/' + shId + ':batchUpdate', Object.assign({ method: 'POST' }, shJson({ requests: missing.map((k) => ({ addSheet: { properties: { title: SH_SETS[k].tab } } })) })));
+  const missing = SH_TABS.filter((t) => !have.includes(t));
+  if (missing.length) await shApi('/' + shId + ':batchUpdate', Object.assign({ method: 'POST' }, shJson({ requests: missing.map((t) => ({ addSheet: { properties: { title: t } } })) })));
   shTabsOk = true;
   return shId;
 }
@@ -112,7 +148,7 @@ async function shWriteRows(set, rows) {
   const s = SH_SETS[set];
   const range = encodeURIComponent(s.tab);
   await shApi('/' + shId + '/values/' + range + ':clear', { method: 'POST' });
-  const values = [s.cols].concat(rows.map((r) => s.cols.map((c) => (r[c] === undefined ? '' : r[c]))));
+  const values = [s.cols].concat(rows.map((r) => s.cols.map((c) => (r[c] === undefined || r[c] === null ? '' : r[c]))));
   await shApi('/' + shId + '/values/' + range + '!A1?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values })));
 }
 
@@ -128,7 +164,8 @@ async function shSyncSet(set) {
   const base = shBase[set] || {};
   const merged = new Map(remote);
   // changes made here since the last sync
-  for (const [k, row] of local) if (base[k] !== shText(row, s.cols)) merged.set(k, row);
+  const first = !shBase[set]; // first sync of this set on this device: what Google has wins over defaults here
+  for (const [k, row] of local) if (base[k] !== shText(row, s.cols) && !(first && remote.has(k))) merged.set(k, row);
   for (const k of Object.keys(base)) if (!local.has(k)) merged.delete(k);
   const rows = [...merged.values()].sort(s.order);
   const same = (a, b) => a.length === b.length && a.every((r, i) => shText(r, s.cols) === shText(b[i], s.cols));
@@ -139,15 +176,10 @@ async function shSyncSet(set) {
   if (!same(rows, [...local.values()].sort(s.order)) || rows.length !== local.size) {
     shApplying = true;
     s.set(rows);
-    store.set(set, shValue(set));
+    s.save();
     shApplying = false;
     s.show();
   }
-}
-
-// The current value of a data set, as it is saved in the browser.
-function shValue(set) {
-  return { tickers: () => tickers, food: () => food, weight: () => weight, poker: () => poker }[set]();
 }
 
 async function shSync() {
@@ -175,7 +207,7 @@ function shStatus() { const n = $('sheet-status'); if (n) n.textContent = shMsg;
 
 // Called by store.set: a data set changed here, send it a few seconds later.
 function shTouch(key) {
-  if (shApplying || !SH_SETS[key]) return;
+  if (shApplying || !shSetOf(key)) return;
   clearTimeout(shTimer);
   shTimer = setTimeout(shSync, 3000);
 }
@@ -184,4 +216,51 @@ function shInit() {
   setInterval(() => { if (!document.hidden) shSync(); }, 60000);
   document.addEventListener('visibilitychange', shSync);
   setTimeout(shSync, 2500);
+}
+
+/* ---------- raw Whoop history (all columns of the CSV files) ---------- */
+
+const shEnc = encodeURIComponent;
+// numbers stay numbers in the Sheet, so you can calculate with them; the key column stays text
+const shCell = (v, isKey) => (!isKey && typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v);
+
+// snap: { 'set\tkey': row | null }. Adds or replaces rows in the tabs; new columns go to the end.
+async function shRawFlush(snap) {
+  await shOpen();
+  const bySet = {};
+  for (const k of Object.keys(snap)) { const [set, key] = k.split('\t'); (bySet[set] = bySet[set] || []).push([key, snap[k]]); }
+  const counts = {};
+  for (const set of Object.keys(bySet)) {
+    const tab = SH_RAW[set], keyCol = RC_KEY_COL[set];
+    const r = await shApi('/' + shId + '/values/' + shEnc(tab) + '?valueRenderOption=UNFORMATTED_VALUE');
+    const vals = r.values || [];
+    const header = vals.length ? vals[0].map(String) : [keyCol];
+    const rows = new Map();
+    for (const cells of vals.slice(1)) {
+      const o = Object.fromEntries(header.map((h, i) => [h, cells[i] === undefined ? '' : cells[i]]));
+      if (o[keyCol] !== '') rows.set(String(o[keyCol]), o);
+    }
+    for (const [key, row] of bySet[set]) {
+      if (row === null) { rows.delete(key); continue; }
+      rows.set(key, row);
+      for (const c of Object.keys(row)) if (!header.includes(c)) header.push(c);
+    }
+    const list = [...rows.entries()].sort((a, b) => a[0].localeCompare(b[0])).map((e) => e[1]);
+    const values = [header].concat(list.map((o) => header.map((h) => (o[h] === undefined ? '' : shCell(o[h], h === keyCol)))));
+    await shApi('/' + shId + '/values/' + shEnc(tab) + ':clear', { method: 'POST' });
+    await shApi('/' + shId + '/values/' + shEnc(tab) + '!A1?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values })));
+    counts[set] = list.length;
+  }
+  return counts;
+}
+
+// Number of rows in each raw tab, for the status line.
+async function shRawCounts() {
+  await shOpen();
+  const out = {};
+  for (const set of Object.keys(SH_RAW)) {
+    const r = await shApi('/' + shId + '/values/' + shEnc(SH_RAW[set]) + '!A:A');
+    out[set] = Math.max(0, (r.values || []).length - 1);
+  }
+  return out;
 }
