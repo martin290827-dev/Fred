@@ -4,6 +4,7 @@
 
 let poker = store.get('poker', []); // [{ id, d: 'YYYY-MM-DD', place, game, amt }]  amt in EUR, negative = loss
 let pokerEditId = null;
+let pokerOpen = false; // the New session form shows after tapping +
 const POKER_GAMES = ['Cash', 'Tournament', 'Other'];
 
 // +€120 / −€45 / €0
@@ -76,8 +77,8 @@ function pokerForm() {
       row('Amount (\u20ac)', amount)),
     dl, msg,
     el('div', { class: 'pk-btns' },
-      e ? el('button', { type: 'button', class: 'pk-cancel', onclick: () => { pokerEditId = null; pokerRedraw(); } }, 'Cancel') : '',
-      el('button', { type: 'submit', class: 'pk-add' }, e ? 'Save session' : 'Add session')));
+      el('button', { type: 'button', class: 'pk-cancel', onclick: () => { pokerEditId = null; pokerOpen = false; pokerRedraw(); } }, 'Cancel'),
+      el('button', { type: 'submit', class: 'pk-add' }, e ? 'Save' : 'Add')));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const v = parseFloat(String(amount.value).replace(',', '.'));
@@ -85,6 +86,7 @@ function pokerForm() {
     const r = { d: date.value, place: place.value.trim(), game, amt: Math.round(sign * v * 100) / 100 };
     if (e) Object.assign(e, r); else poker.push(Object.assign({ id: uid() }, r));
     pokerEditId = null;
+    pokerOpen = false;
     pokerSave();
   });
   return form;
@@ -167,7 +169,7 @@ function pokerList(list) {
       el('span', { class: 'grow meal-t' }, [e.place, e.game].filter(Boolean).join(' · ')),
       el('b', { class: pkCls(e.amt) }, eur(e.amt, true)),
       el('span', { class: 'meal-act' },
-        iconButton('edit', 'Edit session', () => { pokerEditId = e.id; pokerRedraw(); }),
+        iconButton('edit', 'Edit session', () => { pokerEditId = e.id; pokerOpen = true; pokerRedraw(); }),
         iconButton('trash', 'Delete session', () => { poker = poker.filter((x) => x.id !== e.id); if (typeof arcDelete === 'function') { arcDelete('poker', e.id); arcCommit(); } pokerSave(); }))));
   }
   return ul;
@@ -184,10 +186,10 @@ function renderPoker() {
   const hero = hcard('goal', 'green', 'Performance', s.n ? s.n + (s.n === 1 ? ' session' : ' sessions') : '',
     el('div', { class: 'pk-total ' + pkCls(s.total) }, s.n ? eur(s.total, true) : '–'),
     s.n ? el('div', { class: 'pk-kpis' },
-      kpi('30 days', eur(s.last30, true), pkCls(s.last30)), kpi('Per session', eur(s.avg, true), pkCls(s.avg)), kpi('Winning', s.rate + ' %'),
-      kpi('Best', eur(s.best, true), pkCls(s.best)), kpi('Worst', eur(s.worst, true), pkCls(s.worst)), kpi('Wins', s.wins + ' of ' + s.n)) : el('p', { class: 'muted small' }, 'Add your first session below.'));
+      kpi('30 days', eur(s.last30, true), pkCls(s.last30)), kpi('Average', eur(s.avg, true), pkCls(s.avg)), kpi('Winning', s.rate + ' %'),
+      kpi('Best', eur(s.best, true), pkCls(s.best)), kpi('Worst', eur(s.worst, true), pkCls(s.worst)), kpi('Wins', s.wins + ' of ' + s.n)) : el('p', { class: 'muted small' }, 'Tap + to add your first session.'));
   box.replaceChildren(el('div', { class: 'food-col' },
-    hcard('pulse', 'indigo', pokerEditId ? 'Edit session' : 'New session', '', pokerForm()),
+    pokerOpen || pokerEditId ? hcard('pulse', 'indigo', pokerEditId ? 'Edit session' : 'New session', '', pokerForm()) : '',
     hero,
     hcard('line', 'purple', 'Total over time', s.n ? eur(s.total, true) : '', pokerCurve(list)),
     hcard('bars', 'orange', 'Per month', 'last 12 months', pokerMonths(list)),
@@ -196,6 +198,7 @@ function renderPoker() {
 }
 
 function initPoker() {
+  $('pk-add').addEventListener('click', () => { pokerOpen = !pokerOpen; pokerEditId = null; pokerRedraw(); if (pokerOpen) { const i = document.querySelector('#poker input[name=amt]'); if (i) i.focus(); } });
   pokerArchive();
   renderPoker();
 }
