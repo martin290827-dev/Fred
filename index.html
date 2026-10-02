@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=137">
+  <link rel="stylesheet" href="style.css?v=138">
 </head>
 <body>
   <header>
@@ -219,11 +219,6 @@
         <span class="muted small" id="set-place2-status"></span>
       </label>
 
-      <label>Tickers (comma separated)
-        <input id="set-tickers" type="text" placeholder="c:BTC, c:ETH, AAPL">
-        <span class="muted small">Crypto: prefix c: (Binance, USDT). Stocks: plain symbol, needs the Finnhub key below.</span>
-      </label>
-
       <label>Finnhub API key (stock prices)
         <input id="set-key" type="password" autocomplete="off" placeholder="Stored only in this browser">
         <span class="muted small">Free key at finnhub.io. Never put it in the code or the repo.</span>
@@ -276,7 +271,7 @@
         <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
         <span class="muted small" id="g-status"></span>
       </div>
-      <label class="check"><input id="set-sync" type="checkbox" checked> Sync settings, notes and shopping list between my devices (hidden file in my Google Drive)</label>
+      <label class="check"><input id="set-sync" type="checkbox" checked> Sync places, clocks, notes, shopping list and keys between my devices (hidden file in my Google Drive)</label>
       <div class="row wrap">
         <button type="button" id="sync-now" class="ghost small">Sync now</button>
         <span class="muted small" id="sync-status"></span>
@@ -284,7 +279,7 @@
       </div>
 
       <h3>Backup</h3>
-      <p class="muted small">Everything you entered lives only in this browser. Download it as a file, and load it again after clearing the browser data or on another device.</p>
+      <p class="muted small">Your data (tickers, food, weight, poker, Whoop, goals) is saved in the Google Sheet "Fred Daten". This file is a second copy of it, plus your settings and keys. Load it if the Sheet or this browser is ever lost.</p>
       <label class="check"><input id="bk-keys" type="checkbox" checked> Include API keys and Client ID (keep the file private)</label>
       <div class="row wrap">
         <button type="button" id="bk-export" class="ghost">Download settings</button>
@@ -300,14 +295,14 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=137"></script>
-  <script src="gcal.js?v=137"></script>
-  <script src="sync.js?v=137"></script>
-  <script src="food.js?v=137"></script>
-  <script src="archive.js?v=137"></script>
-  <script src="recovery.js?v=137"></script>
-  <script src="poker.js?v=137"></script>
-  <script src="weekly.js?v=137"></script>
-  <script src="sheets.js?v=137"></script>
+  <script src="app.js?v=138"></script>
+  <script src="gcal.js?v=138"></script>
+  <script src="sync.js?v=138"></script>
+  <script src="food.js?v=138"></script>
+  <script src="archive.js?v=138"></script>
+  <script src="recovery.js?v=138"></script>
+  <script src="poker.js?v=138"></script>
+  <script src="weekly.js?v=138"></script>
+  <script src="sheets.js?v=138"></script>
 </body>
 </html>
