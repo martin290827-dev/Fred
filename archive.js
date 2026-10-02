@@ -14,7 +14,7 @@ const ARC_SHEETS = {
 };
 // Fixed columns for our own data; Whoop sets take their columns from the CSV header.
 const ARC_COLS = {
-  food: ['date', 'time', 'text', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'id'],
+  food: ['date', 'time', 'text', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'id', 'reaction', 'symptoms'],
   weight: ['date', 'weight_kg'],
   poker: ['date', 'place', 'game', 'result_eur', 'id'],
 };
@@ -68,6 +68,7 @@ function arcCommit() {
 const arcFoodRow = (e) => ({
   date: e.at.slice(0, 10), time: e.at.slice(11, 16), text: e.text, kcal: e.kcal, protein_g: e.p,
   carbs_g: e.c, fat_g: e.f, source: e.src || '', id: e.id,
+  reaction: e.bad ? TOL_LEVELS[e.bad.lvl] : '', symptoms: e.bad ? e.bad.sym.join('; ') : '', // flagged meals, for later analysis
 });
 
 // Add new and changed meals and weights. Missing entries are NOT treated as deleted:
