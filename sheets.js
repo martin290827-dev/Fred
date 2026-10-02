@@ -56,6 +56,14 @@ const SH_SETS = {
     save: () => store.set('poker', poker),
     show: () => renderPoker(),
   },
+  shop: {
+    tab: 'Shopping', cols: ['id', 'item', 'done', 'position'], key: 'id',
+    get: () => shop.map((x, i) => ({ id: x.id, item: x.text, done: x.done ? 1 : 0, position: i })),
+    set: (rows) => { shop = rows.map((r) => ({ id: r.id, text: String(r.item), done: !!Number(r.done) })); },
+    order: (a, b) => a.position - b.position,
+    save: () => store.set('shop', shop),
+    show: () => renderShop(),
+  },
   // daily Whoop values that feed the Recovery and Sleep cards
   whoop: {
     tab: 'Whoop Tage', key: 'd',
@@ -66,21 +74,48 @@ const SH_SETS = {
     save: () => store.set('whoop', whoop),
     show: () => { if (typeof renderRecovery === 'function') renderRecovery(); if (typeof renderWeekly === 'function') renderWeekly(); },
   },
-  // goals, daily tips, tolerance result and weekly texts: one row each, the value is JSON text
+  // one row per setting, the value is JSON text: goals, tips, tolerance, weekly texts, places, default currencies, clocks,
+  // and the card layout (one row per kind of device, so Mac and iPhone can differ)
   settings: {
     tab: 'Einstellungen', cols: ['name', 'json'], key: 'name',
-    get: () => [['nutri', nutri], ['tips', tips], ['tolerance', tol], ['weekly', weeklyAi]].map(([name, v]) => ({ name, json: JSON.stringify(v) })),
+    get: () => Object.entries(SH_VALUES).map(([name, v]) => ({ name, json: JSON.stringify(v.get()) })),
     set: (rows) => {
+      shChanged = [];
       for (const r of rows) {
-        let v; try { v = JSON.parse(r.json); } catch { continue; }
-        if (r.name === 'nutri') nutri = v; else if (r.name === 'tips') tips = v; else if (r.name === 'tolerance') tol = v; else if (r.name === 'weekly') weeklyAi = v;
+        const v = SH_VALUES[r.name];
+        let val; try { val = JSON.parse(r.json); } catch { continue; }
+        if (!v || JSON.stringify(v.get()) === JSON.stringify(val)) continue;
+        v.put(val);
+        shChanged.push(r.name);
       }
     },
     order: (a, b) => String(a.name).localeCompare(String(b.name)),
-    save: () => { store.set('nutri', nutri); store.set('tips', tips); store.set('tolerance', tol); store.set('weekly', weeklyAi); },
-    show: () => { renderFood(); if (typeof renderWeekly === 'function') renderWeekly(); },
-    keys: ['nutri', 'tips', 'tolerance', 'weekly'], // local storage keys that belong to this set
+    owns: (k) => k in SH_VALUES, // rows of other devices (the layout of the other kind of device) are not ours to delete
+    save: () => { for (const v of Object.values(SH_VALUES)) store.set(v.key, v.get()); },
+    show: () => {
+      const has = (n) => shChanged.includes(n);
+      if (has('nutri') || has('tips') || has('tolerance') || has('weekly')) { renderFood(); if (typeof renderWeekly === 'function') renderWeekly(); }
+      if (has('place') || has('place2')) { loadWeather(); if (typeof wxEditor === 'function') wxEditor(); }
+      if (has('zones')) { renderClocks(); if (typeof tzEditor === 'function') tzEditor(); }
+      if (has('fxDefault')) { $('fx-from').value = fxDefault.from; $('fx-to').value = fxDefault.to; convert(); }
+      if (has(SH_LAYOUT)) applyLayout();
+    },
+    keys: ['nutri', 'tips', 'tolerance', 'weekly', 'place', 'place2', 'fxDefault', 'zones', 'layout'], // local storage keys that belong to this set
   },
+};
+// The settings rows. The layout row is named after the kind of device: touch screen = phone, otherwise desktop.
+const SH_LAYOUT = 'layout-' + (matchMedia('(pointer: coarse)').matches ? 'phone' : 'desktop');
+let shChanged = [];
+const SH_VALUES = {
+  nutri: { key: 'nutri', get: () => nutri, put: (v) => { nutri = v; } },
+  tips: { key: 'tips', get: () => tips, put: (v) => { tips = v; } },
+  tolerance: { key: 'tolerance', get: () => tol, put: (v) => { tol = v; } },
+  weekly: { key: 'weekly', get: () => weeklyAi, put: (v) => { weeklyAi = v; } },
+  place: { key: 'place', get: () => place, put: (v) => { place = v; } },
+  place2: { key: 'place2', get: () => place2, put: (v) => { place2 = v; } },
+  fxDefault: { key: 'fxDefault', get: () => fxDefault, put: (v) => { fxDefault = v; } },
+  zones: { key: 'zones', get: () => zones, put: (v) => { zones = v; } },
+  [SH_LAYOUT]: { key: 'layout', get: () => layout, put: (v) => { layout = v; } },
 };
 const SH_KEYS = Object.keys(SH_SETS);
 // the raw Whoop exports (every column of the CSV files), kept as history only
@@ -164,13 +199,13 @@ async function shSyncSet(set) {
   const base = shBase[set] || {};
   const merged = new Map(remote);
   // changes made here since the last sync
-  const first = !shBase[set]; // first sync of this set on this device: what Google has wins over defaults here
-  for (const [k, row] of local) if (base[k] !== shText(row, s.cols) && !(first && remote.has(k))) merged.set(k, row);
+  // a row this device never synced before, but Google already has: Google wins (a new device must not overwrite with defaults)
+  for (const [k, row] of local) if (base[k] !== shText(row, s.cols) && !(!(k in base) && remote.has(k))) merged.set(k, row);
   for (const k of Object.keys(base)) if (!local.has(k)) merged.delete(k);
   const rows = [...merged.values()].sort(s.order);
   const same = (a, b) => a.length === b.length && a.every((r, i) => shText(r, s.cols) === shText(b[i], s.cols));
   if (!same(rows, [...remote.values()])) await shWriteRows(set, rows);
-  shBase[set] = Object.fromEntries(rows.map((r) => [String(r[s.key]), shText(r, s.cols)]));
+  shBase[set] = Object.fromEntries(rows.filter((r) => !s.owns || s.owns(String(r[s.key]))).map((r) => [String(r[s.key]), shText(r, s.cols)]));
   store.set('shBase', shBase);
   // show what came from Google, if it differs from what this device has
   if (!same(rows, [...local.values()].sort(s.order)) || rows.length !== local.size) {

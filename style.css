@@ -1146,7 +1146,10 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 #card-timer .tm-pane .row button { flex: 1; min-width: 0; }
 
 /* tickers: add and remove in the card */
-#tk-edit[hidden] { display: none; }
+#tk-edit[hidden], #wx-edit[hidden], #tz-edit[hidden] { display: none; }
+.wx-lbl { width: 46px; flex: none; }
+#wx-edit .row, #tz-edit .row { gap: 8px; flex-wrap: nowrap; }
+#wx-edit .row input, #tz-edit .row input { min-width: 0; flex: 1; }
 .tk-seg { display: inline-grid; grid-template-columns: 1fr 1fr; background: var(--fill-2, rgba(118, 118, 128, 0.24)); border-radius: 9px; padding: 2px; gap: 2px; flex: none; }
 .tk-seg button { background: transparent; color: var(--text); font-size: 0.8rem; font-weight: 600; padding: 5px 10px; border-radius: 7px; min-height: 0; box-shadow: none; }
 .tk-seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
