@@ -398,9 +398,23 @@ function renderRecovery() {
     rcLegend(['g', '90 % or more'], ['o', '85\u201389 %'], ['r', 'under 85 %']));
   sbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(newest), rcRangeSeg(), sleepPanel, effPanel));
   hbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(newest), rcRangeSeg(), rhythmPanel, debtPanel));
+  requestAnimationFrame(rcFitHeight);
 }
 
 // Fade the bottom edge of the health cards while more content sits below.
+// The Sleep card sets the height of Recovery, Sleep and Sleep Habits: as tall as its content, so no grey space is left. The others scroll.
+function rcFitHeight() {
+  const col = document.querySelector('#sleep > .food-col'), card = $('card-sleep'), body = card && card.querySelector('.cardbody');
+  if (!col || !body) return;
+  const flex = col.style.flex;
+  col.style.flex = 'none'; // measure the content itself, not the stretched box
+  const natural = col.getBoundingClientRect().height;
+  col.style.flex = flex;
+  const chrome = card.offsetHeight - body.clientHeight; // title and padding
+  const h = Math.max(420, Math.min(700, Math.ceil(natural + chrome + 4)));
+  document.documentElement.style.setProperty('--rc-h', h + 'px');
+}
+
 function rcWatchScroll() {
   for (const id of ['card-food', 'card-health', 'card-trends', 'card-recovery', 'card-sleep', 'card-habits']) {
     const b = document.querySelector('#' + id + ' .cardbody');

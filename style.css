@@ -395,7 +395,7 @@ button.danger { background: var(--down); color: #fff; }
    and the last section of each fills the rest (see growChart in food.js) */
 /* Food, Health and Trends: the same fixed height (Food fits one meal); longer content scrolls inside the card. Recovery and Sleep likewise. */
 #card-food, #card-health, #card-trends { height: 490px; max-height: none; }
-#card-recovery, :is(#card-sleep, #card-habits) { height: 580px; max-height: none; }
+#card-recovery, :is(#card-sleep, #card-habits) { height: var(--rc-h, 540px); max-height: none; }
 #card-poker { height: 680px; max-height: none; }
 #food, #health, #trends, #recovery, :is(#sleep, #habits), #habits { flex: 1 0 auto; display: flex; flex-direction: column; }
 #food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, :is(#sleep, #habits) > .food-col { flex: 1 0 auto; }
