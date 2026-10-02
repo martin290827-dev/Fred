@@ -1,11 +1,9 @@
 'use strict';
-/* Hidden history for later analysis. Nothing here is shown in a card.
-   The real archive is one JSON file in your Google Drive ("Fred Archiv Daten.json").
-   It only grows: an import or a new meal adds or updates rows, it never replaces the
-   whole history. Only an explicit delete in Fred removes a row (meals).
-   Google Sheets are generated from that JSON, so you can open and analyse them.
+/* History of the raw Whoop exports (cycles, sleep, workouts) for later analysis.
+   It is saved in the Google Sheet "Fred Daten" (tabs "Whoop Zyklen", "Schlaf", "Training", see sheets.js).
+   It only grows: an import adds or updates rows, it never replaces the whole history.
    Changes wait in a local queue until Google is connected, so nothing is lost offline.
-   Sheet row order: oldest first. */
+   The old hidden JSON file is read once and copied into the Sheet. */
 
 const ARC_FILE = 'Fred Archiv Daten.json';
 const ARC_SHEETS = {
@@ -127,82 +125,43 @@ async function arcReadJson(id) {
   return { v: 1, cols: a.cols || {}, sets: a.sets || {} };
 }
 
-async function arcWriteJson(id, a) {
-  const body = JSON.stringify(a);
+// One time: copy the Whoop history from the old hidden JSON file into the Sheet.
+async function arcMigrate() {
+  if (store.get('arcMigrated', false)) return;
+  const id = await arcFindFile();
   if (id) {
-    await driveFetch(DRIVE_UP + '/' + id + '?uploadType=media', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body });
-    return;
+    const a = await arcReadJson(id);
+    for (const set of ['cycles', 'sleep', 'workouts']) for (const [key, row] of Object.entries(a.sets[set] || {})) arcPut(set, key, row);
+    arcCommit();
   }
-  const b = 'fredarc' + Date.now();
-  const multi = '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify({ name: ARC_FILE, mimeType: 'application/json' }) +
-    '\r\n--' + b + '\r\nContent-Type: application/json\r\n\r\n' + body + '\r\n--' + b + '--';
-  await driveFetch(DRIVE_UP + '?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body: multi });
-}
-
-function arcRows(a, set) {
-  const cols = ARC_COLS[set] || a.cols[set] || [];
-  const entries = Object.entries(a.sets[set] || {}).map(([key, row]) => [set === 'food' ? row.date + row.time + key : key, row]);
-  entries.sort((x, y) => x[0].localeCompare(y[0]));
-  return [cols].concat(entries.map(([, row]) => cols.map((c) => (row[c] === undefined ? '' : row[c]))));
+  store.set('arcMigrated', true);
 }
 
 async function arcFlush() {
-  if (arcBusy || (!Object.keys(arcQueue).length && !arcDirty.length)) return;
-  if (!gHasToken()) return; // later, when connected
-  if (!gScopes.includes('drive.file')) { arcMsg = 'Archive needs one more Google permission: press Connect.'; renderRecovery(); return; }
+  if (arcBusy || !Object.keys(arcQueue).length) return;
+  if (typeof shReady === 'function' && !shReady()) { if (gHasToken()) { arcMsg = 'History needs one more Google permission: press Connect.'; renderRecovery(); } return; } // later, when connected
   arcBusy = true;
   try {
+    await arcMigrate();
     const snap = Object.assign({}, arcQueue);
-    const keys = Object.keys(snap);
-    if (keys.length) {
-      const id = await arcFindFile();
-      const a = await arcReadJson(id);
-      for (const k of keys) {
-        const [set, key] = k.split('\t');
-        a.sets[set] = a.sets[set] || {};
-        if (snap[k] === null) delete a.sets[set][key];
-        else {
-          a.sets[set][key] = snap[k];
-          if (!ARC_COLS[set]) { // new columns are added at the end, old ones keep their place
-            a.cols[set] = a.cols[set] || [];
-            for (const c of Object.keys(snap[k])) if (!a.cols[set].includes(c)) a.cols[set].push(c);
-          }
-        }
-        if (!arcDirty.includes(set)) arcDirty.push(set);
-      }
-      await arcWriteJson(id, a);
-      for (const k of keys) if (JSON.stringify(arcQueue[k]) === JSON.stringify(snap[k])) delete arcQueue[k]; // keep newer changes
-      arcSaveQueue();
-      arcInfo = { at: Date.now(), counts: Object.fromEntries(Object.keys(ARC_SHEETS).map((s) => [s, Object.keys(a.sets[s] || {}).length])) };
-      store.set('arcInfo', arcInfo);
-      arcSheetsFrom = a;
-    }
-    await arcWriteSheets();
+    await shRawFlush(snap);
+    for (const k of Object.keys(snap)) if (JSON.stringify(arcQueue[k]) === JSON.stringify(snap[k])) delete arcQueue[k]; // keep newer changes
+    arcSaveQueue();
+    arcInfo = { at: Date.now(), counts: await shRawCounts() };
+    store.set('arcInfo', arcInfo);
     arcMsg = '';
     if (arcNote) arcNote = 'Gespeichert \u2713';
   } catch (e) {
-    arcMsg = 'Archive: ' + e.message;
+    arcMsg = 'History: ' + e.message;
   }
   arcBusy = false;
   renderRecovery();
   if (Object.keys(arcQueue).length) arcSoon(); // something changed while we were saving
 }
 
-let arcSheetsFrom = null; // archive as just written; used to build the Sheets
-
-async function arcWriteSheets() {
-  if (!arcDirty.length) return;
-  const a = arcSheetsFrom || await arcReadJson(await arcFindFile());
-  for (const set of [...arcDirty]) {
-    await sheetWrite(ARC_SHEETS[set], csv(arcRows(a, set)));
-    arcDirty = arcDirty.filter((s) => s !== set);
-    arcSaveQueue();
-  }
-}
-
 /* ---------- status line for the Recovery card ---------- */
 
-const ARC_LABELS = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts', food: 'food', weight: 'weight', poker: 'poker' };
+const ARC_LABELS = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts' };
 
 function arcStatus() {
   if (arcMsg) return arcMsg;
@@ -210,8 +169,8 @@ function arcStatus() {
   const open = Object.keys(arcQueue).length;
   const parts = [];
   if (arcNote) parts.push(arcNote);
-  if (arcInfo) parts.push('Archive, last saved ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
-  else parts.push('Archive: nothing saved to Google Drive yet');
+  if (arcInfo) parts.push('History in Google Sheet, last saved ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
+  else parts.push('History: nothing saved to the Google Sheet yet');
   if (open) parts.push(open + ' change' + (open > 1 ? 's' : '') + ' waiting' + (gHasToken() ? '' : ' \u2013 Google is not connected (press Connect)'));
   return parts.join(' \u00b7 ');
 }
@@ -220,7 +179,7 @@ function arcStatus() {
 function arcNow() {
   arcMsg = '';
   arcScan();
-  const nothing = !Object.keys(arcQueue).length && !arcDirty.length;
+  const nothing = !Object.keys(arcQueue).length;
   arcNote = !gHasToken() ? 'Nicht gespeichert: Google ist nicht verbunden.' : nothing ? 'Nichts Neues: alles ist schon gespeichert.' : 'Speichere \u2026';
   setTimeout(() => { arcNote = ''; renderRecovery(); }, 8000);
   arcFlush();
