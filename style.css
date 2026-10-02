@@ -154,6 +154,7 @@ header h1::before {
 #btn-theme[data-to="light"] .i-moon, #btn-theme[data-to="dark"] .i-sun, #btn-theme:not([data-to]) .i-moon { display: none; }
 
 /* ---------- grid and cards (widgets) ---------- */
+:root { --card-h: 520px; }
 .grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -174,7 +175,7 @@ header h1::before {
   /* every card has the same size; more rows scroll inside the card */
   display: flex;
   flex-direction: column;
-  height: 412px; /* fits the weather card with its hourly strip */
+  height: var(--card-h); /* one size for every card except Market News */
   overflow: hidden;
 }
 .card[hidden] { display: none; }
@@ -362,7 +363,7 @@ button.danger { background: var(--down); color: #fff; }
 .list li.earn .grow::before { content: "\25C6"; color: var(--accent); font-size: 0.7rem; margin-right: 6px; vertical-align: 1px; }
 
 /* ---------- market news: full width, one column per ticker ---------- */
-.card-wide { height: auto; }
+.card-wide { height: auto; } /* Market News */
 /* column plan: phone 1 column; tablet 2; desktop 6 thin columns, normal cards take 2, the two wide cards take 3 each (half) */
 @media (min-width: 700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1000px) {
@@ -394,8 +395,7 @@ button.danger { background: var(--down); color: #fff; }
 /* Food, Health and Trends: as tall as their content; in a row they share the height of the tallest,
    and the last section of each fills the rest (see growChart in food.js) */
 /* Food, Health and Trends: the same fixed height (Food fits one meal); longer content scrolls inside the card. Recovery and Sleep likewise. */
-/* all eight data cards have the same height; longer content scrolls inside the card */
-:is(#card-food, #card-health, #card-trends, #card-recovery, #card-sleep, #card-habits, #card-poker, #card-weekly) { height: 560px; max-height: none; }
+
 #food, #health, #trends, #recovery, :is(#sleep, #habits), #habits { flex: 1 0 auto; display: flex; flex-direction: column; }
 #food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, :is(#sleep, #habits) > .food-col { flex: 1 0 auto; }
 .food-col > .fpanel:last-child { display: flex; flex-direction: column; }
@@ -726,9 +726,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .hbtn { padding: 8px; }
   .today { white-space: normal; font-size: 1.05rem; }
   .grid { gap: 14px; padding: 16px 16px 32px; }
-  .card { height: auto; max-height: 440px; border-radius: 20px; padding: 16px 18px; }
+  .card { max-height: none; border-radius: 20px; padding: 16px 18px; }
   .cardbody > ul.list { min-height: 0; }
-  #card-notes { height: 320px; }
   #card-weather, #card-cal, #card-events { max-height: none; } /* one common height, set in app.js */
   .card-wide { max-height: none; }
   #banners { top: 96px; padding: 0 16px; }
@@ -1129,3 +1128,19 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .wk-cap { font-weight: 400; }
 .pk-seg3 button { font-size: 0.72rem; padding-left: 2px; padding-right: 2px; overflow: hidden; text-overflow: clip; }
 .pk-seg3 { grid-template-columns: 1fr 1.5fr 1fr; }
+
+/* one size for all cards: spread simple content over the card */
+.empty { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 220px; margin: 0; padding: 0 20px; color: var(--muted); font-size: 0.95rem; }
+.list li.empty { border: 0; }
+/* timer: centred, big digits, presets as an even row */
+#card-timer .tm-pane:not([hidden]) { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+#card-timer .tm-pane .row { justify-content: center; }
+#card-timer #timer-display, #card-timer #sw-display { font-size: 4rem; margin: 0 0 10px; }
+#card-timer .presets { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+#card-timer .presets button { min-height: 34px; font-size: 0.9rem; }
+/* calculator: the display fills the free space like a real calculator screen */
+#card-calc .calc-display { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; }
+#card-calc #calc-result { font-size: 2.6rem; }
+#card-timer .tm-pane .row { width: 100%; gap: 8px; flex-wrap: nowrap; }
+#card-timer #timer-min { width: 62px; flex: none; text-align: center; padding-left: 4px; padding-right: 4px; }
+#card-timer .tm-pane .row button { flex: 1; min-width: 0; }

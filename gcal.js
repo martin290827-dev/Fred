@@ -156,7 +156,7 @@ function renderCalendar() {
     $('cal-add').hidden = true;
     $('cal-scan').hidden = true;
     $('ev-add').hidden = true;
-    ul.append(el('li', { class: 'muted' }, 'Add your Google Client ID in Settings to see your calendar.'));
+    ul.append(el('li', { class: 'muted empty' }, 'Add your Google Client ID in Settings to see your calendar.'));
     return;
   }
   btn.hidden = gSessionEnded(); // the Reconnect row below does the job then

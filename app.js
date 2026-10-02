@@ -420,7 +420,7 @@ async function loadWeather() {
     }
   }
   if (here && geoSwapped && low) { const t = top; top = low; low = t; }
-  if (!top) { $('weather-place').textContent = ''; box.textContent = 'Set your location in Settings.'; return; }
+  if (!top) { $('weather-place').textContent = ''; box.replaceChildren(el('p', { class: 'empty' }, 'Set your location in Settings.')); return; }
   const title = $('weather-place');
   title.replaceChildren(here && !geoSwapped ? hereIcon() : '', top.name, geoNote ? el('span', { class: 'small' }, ' \u00b7 ' + geoNote) : '');
   const [main, second] = await Promise.allSettled([fetchWeather(top), low ? fetchWeather(low) : Promise.resolve(null)]);
@@ -474,7 +474,7 @@ async function loadQuotes() {
 
   const box = $('tickers');
   box.replaceChildren();
-  if (!tickers.length) box.textContent = 'No tickers. Add some in Settings.';
+  if (!tickers.length) box.append(el('p', { class: 'empty' }, 'No tickers. Add some in Settings.'));
   for (const s of tickers) {
     const q = lastQuotes[s];
     const slot = el('span', { class: 'sparkslot', 'data-sym': s });
@@ -897,7 +897,7 @@ function renderEvents() {
   const sorted = eventList().filter((e) => dayDiff(e.to || e.at) >= -30).sort((a, b) => a.at.localeCompare(b.at));
   if (!sorted.length) {
     const on = typeof gHasToken === 'function' && gHasToken();
-    ul.append(el('li', { class: 'muted' }, on ? 'No events.' : 'Connect Google Calendar to see your events.'));
+    ul.append(el('li', { class: 'muted empty' }, on ? 'No events.' : 'Connect Google Calendar to see your events.'));
   }
   if (typeof gSessionEnded === 'function' && gSessionEnded()) ul.append(gReconnectRow());
   for (const e of sorted) {
@@ -940,7 +940,7 @@ function matchWeatherHeight() {
   requestAnimationFrame(() => {
     const phone = window.matchMedia('(max-width: 699px)').matches;
     const h = $('card-weather').offsetHeight;
-    for (const id of ['card-cal', 'card-events']) $(id).style.height = phone && h > 200 ? h + 'px' : '';
+    for (const id of ['card-cal', 'card-events']) $(id).style.height = ''; // every card has the same height (--card-h)
   });
 }
 
