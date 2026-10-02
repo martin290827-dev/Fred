@@ -176,6 +176,7 @@ function pokerList(list) {
 function renderPoker() {
   const box = $('poker');
   if (!box) return;
+  if (typeof renderWeekly === 'function') renderWeekly();
   if (box.contains(document.activeElement) && document.activeElement.closest('.pk-form')) return; // typing: do not redraw
   const list = [...poker].sort((a, b) => a.d.localeCompare(b.d));
   const s = pokerStats(list);
