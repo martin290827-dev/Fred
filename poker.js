@@ -129,10 +129,14 @@ function pokerMonths(list) {
     const label = new Date(m + '-01T00:00').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
     if (v !== 0) {
       const r = svgEl('rect', { x: bx.toFixed(1), y: Math.min(y(v), y(0)).toFixed(1), width: bw.toFixed(1), height: Math.max(2, Math.abs(y(v) - y(0))).toFixed(1), rx: 3, class: 'pk-bar ' + (v > 0 ? 'up' : 'down') });
-      r.append(svgEl('title', {}, label + ': ' + eur(v, true)));
       svg.append(r);
     }
     svg.append(svgEl('text', { x: (bx + bw / 2).toFixed(1), y: H - 6, class: 'ax', 'text-anchor': 'middle' }, new Date(m + '-01T00:00').toLocaleDateString('en-GB', { month: 'narrow' })));
+    // whole month column reacts to hover or tap, also months without a bar
+    const n = list.filter((e) => e.d.slice(0, 7) === m).length;
+    const hit = svgEl('rect', { x: (L + slot * i).toFixed(1), y: T, width: slot.toFixed(1), height: H - T, fill: 'transparent' });
+    hit.append(svgEl('title', {}, label + ': ' + (n ? eur(v, true) + ' \u00b7 ' + n + (n === 1 ? ' session' : ' sessions') : 'no sessions')));
+    svg.append(hit);
   });
   return svg;
 }
