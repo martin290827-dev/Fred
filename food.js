@@ -73,21 +73,23 @@ async function estimateEntry(e) {
   renderFood();
 }
 
-/* ---------- nutrition tips: once a day from your last 7 days (Claude, your own key) ---------- */
+/* ---------- nutrition tips: once a day from your last 14 days (Claude, your own key) ---------- */
 let tips = store.get('tips', { day: '', list: [], err: '' });
 let tipsBusy = false;
 
-const TIPS_SYSTEM = 'You are a direct, evidence-based nutrition coach. You get one adult\'s food diary for the last days, ' +
-  'the daily targets and the goal (lose weight while keeping muscle). Your main job: say honestly what in this diet is working against the goal ' +
-  'and what should be left out or reduced. Name the real foods and drinks from the diary, how often they appear and what they cost ' +
-  '(kcal per week), and give a concrete replacement. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
-  '(protein, vegetables, fibre), then a swap or addition. If something is good, say so briefly; never invent problems. ' +
-  'Be frank and specific, no moralizing, no medical advice. 5 tips. ' +
+const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one adult\'s food diary for the last 14 days, ' +
+  'the daily targets and the goal (lose weight while keeping muscle). Your main job: say what in this diet works against the goal ' +
+  'and what could be left out or reduced. Judge in proportion, not strictly: an occasional treat, a glass of wine now and then or a single ' +
+  'day above the target is normal and not worth a tip. Only point out what is frequent (about 3 or more times in the 14 days) or large, ' +
+  'and say how often it appeared and roughly what it costs per week on average. Name the real foods and drinks from the diary and give a ' +
+  'practical replacement that fits his habits. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
+  '(protein, vegetables, fibre), then a swap or addition. Say what is good, too. Never invent problems; if little needs changing, ' +
+  'give fewer tips (3 to 5). Friendly and direct, no moralizing, no medical advice. ' +
   'Reply with JSON only: {"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}]}';
 
 function tipsInput() {
   const tg = targets();
-  const days = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n);
+  const days = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n);
   const lines = days.map((d) => {
     const t = dayTotals(d);
     const meals = food.filter((e) => e.at.slice(0, 10) === d).sort((a, b) => a.at.localeCompare(b.at))
@@ -107,7 +109,7 @@ async function loadTips(force) {
   const today = toDateStr(new Date());
   if (tipsBusy || !anthropicKey) return;
   if (!force && tips.day === today && tips.list.length) return;
-  const logged = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n).length;
+  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n).length;
   if (logged < 2) return; // too little to say something useful
   tipsBusy = true;
   renderFood();
@@ -126,7 +128,7 @@ const TIP_KINDS = { cut: 'Cut', swap: 'Swap', add: 'Add', good: 'Good' };
 
 function tipsBlock() {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
-  const logged = lastDays(8).slice(0, 7).filter((d) => dayTotals(d).n).length;
+  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n).length;
   if (!tips.list.length) {
     return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : '');
   }
