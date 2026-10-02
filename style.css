@@ -1024,3 +1024,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 /* Jump chips: one row that scrolls sideways; centred while it fits, starts at the left when it does not */
 .jumpbar > :first-child { margin-left: auto; }
 .jumpbar > :last-child { margin-right: auto; }
+
+/* finished tasks stay for 72 hours, shown quietly */
+.list li.ag.past .ag-t { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.list li.ag.past .ag-bar { background: var(--line); }
+#cal-list > li.dayh.is-past { opacity: 0.8; }
