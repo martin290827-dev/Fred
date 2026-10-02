@@ -28,3 +28,7 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 ## Ideas for later
 - Strategy signal panel (for example price versus 200-day average)
 - Edit for tasks and shopping list
+
+## Storage
+- Tickers (with order), food, weight and poker live in the Google Sheet "Fred Daten" (sheets.js, one tab per set). The browser only keeps a working copy. Needs the Google Sheets API enabled in the user's Cloud project.
+- Other settings still sync through the hidden Drive file (sync.js); Whoop history through archive.js.
