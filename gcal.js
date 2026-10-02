@@ -154,12 +154,14 @@ function renderCalendar() {
   if (!googleClientId) {
     btn.hidden = true;
     $('cal-add').hidden = true;
+    $('cal-scan').hidden = true;
     $('ev-add').hidden = true;
     ul.append(el('li', { class: 'muted' }, 'Add your Google Client ID in Settings to see your calendar.'));
     return;
   }
   btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
   $('cal-add').hidden = !gHasToken();
+  $('cal-scan').hidden = !gHasToken();
   $('ev-add').hidden = !gHasToken();
   if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
   else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
@@ -263,6 +265,43 @@ function gcalInit() {
   setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
   $('cal-add').addEventListener('click', () => gOpenEditor('task', null));
   $('ev-add').addEventListener('click', () => gOpenEditor('event', null));
+  $('cal-scan').addEventListener('click', () => $('cal-photo').click());
+  $('cal-photo').addEventListener('change', (e) => { const file = e.target.files[0]; e.target.value = ''; if (file) gScanPhoto(file); });
+}
+
+/* ---- Photo of a flyer -> appointment (Claude reads the picture, you check it in the editor, then it is saved) ---- */
+const SCAN_SYSTEM = 'You read a photo of a flyer, ticket, poster or invitation and extract ONE event. Reply with JSON only: {"title":"short event name","date":"YYYY-MM-DD or null","to":"YYYY-MM-DD or null (last day if several)","from":"HH:MM 24h or null","until":"HH:MM or null","place":"venue or null"}. Never guess: use null for anything not printed. If the year is missing, use the next upcoming date counted from today.';
+
+// Shrinks the photo (long side 1400 px) so the upload stays small and cheap.
+function gShrink(file) {
+  return new Promise((ok, fail) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, 1400 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('Could not read the photo.')); };
+    img.src = url;
+  });
+}
+
+async function gScanPhoto(file) {
+  if (!anthropicKey) { gStatus('Add an Anthropic key in Settings to read photos.'); return; }
+  gStatus('Reading the photo...');
+  try {
+    const data = await gShrink(file);
+    const j = await aiJSON(SCAN_SYSTEM, 'Today is ' + toDateStr(new Date()) + '. Extract the event.', 400, data);
+    const title = [j.title, j.place].filter(Boolean).join(' \u2013 ');
+    const ok = (v, re) => (typeof v === 'string' && re.test(v) ? v : '');
+    const date = ok(j.date, /^\d{4}-\d{2}-\d{2}$/), from = ok(j.from, /^\d{2}:\d{2}$/);
+    if (!title && !date) { gStatus('No event found in the photo.'); return; }
+    gStatus('Check the details, then press Add.');
+    if (from) gOpenEditor('task', null, { title, date, from, to: ok(j.until, /^\d{2}:\d{2}$/) || hhmm(new Date(new Date(date + 'T' + from).getTime() + 3600000)) }); // no end printed: 1 hour
+    else gOpenEditor('event', null, { title, date, to: ok(j.to, /^\d{4}-\d{2}-\d{2}$/) });
+  } catch (err) { gStatus('Photo: ' + err.message); }
 }
 
 /* ---- Add, edit and delete in Google Calendar (Google is the only copy, Fred keeps none) ----
@@ -287,7 +326,7 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const hhmm = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
 const myZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-function gOpenEditor(kind, item) {
+function gOpenEditor(kind, item, pre) {
   gCloseEditor(false);
   gEditing = { kind, item };
   const box = $(kind === 'event' || (kind === 'titleonly' && item && (item.allDay || item.multi)) ? 'ev-edit' : 'cal-edit');
@@ -329,6 +368,7 @@ function gOpenEditor(kind, item) {
     f.append(el('div', { class: 'scope' }, el('span', { class: 'muted small' }, 'Repeats:'),
       el('label', { class: 'seg' }, one, ' Only this'), el('label', { class: 'seg' }, all, ' All in series')), hint);
   }
+  if (pre) for (const [k, v] of Object.entries(pre)) if (v && f.elements[k]) f.elements[k].value = v; // values read from a photo
   const msg = el('p', { class: 'muted small gform-msg' });
   const save = el('button', { type: 'submit' }, item ? 'Save' : 'Add');
   f.append(el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => gCloseEditor(true) }, 'Cancel'), save), msg);
