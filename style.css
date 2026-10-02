@@ -1099,3 +1099,20 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .pk-eur + input { text-align: right; width: 9ch; }
 .pk-eur { margin-right: 0; }
 .pk-r input[name="amt"] { flex: 1; width: auto; text-align: right; }
+
+/* weekly review */
+#card-weekly { height: 580px; max-height: none; }
+#weekly { flex: 1 0 auto; display: flex; flex-direction: column; }
+#weekly > .food-col { flex: 1 0 auto; gap: 12px; }
+#card-weekly .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
+.wk-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wk-nav button { min-width: 40px; font-size: 1.2rem; line-height: 1; border-radius: 10px; }
+.wk-range { font-weight: 600; font-size: 0.95rem; }
+.wk-all, .wk-sec { display: flex; flex-direction: column; gap: 6px; }
+.wk-all { gap: 14px; }
+.wk-v { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; font-size: 0.95rem; }
+.wk-d { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
+.wk-d.pk-up { color: var(--up); } .wk-d.pk-down { color: var(--down); }
+.wk-ai p { margin: 0 0 8px; text-align: left; font-size: 0.92rem; }
+.wk-ul { margin: 0 0 8px; padding-left: 18px; text-align: left; font-size: 0.9rem; }
+.wk-sec .pk-r { min-height: 40px; }

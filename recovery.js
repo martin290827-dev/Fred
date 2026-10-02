@@ -284,6 +284,7 @@ function rcRangeSeg() {
 function renderRecovery() {
   const box = $('recovery'), sbox = $('sleep'), hbox = $('habits');
   if (!box || !sbox || !hbox) return;
+  if (typeof renderWeekly === 'function') renderWeekly();
   const rows = [...whoop].sort((a, b) => a.d.localeCompare(b.d));
   const scored = computeScores(rows);
 

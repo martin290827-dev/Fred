@@ -635,6 +635,7 @@ function renderFood() {
   });
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
+  if (typeof renderWeekly === 'function') renderWeekly();
 }
 
 // One line per meal: time, what, kcal. Protein/carbs/fat show on hover.
