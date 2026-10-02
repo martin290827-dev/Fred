@@ -127,11 +127,11 @@ async function arcReadJson(id) {
 
 // One time: copy the Whoop history from the old hidden JSON file into the Sheet.
 async function arcMigrate() {
-  if (store.get('arcMigrated', false)) return;
+  if (store.get('arcMigrated2', false)) return;
   const id = await arcFindFile();
   if (id) {
     const a = await arcReadJson(id);
-    for (const set of ['cycles', 'sleep', 'workouts']) for (const [key, row] of Object.entries(a.sets[set] || {})) arcPut(set, key, row);
+    for (const set of ['cycles', 'sleep', 'workouts']) for (const [key, row] of Object.entries(a.sets[set] || {})) { arcQueue[set + '\t' + key] = row; arcSeen[set + '\t' + key] = arcHash(row); } // straight into the queue: arcPut would skip rows it has seen before
     arcCommit();
     // the daily values for the Recovery and Sleep cards come from the cycles, if this device has none
     if (!whoop.length) {
@@ -144,11 +144,11 @@ async function arcMigrate() {
       if (byDate.size) { whoop = [...byDate.values()].sort((x, y) => x.d.localeCompare(y.d)); saveWhoop(); renderRecovery(); }
     }
   }
-  store.set('arcMigrated', true);
+  store.set('arcMigrated2', true);
 }
 
 async function arcFlush() {
-  if (arcBusy || (!Object.keys(arcQueue).length && store.get('arcMigrated', false))) return;
+  if (arcBusy || (!Object.keys(arcQueue).length && store.get('arcMigrated2', false))) return;
   if (typeof shReady === 'function' && !shReady()) { if (gHasToken()) { arcMsg = 'History needs one more Google permission: press Connect.'; renderRecovery(); } return; } // later, when connected
   arcBusy = true;
   try {
