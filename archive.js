@@ -10,12 +10,13 @@
 const ARC_FILE = 'Fred Archiv Daten.json';
 const ARC_SHEETS = {
   cycles: 'Fred Archiv Zyklen', sleep: 'Fred Archiv Schlaf', workouts: 'Fred Archiv Training',
-  food: 'Fred Archiv Essen', weight: 'Fred Archiv Gewicht',
+  food: 'Fred Archiv Essen', weight: 'Fred Archiv Gewicht', poker: 'Fred Archiv Poker',
 };
 // Fixed columns for our own data; Whoop sets take their columns from the CSV header.
 const ARC_COLS = {
   food: ['date', 'time', 'text', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'id'],
   weight: ['date', 'weight_kg'],
+  poker: ['date', 'place', 'game', 'result_eur', 'id'],
 };
 
 let arcQueue = store.get('arcQueue', {});   // { 'set\tkey': row | null (null = delete) }
@@ -197,7 +198,7 @@ async function arcWriteSheets() {
 
 /* ---------- status line for the Recovery card ---------- */
 
-const ARC_LABELS = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts', food: 'food', weight: 'weight' };
+const ARC_LABELS = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts', food: 'food', weight: 'weight', poker: 'poker' };
 
 function arcStatus() {
   if (arcMsg) return arcMsg;

@@ -395,7 +395,7 @@ button.danger { background: var(--down); color: #fff; }
    and the last section of each fills the rest (see growChart in food.js) */
 /* Food, Health and Trends: the same fixed height (Food fits one meal); longer content scrolls inside the card. Recovery and Sleep likewise. */
 #card-food, #card-health, #card-trends { height: 490px; max-height: none; }
-#card-recovery, :is(#card-sleep, #card-habits) { height: 680px; max-height: none; }
+#card-recovery, :is(#card-sleep, #card-habits), #card-poker { height: 680px; max-height: none; }
 #food, #health, #trends, #recovery, :is(#sleep, #habits), #habits { flex: 1 0 auto; display: flex; flex-direction: column; }
 #food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, :is(#sleep, #habits) > .food-col { flex: 1 0 auto; }
 .food-col > .fpanel:last-child { display: flex; flex-direction: column; }
@@ -1054,3 +1054,25 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tol-res, .tol-s { text-align: left; }
 ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; }
 .tol-meal .tol-seg { width: 100%; box-sizing: border-box; }
+
+/* poker piggy bank */
+#poker { flex: 1 0 auto; display: flex; flex-direction: column; }
+#poker > .food-col { flex: 1 0 auto; }
+#card-poker .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
+.pk-form { display: flex; flex-direction: column; gap: 8px; }
+.pk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pk-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
+.pk-seg button { background: transparent; color: var(--text); font-size: 0.85rem; font-weight: 600; padding: 6px 0; border-radius: 7px; min-height: 0; box-shadow: none; }
+.pk-seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.pk-seg button.on.up { color: var(--up); }
+.pk-seg button.on.down { color: var(--down); }
+.pk-up { color: var(--up); }
+.pk-down { color: var(--down); }
+.pk-total { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; margin: 2px 0 8px; }
+.pk-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pk-dot.up, .pk-bar.up { fill: var(--up); }
+.pk-dot.down, .pk-bar.down { fill: var(--down); }
+.pk-dot { stroke: var(--card); stroke-width: 2; }
+.pk-by { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.pk-line, .pk-item { display: flex; align-items: baseline; gap: 8px; text-align: left; font-size: 0.9rem; }
+.pk-d { flex: none; min-width: 44px; }
