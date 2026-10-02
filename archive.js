@@ -133,18 +133,28 @@ async function arcMigrate() {
     const a = await arcReadJson(id);
     for (const set of ['cycles', 'sleep', 'workouts']) for (const [key, row] of Object.entries(a.sets[set] || {})) arcPut(set, key, row);
     arcCommit();
+    // the daily values for the Recovery and Sleep cards come from the cycles, if this device has none
+    if (!whoop.length) {
+      const byDate = new Map();
+      for (const raw of Object.values(a.sets.cycles || {})) {
+        const e = rowToEntry((n) => raw[n] || '');
+        const old = e && byDate.get(e.d);
+        if (e && (!old || (e.sleepMin || 0) >= (old.sleepMin || 0))) byDate.set(e.d, e);
+      }
+      if (byDate.size) { whoop = [...byDate.values()].sort((x, y) => x.d.localeCompare(y.d)); saveWhoop(); renderRecovery(); }
+    }
   }
   store.set('arcMigrated', true);
 }
 
 async function arcFlush() {
-  if (arcBusy || !Object.keys(arcQueue).length) return;
+  if (arcBusy || (!Object.keys(arcQueue).length && store.get('arcMigrated', false))) return;
   if (typeof shReady === 'function' && !shReady()) { if (gHasToken()) { arcMsg = 'History needs one more Google permission: press Connect.'; renderRecovery(); } return; } // later, when connected
   arcBusy = true;
   try {
     await arcMigrate();
     const snap = Object.assign({}, arcQueue);
-    await shRawFlush(snap);
+    if (Object.keys(snap).length) await shRawFlush(snap);
     for (const k of Object.keys(snap)) if (JSON.stringify(arcQueue[k]) === JSON.stringify(snap[k])) delete arcQueue[k]; // keep newer changes
     arcSaveQueue();
     arcInfo = { at: Date.now(), counts: await shRawCounts() };

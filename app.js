@@ -1358,7 +1358,6 @@ function openSettings() {
   $('set-place-status').textContent = '';
   $('set-place2').value = place2 ? place2.name : '';
   $('set-place2-status').textContent = '';
-  $('set-tickers').value = tickers.join(', ');
   $('set-key').value = finnhubKey;
   $('set-twelve').value = twelveKey;
   $('set-anthropic').value = anthropicKey;
@@ -1379,9 +1378,6 @@ function saveSettings() {
   if (pendingPlace2) place2 = pendingPlace2;
   else if (!$('set-place2').value.trim()) place2 = null;
   store.set('place2', place2);
-
-  tickers = $('set-tickers').value.split(',').map((s) => s.trim()).filter(Boolean);
-  store.set('tickers', tickers);
 
   finnhubKey = $('set-key').value.trim();
   store.set('finnhubKey', finnhubKey);
