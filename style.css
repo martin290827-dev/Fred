@@ -1029,3 +1029,5 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .list li.ag.past .ag-t { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
 .list li.ag.past .ag-bar { background: var(--line); }
 #cal-list > li.dayh.is-past { opacity: 0.8; }
+
+#recovery .rc-nodata .rc-score { color: var(--muted); }

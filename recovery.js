@@ -235,9 +235,9 @@ function rcTile(label, value, sub, cls) {
 function rcDelta(v, base, unit, higherIsBetter) {
   if (v == null || base == null) return '';
   const d = Math.round(v - base);
-  if (d === 0) return el('span', { class: 'rc-t-o' }, 'wie Ø');
+  if (d === 0) return el('span', { class: 'rc-t-o' }, 'same as avg');
   const good = higherIsBetter ? d > 0 : d < 0;
-  return el('span', { class: good ? 'rc-t-g' : 'rc-t-r' }, (d > 0 ? '+' : '−') + Math.abs(d) + ' ' + unit + ' vs Ø');
+  return el('span', { class: good ? 'rc-t-g' : 'rc-t-r' }, (d > 0 ? '+' : '−') + Math.abs(d) + ' ' + unit + ' vs avg');
 }
 
 // A coloured dot + text: how to read the colours of the chart above.
@@ -255,11 +255,11 @@ const rcPanel = (icon, tone, title, caption, ...kids) => hcard(icon, tone, title
 
 // Reminder when the newest night is more than 10 days old.
 const RC_STALE_DAYS = 10;
-function rcStaleNote(last) {
+function rcStaleNote(newest) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const days = Math.floor((today - new Date(last.d + 'T00:00:00')) / 86400000);
+  const days = Math.floor((today - new Date(newest.d + 'T00:00:00')) / 86400000);
   if (days <= RC_STALE_DAYS) return '';
-  return el('p', { class: 'rc-stale' }, 'Last data from ' + last.d.slice(8, 10) + '.' + last.d.slice(5, 7) + '. \u2013 ' + days + ' days ago. Please load new Whoop CSVs (Recovery \u2192 Data).');
+  return el('p', { class: 'rc-stale' }, 'Last data from ' + newest.d.slice(8, 10) + '.' + newest.d.slice(5, 7) + '. \u2013 ' + days + ' days ago. Please load new Whoop CSVs (Recovery \u2192 Data).');
 }
 
 function importRow() {
@@ -294,12 +294,15 @@ function renderRecovery() {
     return;
   }
 
-  const last = scored[scored.length - 1];
+  const newest = scored[scored.length - 1];
+  const todayStr = toDateStr(new Date());
+  const endStr = newest.d > todayStr ? newest.d : todayStr; // the time series always ends today: a missing night stays empty
   const N = rcRange;
   // rolling window of N calendar days ending at the newest night; days without data stay empty (a gap, not skipped)
-  const lastD = new Date(last.d + 'T00:00');
+  const lastD = new Date(endStr + 'T00:00');
   const dayList = Array.from({ length: N }, (_, i) => toDateStr(addDays(lastD, -(N - 1 - i))));
   const byDate = new Map(scored.map((r) => [r.d, r]));
+  const last = byDate.get(endStr) || { d: endStr, missing: true }; // no row for today: every figure of the day shows a dash
   const winRows = dayList.map((d) => byDate.get(d)).filter(Boolean);
   const series = (fn) => dayList.map((d) => ({ d, v: byDate.has(d) ? fn(byDate.get(d)) : null }));
   const avgOf = (list, key) => { const v = list.map((r) => r[key]).filter((x) => x != null); return v.length ? rcMean(v) : null; };
@@ -309,7 +312,9 @@ function renderRecovery() {
   // average score over the last n nights (only nights that have a score)
   const avgScore = (n) => { const from = toDateStr(addDays(lastD, -(n - 1))); const v = scored.filter((r) => r.d >= from && r.score != null).map((r) => r.score); return v.length ? Math.round(rcMean(v)) : null; };
   const avgChip = (label, v) => el('span', { class: 'rc-avg' }, label + ' ', el('b', { class: v != null ? 'rc-t-' + RC_RULES.score(v) : '' }, v != null ? String(v) : '–'));
-  const scoreBlock = last.score == null
+  const scoreBlock = last.missing
+    ? el('div', { class: 'rc-nodata' }, el('div', { class: 'rc-score' }, '\u2013'), el('div', { class: 'muted small' }, 'No data for today yet \u2013 load the latest Whoop CSVs (Data, below).'))
+    : last.score == null
     ? el('div', { class: 'muted small' }, Math.max(1, RC_BASELINE_MIN - rows.length + 1) + ' more nights until the first baseline.')
     : el('div', {},
       el('div', { class: 'rc-hero' },
@@ -382,7 +387,7 @@ function renderRecovery() {
     rcBars(series((r) => r.score), { judge: RC_RULES.score, fmt: (v) => String(v), max: 100, guides: [{ v: 67, label: '67' }, { v: 34, label: '34' }], h: 100 }),
     rcLegend(['g', '67 and more'], ['o', '34–66'], ['r', 'under 34']));
 
-  box.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(),
+  box.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(newest), rcRangeSeg(),
     rcPanel('pulse', 'indigo', 'Today', 'night to ' + rcShort(last.d), scoreBlock, tiles, strainHint),
     trendPanel,
     rcPanel('tray', 'gray', 'Data', '', importRow(),
@@ -390,8 +395,8 @@ function renderRecovery() {
   const effPanel = rcPanel('bars', 'teal', 'Sleep efficiency', N + ' nights',
     rcBars(series((r) => r.sleepEff), { judge: RC_RULES.eff, fmt: (v) => v + ' %', max: 100, h: 100 }),
     rcLegend(['g', '90 % or more'], ['o', '85\u201389 %'], ['r', 'under 85 %']));
-  sbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(), sleepPanel, effPanel));
-  hbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(last), rcRangeSeg(), rhythmPanel, debtPanel));
+  sbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(newest), rcRangeSeg(), sleepPanel, effPanel));
+  hbox.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(newest), rcRangeSeg(), rhythmPanel, debtPanel));
 }
 
 // Fade the bottom edge of the health cards while more content sits below.
