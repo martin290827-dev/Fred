@@ -34,7 +34,7 @@ function manualKcal(text) {
 }
 
 // One call to Claude; returns the JSON object in the reply.
-async function aiJSON(system, text, maxTokens) {
+async function aiJSON(system, text, maxTokens, image) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -43,7 +43,7 @@ async function aiJSON(system, text, maxTokens) {
       'anthropic-dangerous-direct-browser-access': 'true', // the key is yours and stays in this browser
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens || 700, system, messages: [{ role: 'user', content: text }] }),
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens || 700, system, messages: [{ role: 'user', content: image ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text }] : text }] }),
   });
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
