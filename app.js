@@ -461,6 +461,49 @@ function fmtPrice(p) {
   return p.toPrecision(3);
 }
 
+/* ---------- add and remove tickers right in the card (saved in this browser and synced) ---------- */
+let tkOpen = false;
+
+function tickerSaved() {
+  store.set('tickers', tickers);
+  earn.t = 0;
+  loadEarnings();
+  loadNews(true);
+  loadQuotes();
+}
+
+function tickerEditor() {
+  const box = $('tk-edit');
+  if (!tkOpen) { box.replaceChildren(); box.hidden = true; return; }
+  const sym = el('input', { type: 'text', placeholder: 'AAPL or BTC', maxlength: '20', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Symbol' });
+  let crypto = false;
+  const stock = el('button', { type: 'button', class: 'on' }, 'Stock'), coin = el('button', { type: 'button' }, 'Crypto');
+  const pick = (c) => { crypto = c; stock.classList.toggle('on', !c); coin.classList.toggle('on', c); sym.placeholder = c ? 'BTC' : 'AAPL'; sym.focus(); };
+  stock.addEventListener('click', () => pick(false)); coin.addEventListener('click', () => pick(true));
+  const msg = el('p', { class: 'muted small gform-msg' });
+  const chips = el('div', { class: 'tk-chips' }, ...tickers.map((s) => el('button', { type: 'button', class: 'tk-chip', 'aria-label': 'Remove ' + tickerLabel(s), title: 'Remove', onclick: () => { tickers = tickers.filter((x) => x !== s); tickerSaved(); tickerEditor(); } }, tickerLabel(s) + ' \u00d7')));
+  const f = el('form', { class: 'gform', autocomplete: 'off' },
+    el('div', { class: 'row' }, sym, el('div', { class: 'tk-seg', role: 'group', 'aria-label': 'Type' }, stock, coin)),
+    tickers.length ? chips : '', msg,
+    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { tkOpen = false; tickerEditor(); } }, 'Done'), el('button', { type: 'submit' }, 'Add')));
+  f.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    let s = sym.value.trim().toUpperCase().replace(/^C:/, '');
+    if (crypto) s = s.replace(/(USDT|-USD|USD)$/, '');
+    if (!/^[A-Z0-9.\-]{1,15}$/.test(s)) { msg.textContent = 'Use the ticker symbol only, e.g. AAPL or BTC.'; return; }
+    const id = crypto ? 'c:' + s : s;
+    if (tickers.includes(id)) { msg.textContent = s + ' is already in the list.'; return; }
+    tickers.push(id);
+    tickerSaved();
+    tickerEditor();
+    $('tk-edit').querySelector('input').focus();
+  });
+  f.addEventListener('keydown', (e) => { if (e.key === 'Escape') { tkOpen = false; tickerEditor(); } });
+  box.replaceChildren(f);
+  box.hidden = false;
+  sym.focus();
+}
+
 function tickerLabel(s) { return s.startsWith('c:') ? s.slice(2).toUpperCase() : s.toUpperCase(); }
 
 async function loadQuotes() {
@@ -474,7 +517,7 @@ async function loadQuotes() {
 
   const box = $('tickers');
   box.replaceChildren();
-  if (!tickers.length) box.append(el('p', { class: 'empty' }, 'No tickers. Add some in Settings.'));
+  if (!tickers.length) box.append(el('p', { class: 'empty' }, 'No tickers yet. Tap + to add one.'));
   for (const s of tickers) {
     const q = lastQuotes[s];
     const slot = el('span', { class: 'sparkslot', 'data-sym': s });
@@ -557,7 +600,7 @@ async function loadNews(force) {
 function renderNews() {
   const box = $('news');
   if (!finnhubKey) { box.replaceChildren(el('p', { class: 'muted' }, 'Add a Finnhub key in Settings to see news for your tickers.')); return; }
-  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add tickers in Settings first.')); return; }
+  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add tickers with the + in the Tickers card first.')); return; }
   if (!news.t) { box.replaceChildren(el('p', { class: 'muted' }, 'Loading news...')); return; }
   // biggest movers of the day first
   const move = (s) => (lastQuotes[s] ? Math.abs(lastQuotes[s].pct || 0) : -1);
@@ -1753,6 +1796,7 @@ function init() {
   applyTheme();
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
   $('btn-refresh').addEventListener('click', loadQuotes);
+  $('tk-add').addEventListener('click', () => { tkOpen = !tkOpen; tickerEditor(); });
   $('btn-layout').addEventListener('click', toggleLayoutMode);
   $('btn-settings').addEventListener('click', openSettings);
   $('set-cancel').addEventListener('click', () => $('dlg-settings').close());

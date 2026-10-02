@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=132">
+  <link rel="stylesheet" href="style.css?v=134">
 </head>
 <body>
   <header>
@@ -78,7 +78,8 @@
     </section>
 
     <section class="card" id="card-tickers">
-      <h2>Tickers <button id="btn-refresh" class="ghost small">Refresh</button></h2>
+      <h2>Tickers <span class="hacts"><button id="tk-add" class="hicon" type="button" aria-label="Add or remove tickers" title="Add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="btn-refresh" class="ghost small">Refresh</button></span></h2>
+      <div id="tk-edit" hidden></div>
       <div id="tickers">Loading...</div>
       <p class="muted small" id="tickers-status"></p>
     </section>
@@ -181,7 +182,7 @@
     </section>
 
     <section class="card" id="card-poker">
-      <h2>Poker Piggy Bank</h2>
+      <h2>Poker Piggy Bank <span class="hacts"><button id="pk-add" class="hicon" type="button" aria-label="New session" title="New session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
       <div id="poker" class="food"></div>
     </section>
 
@@ -298,13 +299,13 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=132"></script>
-  <script src="gcal.js?v=132"></script>
-  <script src="sync.js?v=132"></script>
-  <script src="food.js?v=132"></script>
-  <script src="archive.js?v=132"></script>
-  <script src="recovery.js?v=132"></script>
-  <script src="poker.js?v=132"></script>
-  <script src="weekly.js?v=132"></script>
+  <script src="app.js?v=134"></script>
+  <script src="gcal.js?v=134"></script>
+  <script src="sync.js?v=134"></script>
+  <script src="food.js?v=134"></script>
+  <script src="archive.js?v=134"></script>
+  <script src="recovery.js?v=134"></script>
+  <script src="poker.js?v=134"></script>
+  <script src="weekly.js?v=134"></script>
 </body>
 </html>
