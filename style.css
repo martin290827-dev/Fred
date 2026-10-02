@@ -1031,3 +1031,26 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 #cal-list > li.dayh.is-past { opacity: 0.8; }
 
 #recovery .rc-nodata .rc-score { color: var(--muted); }
+
+/* tolerance */
+.meal-flag { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 6px; border-radius: 50%; font-size: 0.65rem; font-weight: 800; color: #fff; background: #ff9f0a; vertical-align: 1px; }
+.meal-flag.lv3 { background: #ff453a; }
+.tol-list { display: flex; flex-direction: column; gap: 10px; }
+.tol-meal { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 0.5px solid var(--sep, rgba(128,128,128,0.25)); }
+.tol-t { font-size: 0.9rem; }
+.tol-seg { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
+.tol-seg button { background: transparent; color: var(--text); font-size: 0.78rem; font-weight: 600; padding: 4px 0; border-radius: 7px; min-height: 0; box-shadow: none; }
+.tol-seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.tol-seg button.on.lv1, .tol-seg button.on.lv2 { color: #ff9f0a; }
+.tol-seg button.on.lv3 { color: #ff453a; }
+.tol-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tol-chip { min-height: 0; padding: 3px 10px; font-size: 0.78rem; border-radius: 12px; background: var(--fill); color: var(--text); box-shadow: none; }
+.tol-chip.on { background: color-mix(in srgb, #ff9f0a 30%, transparent); font-weight: 600; }
+.tol-act { margin-top: 8px; }
+.tol-res { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.tol-meal { align-items: stretch; text-align: left; }
+.tol-t { text-align: left; }
+.tol-chips { justify-content: flex-start; }
+.tol-res, .tol-s { text-align: left; }
+ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; }
+.tol-meal .tol-seg { width: 100%; box-sizing: border-box; }

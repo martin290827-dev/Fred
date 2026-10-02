@@ -76,6 +76,8 @@ async function estimateEntry(e) {
 /* ---------- nutrition tips: once a day from your last 14 days (Claude, your own key) ---------- */
 let tips = store.get('tips', { day: '', list: [], err: '' });
 let tipsBusy = false;
+let tol = store.get('tolerance', { day: '', list: [], note: '', err: '' }); // result of the tolerance analysis
+let tolBusy = false;
 
 const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one adult\'s food diary for the last 14 days, ' +
   'the daily targets and the goal (lose weight while keeping muscle). Your main job: say what in this diet works against the goal ' +
@@ -303,6 +305,7 @@ function stackRings(parts, size) {
 
 // Small line icons for the section titles (24x24, stroke).
 const FICONS = {
+  flag: 'M6 21V4M6 5h11l-2 4 2 4H6',
   meals: 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3',
   weight: 'M5 7h14l2 13H3zM9 7a3 3 0 0 1 6 0M12 11l2 3',
   goal: 'M5 21V4M5 4h11l-2 4 2 4H5',
@@ -623,7 +626,7 @@ function renderFood() {
   const tipsCard = hcard('bulb', 'yellow', 'Tips', '', tipsBlock());
   tipsCard.querySelector('.fh').append(refresh);
   goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
-  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard));
+  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard, tolCard()));
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
   fitRows(ul, 1); // the last meal; the rest scrolls
   requestAnimationFrame(() => {
@@ -642,7 +645,7 @@ function foodRow(e) {
   const macro = e.p != null ? 'Protein ' + fmtN(e.p) + ' g · Carbs ' + fmtN(e.c) + ' g · Fat ' + fmtN(e.f) + ' g' : e.src === 'manual' ? 'Own value' : '';
   return el('li', { class: 'meal', title: macro },
     el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)),
-    el('span', { class: 'grow meal-t' }, e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
+    el('span', { class: 'grow meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
     kc,
     el('span', { class: 'meal-act' },
       iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
@@ -738,4 +741,84 @@ function initFood() {
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderFood, 250); });
   // new day at midnight, and keep "today" current
   setInterval(() => { if (!document.hidden) renderFood(); }, 5 * 60000);
+}
+
+/* ---------- tolerance: mark meals that did not agree with you, then look for patterns ---------- */
+
+const TOL_LEVELS = ['', 'Mild', 'Medium', 'Strong'];
+const TOL_SYMPTOMS = ['Stomach ache', 'Toilet', 'Bloating', 'Nausea'];
+const TOL_MIN = 3; // flagged meals needed before an analysis makes sense
+
+function setReaction(e, lvl, sym) {
+  if (!lvl) delete e.bad; else e.bad = { lvl, sym: sym || (e.bad && e.bad.sym) || [] };
+  saveFood();
+  // the card redraws: keep the scroll position so the meal you are marking stays in place
+  const box = $('health');
+  let sc = box; while (sc && sc.scrollHeight <= sc.clientHeight + 1) sc = sc.parentElement;
+  const top = sc ? sc.scrollTop : 0;
+  renderFood();
+  if (sc) sc.scrollTop = top;
+}
+
+// One meal: level buttons (none / mild / medium / strong) and, when flagged, symptom chips.
+function tolRow(e) {
+  const lvl = e.bad ? e.bad.lvl : 0;
+  const seg = el('div', { class: 'tol-seg', role: 'group', 'aria-label': 'Reaction to ' + e.text }, ...['OK', 'Mild', 'Medium', 'Strong'].map((l, i) =>
+    el('button', { type: 'button', class: 'lv' + i + (i === lvl ? ' on' : ''), 'aria-pressed': String(i === lvl), onclick: () => setReaction(e, i) }, l)));
+  const chips = lvl ? el('div', { class: 'tol-chips' }, ...TOL_SYMPTOMS.map((s) => {
+    const on = e.bad.sym.includes(s);
+    return el('button', { type: 'button', class: 'tol-chip' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: () => setReaction(e, lvl, on ? e.bad.sym.filter((x) => x !== s) : e.bad.sym.concat(s)) }, s);
+  })) : '';
+  return el('li', { class: 'tol-meal' },
+    el('div', { class: 'tol-t' }, el('span', { class: 'muted small' }, shortDay(e.at.slice(0, 10)) + ' ' + e.at.slice(11, 16)), ' ' + e.text),
+    seg, chips);
+}
+
+const TOL_SYSTEM = 'You help one adult find which foods may not agree with them. You get a food diary of free-text meals. Some meals are flagged ' +
+  'with a reaction (mild/medium/strong, with symptoms); all unflagged meals count as tolerated. Break each meal into likely ingredients and food groups ' +
+  '(e.g. milk, wheat, onion, fried food, alcohol, coffee). For each candidate compare how often it appears in flagged meals versus in tolerated meals. ' +
+  'Be honest about weak evidence: with few flagged meals say so, never name a certain culprit, never diagnose. Reactions can come up to 24 hours later. ' +
+  'Reply with JSON only: {"note":"one or two sentences on how reliable this is","suspects":[{"item":"short name","flagged":"n of N flagged meals contain it","other":"n of M tolerated meals contain it","text":"one short sentence"}]} ' +
+  'with at most 5 suspects, most suspicious first. If nothing stands out, return an empty list and say so in note.';
+
+function tolInput() {
+  const from = toDateStr(addDays(new Date(), -90));
+  const rows = food.filter((e) => e.at.slice(0, 10) >= from).sort((a, b) => a.at.localeCompare(b.at));
+  const flagged = rows.filter((e) => e.bad).length;
+  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' + flagged + ' flagged of ' + rows.length + ' meals in 90 days.\n' +
+    rows.map((e) => e.at.slice(0, 16).replace('T', ' ') + ' ' + e.text + (e.bad ? ' [REACTION ' + TOL_LEVELS[e.bad.lvl] + (e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') + ']' : '')).join('\n');
+}
+
+async function loadTolerance() {
+  if (tolBusy || !anthropicKey) return;
+  tolBusy = true;
+  renderFood();
+  try {
+    const j = await aiJSON(TOL_SYSTEM, tolInput(), 900);
+    tol = { day: toDateStr(new Date()), note: String(j.note || ''), err: '', list: (j.suspects || []).filter((s) => s && s.item).slice(0, 5).map((s) => ({ item: String(s.item), flagged: String(s.flagged || ''), other: String(s.other || ''), text: String(s.text || '') })) };
+  } catch (e) {
+    tol = Object.assign({}, tol, { err: e.message });
+  }
+  tolBusy = false;
+  store.set('tolerance', tol);
+  renderFood();
+}
+
+function tolCard() {
+  const from = toDateStr(addDays(new Date(), -90));
+  const flagged = food.filter((e) => e.bad && e.at.slice(0, 10) >= from).length;
+  const recent = food.filter((e) => e.at.slice(0, 10) >= toDateStr(addDays(new Date(), -3))).sort((a, b) => b.at.localeCompare(a.at));
+  const ul = el('ul', { class: 'list tol-list' });
+  if (!recent.length) ul.append(el('li', { class: 'muted small' }, 'No meals in the last 3 days.'));
+  for (const e of recent) ul.append(tolRow(e));
+  const can = flagged >= TOL_MIN && anthropicKey;
+  const btn = el('button', { type: 'button', class: 'ghost small', onclick: loadTolerance }, tolBusy ? 'Analysing\u2026' : 'Find patterns');
+  btn.disabled = !can || tolBusy;
+  const hint = flagged < TOL_MIN ? 'Flag at least ' + TOL_MIN + ' meals to look for patterns (' + flagged + ' so far). Everything not flagged counts as tolerated.'
+    : !anthropicKey ? 'Add an Anthropic key in Settings to analyse.' : flagged + ' flagged meals in 90 days. Few reactions give only weak hints.';
+  const res = tol.err ? el('p', { class: 'food-err small' }, tol.err) : tol.day && (tol.list.length || tol.note) ? el('div', { class: 'tol-res' },
+    ...tol.list.map((s) => el('div', { class: 'tol-s' }, el('b', {}, s.item), el('span', { class: 'muted small' }, ' \u00b7 flagged ' + s.flagged + ' \u00b7 other ' + s.other), el('div', { class: 'small' }, s.text))),
+    el('p', { class: 'muted small' }, tol.note)) : '';
+  const card = hcard('flag', 'orange', 'Tolerance', flagged ? flagged + ' flagged' : '', el('p', { class: 'muted small' }, 'Did a meal upset you? Set the level. Reactions can come hours later, so you can mark meals of the last 3 days.'), ul, el('div', { class: 'row tol-act' }, btn), el('p', { class: 'muted small' }, hint), res);
+  return card;
 }
