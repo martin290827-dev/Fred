@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=135">
+  <link rel="stylesheet" href="style.css?v=136">
 </head>
 <body>
   <header>
@@ -280,6 +280,7 @@
       <div class="row wrap">
         <button type="button" id="sync-now" class="ghost small">Sync now</button>
         <span class="muted small" id="sync-status"></span>
+        <span class="muted small" id="sheet-status"></span>
       </div>
 
       <h3>Backup</h3>
@@ -299,13 +300,14 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=135"></script>
-  <script src="gcal.js?v=135"></script>
-  <script src="sync.js?v=135"></script>
-  <script src="food.js?v=135"></script>
-  <script src="archive.js?v=135"></script>
-  <script src="recovery.js?v=135"></script>
-  <script src="poker.js?v=135"></script>
-  <script src="weekly.js?v=135"></script>
+  <script src="app.js?v=136"></script>
+  <script src="gcal.js?v=136"></script>
+  <script src="sync.js?v=136"></script>
+  <script src="food.js?v=136"></script>
+  <script src="archive.js?v=136"></script>
+  <script src="recovery.js?v=136"></script>
+  <script src="poker.js?v=136"></script>
+  <script src="weekly.js?v=136"></script>
+  <script src="sheets.js?v=136"></script>
 </body>
 </html>

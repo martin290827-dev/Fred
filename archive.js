@@ -19,6 +19,7 @@ const ARC_COLS = {
   poker: ['date', 'place', 'game', 'result_eur', 'id'],
 };
 
+const ARC_OFF = ['food', 'weight', 'poker']; // these live in the Google Sheet now (sheets.js)
 let arcQueue = store.get('arcQueue', {});   // { 'set\tkey': row | null (null = delete) }
 let arcSeen = store.get('arcSeen', {});     // { 'set\tkey': fingerprint of the row last queued }, to find changes
 let arcDirty = store.get('arcDirty', []);   // sets whose Sheet still has to be rewritten
@@ -43,6 +44,7 @@ function arcHash(row) {
 }
 
 function arcPut(set, key, row) {
+  if (ARC_OFF.includes(set)) return;
   const k = set + '\t' + key;
   const h = arcHash(row);
   if (arcSeen[k] === h && !(k in arcQueue)) return; // unchanged since last time
@@ -51,6 +53,7 @@ function arcPut(set, key, row) {
 }
 
 function arcDelete(set, key) {
+  if (ARC_OFF.includes(set)) return;
   const k = set + '\t' + key;
   arcQueue[k] = null;
   delete arcSeen[k];

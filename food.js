@@ -720,6 +720,7 @@ async function sheetWrite(name, content) {
 }
 
 async function foodMirror() {
+  return; // replaced by the Google Sheet "Fred Daten" (sheets.js)
   if (typeof gHasToken !== 'function' || !gHasToken()) return; // next time you are connected
   if (!gScopes.includes('drive.file')) { foodMirrorMsg = 'Sheets in Drive need one more Google permission: press Connect.'; $('food-status').textContent = foodMirrorMsg; return; }
   try {

@@ -27,6 +27,7 @@ const store = {
   set(key, value) {
     try { localStorage.setItem('fred.' + key, JSON.stringify(value)); } catch { /* ignore */ }
     if (typeof syncTouch === 'function') syncTouch(key); // sync.js: send the change to your other devices
+    if (typeof shTouch === 'function') shTouch(key);   // sheets.js: save the change to the Google Sheet
   },
 };
 
@@ -472,6 +473,15 @@ function tickerSaved() {
   loadQuotes();
 }
 
+// Move a ticker one place up or down; the order is saved in the Sheet.
+function tickerMove(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= tickers.length) return;
+  [tickers[i], tickers[j]] = [tickers[j], tickers[i]];
+  tickerSaved();
+  tickerEditor();
+}
+
 function tickerEditor() {
   const box = $('tk-edit');
   if (!tkOpen) { box.replaceChildren(); box.hidden = true; return; }
@@ -481,7 +491,11 @@ function tickerEditor() {
   const pick = (c) => { crypto = c; stock.classList.toggle('on', !c); coin.classList.toggle('on', c); sym.placeholder = c ? 'BTC' : 'AAPL'; sym.focus(); };
   stock.addEventListener('click', () => pick(false)); coin.addEventListener('click', () => pick(true));
   const msg = el('p', { class: 'muted small gform-msg' });
-  const chips = el('div', { class: 'tk-chips' }, ...tickers.map((s) => el('button', { type: 'button', class: 'tk-chip', 'aria-label': 'Remove ' + tickerLabel(s), title: 'Remove', onclick: () => { tickers = tickers.filter((x) => x !== s); tickerSaved(); tickerEditor(); } }, tickerLabel(s) + ' \u00d7')));
+  const chips = el('div', { class: 'tk-order' }, ...tickers.map((s, i) => el('div', { class: 'tk-o' },
+    el('span', { class: 'tk-name' }, tickerLabel(s)),
+    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + tickerLabel(s) + ' up', title: 'Up', onclick: () => tickerMove(i, -1) }, '\u25b2'),
+    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + tickerLabel(s) + ' down', title: 'Down', onclick: () => tickerMove(i, 1) }, '\u25bc'),
+    el('button', { type: 'button', class: 'tk-mv tk-rm', 'aria-label': 'Remove ' + tickerLabel(s), title: 'Remove', onclick: () => { tickers = tickers.filter((x) => x !== s); tickerSaved(); tickerEditor(); } }, '\u00d7'))));
   const f = el('form', { class: 'gform', autocomplete: 'off' },
     el('div', { class: 'row' }, sym, el('div', { class: 'tk-seg', role: 'group', 'aria-label': 'Type' }, stock, coin)),
     tickers.length ? chips : '', msg,
@@ -1764,6 +1778,7 @@ function init() {
   initRecovery();
   initPoker();
   initWeekly();
+  if (typeof shInit === 'function') shInit();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();

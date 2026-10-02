@@ -220,6 +220,7 @@ async function gConnect() {
     await gRequestToken('');
     await gRefresh();
     if (typeof syncNow === 'function') syncNow();
+    if (typeof shSync === 'function') shSync();
   } catch (e) {
     gStatus(e.message);
     renderCalendar();
@@ -259,7 +260,7 @@ function gcalInit() {
   $('g-disconnect').addEventListener('click', gDisconnect);
   renderCalendar();
   if (googleClientId && store.get('gConnected', false)) {
-    gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
+    gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
   setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
