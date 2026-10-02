@@ -81,7 +81,7 @@ function renderWeekly() {
   const newer = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Later week', onclick: () => { weeklyOff--; renderWeekly(); } }, '\u203a');
   older.disabled = weeklyOff >= WEEKLY_MAX;
   newer.disabled = weeklyOff === 0;
-  const nav = el('div', { class: 'wk-nav' }, older, el('span', { class: 'wk-range' }, weeklyOff === 0 ? 'Last week \u00b7 ' + range : range), newer);
+  const nav = el('div', { class: 'wk-nav' }, older, el('span', { class: 'wk-range' }, range, weeklyOff === 0 ? el('span', { class: 'wk-cap muted small' }, 'Last week') : ''), newer);
   const tg = targets();
   const min = (v) => rcHmShort(v);
   const empty = !c.foodDays && !c.nights && !c.pokerSessions && c.weight === null;

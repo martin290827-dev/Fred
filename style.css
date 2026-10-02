@@ -394,9 +394,8 @@ button.danger { background: var(--down); color: #fff; }
 /* Food, Health and Trends: as tall as their content; in a row they share the height of the tallest,
    and the last section of each fills the rest (see growChart in food.js) */
 /* Food, Health and Trends: the same fixed height (Food fits one meal); longer content scrolls inside the card. Recovery and Sleep likewise. */
-#card-food, #card-health, #card-trends { height: 490px; max-height: none; }
-#card-recovery, :is(#card-sleep, #card-habits) { height: var(--rc-h, 540px); max-height: none; }
-#card-poker, #card-weekly { height: 580px; max-height: none; }
+/* all eight data cards have the same height; longer content scrolls inside the card */
+:is(#card-food, #card-health, #card-trends, #card-recovery, #card-sleep, #card-habits, #card-poker, #card-weekly) { height: 560px; max-height: none; }
 #food, #health, #trends, #recovery, :is(#sleep, #habits), #habits { flex: 1 0 auto; display: flex; flex-direction: column; }
 #food > .food-col, #health > .food-col, #trends > .food-col, #recovery > .food-col, :is(#sleep, #habits) > .food-col { flex: 1 0 auto; }
 .food-col > .fpanel:last-child { display: flex; flex-direction: column; }
@@ -1115,3 +1114,18 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .wk-ai p { margin: 0 0 8px; text-align: left; font-size: 0.92rem; }
 .wk-ul { margin: 0 0 8px; padding-left: 18px; text-align: left; font-size: 0.9rem; }
 .wk-sec .pk-r { min-height: 40px; }
+/* narrow columns: nothing may be wider than its card */
+.pk-form, .pk-group, .pk-r, .wk-all, .wk-sec { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.pk-r input[type="date"] { min-width: 0; max-width: 62%; }
+.pk-seg { min-width: 0; }
+.pk-r > .pk-seg { max-width: 100%; }
+.pk-seg button { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+.food-add input { min-width: 0; }
+.food-add { min-width: 0; }
+#food, #health, #trends, #recovery, #sleep, #habits, #poker, #weekly { min-width: 0; }
+.food-col { min-width: 0; max-width: 100%; }
+#card-food .cardbody, #card-poker .cardbody, #card-weekly .cardbody { overflow-x: hidden; }
+.wk-range { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.wk-cap { font-weight: 400; }
+.pk-seg3 button { font-size: 0.72rem; padding-left: 2px; padding-right: 2px; overflow: hidden; text-overflow: clip; }
+.pk-seg3 { grid-template-columns: 1fr 1.5fr 1fr; }
