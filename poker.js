@@ -52,31 +52,38 @@ function pokerStats(list) {
 function pokerForm() {
   const e = pokerEditId ? poker.find((x) => x.id === pokerEditId) : null;
   const date = el('input', { type: 'date', name: 'd', required: '', 'aria-label': 'Date' }); date.value = e ? e.d : toDateStr(new Date());
-  const place = el('input', { type: 'text', name: 'place', placeholder: 'Place', maxlength: '60', list: 'pk-places', autocomplete: 'off', 'aria-label': 'Place' }); place.value = e ? e.place : '';
+  const place = el('input', { type: 'text', name: 'place', placeholder: 'Optional', maxlength: '60', list: 'pk-places', autocomplete: 'off', 'aria-label': 'Place' }); place.value = e ? e.place : '';
   const dl = el('datalist', { id: 'pk-places' }, ...[...new Set(poker.map((x) => x.place).filter(Boolean))].map((p) => el('option', { value: p })));
-  const game = el('select', { name: 'game', 'aria-label': 'Game' }, ...POKER_GAMES.map((g) => el('option', { value: g }, g)));
-  game.value = e ? e.game : (poker.length ? poker[poker.length - 1].game : 'Cash'); // same as last time
-  const amount = el('input', { type: 'text', inputmode: 'decimal', name: 'amt', placeholder: 'Amount in €', required: '', autocomplete: 'off', 'aria-label': 'Amount in euro' });
+  const amount = el('input', { type: 'text', inputmode: 'decimal', name: 'amt', placeholder: '0', required: '', autocomplete: 'off', 'aria-label': 'Amount in euro' });
   amount.value = e ? String(Math.abs(e.amt)) : '';
+  // segmented controls (like iOS): game and win / loss
+  let game = e ? e.game : (poker.length ? poker[poker.length - 1].game : 'Cash'); // same as last time
+  const gBtns = POKER_GAMES.map((g) => el('button', { type: 'button', onclick: () => { game = g; gBtns.forEach((x, i) => x.classList.toggle('on', POKER_GAMES[i] === g)); } }, g));
+  gBtns.forEach((x, i) => x.classList.toggle('on', POKER_GAMES[i] === game));
   let sign = e && e.amt < 0 ? -1 : 1;
-  const win = el('button', { type: 'button', class: sign > 0 ? 'on' : '' }, 'Win');
-  const loss = el('button', { type: 'button', class: sign < 0 ? 'on' : '' }, 'Loss');
+  const win = el('button', { type: 'button' }, 'Win'), loss = el('button', { type: 'button' }, 'Loss');
   const pick = (s) => { sign = s; win.className = s > 0 ? 'on up' : ''; loss.className = s < 0 ? 'on down' : ''; };
   win.addEventListener('click', () => pick(1)); loss.addEventListener('click', () => pick(-1));
   pick(sign);
-  const msg = el('p', { class: 'muted small' });
+  const row = (label, ...kids) => el('div', { class: 'pk-r' }, el('span', { class: 'pk-l' }, label), ...kids);
+  const msg = el('p', { class: 'muted small pk-msg' });
   const form = el('form', { class: 'pk-form', autocomplete: 'off' },
-    el('div', { class: 'pk-row' }, date, game), place, dl,
-    el('div', { class: 'pk-row' }, el('div', { class: 'pk-seg', role: 'group', 'aria-label': 'Win or loss' }, win, loss), amount),
-    el('div', { class: 'row end' },
-      e ? el('button', { type: 'button', class: 'ghost', onclick: () => { pokerEditId = null; pokerRedraw(); } }, 'Cancel') : '',
-      el('button', { type: 'submit' }, e ? 'Save' : 'Add')), msg);
+    el('div', { class: 'pk-group' },
+      row('Date', date),
+      el('div', { class: 'pk-r pk-r-seg' }, el('div', { class: 'pk-seg pk-seg3', role: 'group', 'aria-label': 'Game' }, ...gBtns)),
+      row('Place', place),
+      row('Result', el('div', { class: 'pk-seg', role: 'group', 'aria-label': 'Win or loss' }, win, loss)),
+      row('Amount (\u20ac)', amount)),
+    dl, msg,
+    el('div', { class: 'pk-btns' },
+      e ? el('button', { type: 'button', class: 'pk-cancel', onclick: () => { pokerEditId = null; pokerRedraw(); } }, 'Cancel') : '',
+      el('button', { type: 'submit', class: 'pk-add' }, e ? 'Save session' : 'Add session')));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const v = parseFloat(String(amount.value).replace(',', '.'));
     if (!date.value || !isFinite(v) || v < 0) { msg.textContent = 'Enter the amount as a number, e.g. 120 or 45.50.'; return; }
-    const row = { d: date.value, place: place.value.trim(), game: game.value, amt: Math.round(sign * v * 100) / 100 };
-    if (e) Object.assign(e, row); else poker.push(Object.assign({ id: uid() }, row));
+    const r = { d: date.value, place: place.value.trim(), game, amt: Math.round(sign * v * 100) / 100 };
+    if (e) Object.assign(e, r); else poker.push(Object.assign({ id: uid() }, r));
     pokerEditId = null;
     pokerSave();
   });
@@ -176,7 +183,7 @@ function renderPoker() {
   const hero = hcard('goal', 'green', 'Performance', s.n ? s.n + (s.n === 1 ? ' session' : ' sessions') : '',
     el('div', { class: 'pk-total ' + pkCls(s.total) }, s.n ? eur(s.total, true) : '–'),
     s.n ? el('div', { class: 'pk-kpis' },
-      kpi('Last 30 days', eur(s.last30, true), pkCls(s.last30)), kpi('Per session', eur(s.avg, true), pkCls(s.avg)), kpi('Winning', s.rate + ' %'),
+      kpi('30 days', eur(s.last30, true), pkCls(s.last30)), kpi('Per session', eur(s.avg, true), pkCls(s.avg)), kpi('Winning', s.rate + ' %'),
       kpi('Best', eur(s.best, true), pkCls(s.best)), kpi('Worst', eur(s.worst, true), pkCls(s.worst)), kpi('Wins', s.wins + ' of ' + s.n)) : el('p', { class: 'muted small' }, 'Add your first session below.'));
   box.replaceChildren(el('div', { class: 'food-col' },
     hcard('pulse', 'indigo', pokerEditId ? 'Edit session' : 'New session', '', pokerForm()),

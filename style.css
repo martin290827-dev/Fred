@@ -1058,14 +1058,29 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 /* poker piggy bank */
 #poker { flex: 1 0 auto; display: flex; flex-direction: column; }
 #poker > .food-col { flex: 1 0 auto; }
+#poker .fpanel { flex: none; }
 #card-poker .cardbody { overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
-.pk-form { display: flex; flex-direction: column; gap: 8px; }
-.pk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pk-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
-.pk-seg button { background: transparent; color: var(--text); font-size: 0.85rem; font-weight: 600; padding: 6px 0; border-radius: 7px; min-height: 0; box-shadow: none; }
-.pk-seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-.pk-seg button.on.up { color: var(--up); }
-.pk-seg button.on.down { color: var(--down); }
+/* form like an iOS settings group: label left, value right, hairlines between rows */
+.pk-form { display: flex; flex-direction: column; gap: 10px; }
+.pk-group { background: var(--fill); border-radius: 12px; overflow: hidden; }
+.pk-r { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 6px 14px; box-sizing: border-box; }
+.pk-r + .pk-r { border-top: 0.5px solid var(--sep, rgba(128, 128, 128, 0.3)); }
+.pk-l { flex: none; font-size: 0.95rem; }
+.pk-r input, .pk-r select { flex: 1; min-width: 0; width: auto; background: transparent; border: 0; box-shadow: none; padding: 4px 0; text-align: right; font-size: 0.95rem; color: var(--text); }
+.pk-r input[type="date"] { flex: none; }
+.pk-r input:focus { box-shadow: none; }
+.pk-eur { margin-left: auto; color: var(--muted); }
+.pk-eur + input { flex: none; width: 90px; }
+.pk-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--fill-2, rgba(118, 118, 128, 0.24)); border-radius: 9px; padding: 2px; gap: 2px; min-width: 150px; }
+.pk-seg3 { grid-template-columns: repeat(3, auto); }
+.pk-seg button { background: transparent; color: var(--text); font-size: 0.82rem; font-weight: 600; padding: 5px 10px; border-radius: 7px; min-height: 0; box-shadow: none; }
+.pk-seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+.pk-seg button.on.up { background: var(--up); color: #fff; }
+.pk-seg button.on.down { background: var(--down); color: #fff; }
+.pk-msg { margin: 0; }
+.pk-btns { display: flex; gap: 8px; }
+.pk-add, .pk-cancel { flex: 1; border-radius: 12px; min-height: 44px; font-weight: 600; }
+.pk-cancel { background: var(--fill); color: var(--text); }
 .pk-up { color: var(--up); }
 .pk-down { color: var(--down); }
 .pk-total { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; margin: 2px 0 8px; }
@@ -1076,3 +1091,10 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .pk-by { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
 .pk-line, .pk-item { display: flex; align-items: baseline; gap: 8px; text-align: left; font-size: 0.9rem; }
 .pk-d { flex: none; min-width: 44px; }
+.pk-r-seg .pk-seg { width: 100%; }
+.pk-seg3 { grid-template-columns: repeat(3, 1fr); }
+.pk-eur + input { width: 7ch; text-align: left; flex: none; }
+.pk-eur { margin-left: auto; margin-right: -6px; }
+.pk-eur + input { text-align: right; width: 9ch; }
+.pk-eur { margin-right: 0; }
+.pk-r input[name="amt"] { flex: 1; width: auto; text-align: right; }
