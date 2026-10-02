@@ -87,7 +87,7 @@ async function gRefresh() {
   try {
     const now = new Date();
     const q = 'calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250' + // a full year ahead, so far-away trips show up under Events
-      '&timeMin=' + encodeURIComponent(startOfDay(now).toISOString()) +
+      '&timeMin=' + encodeURIComponent(addDays(now, -3).toISOString()) + // 72 h back: finished tasks stay visible for 3 days +
       '&timeMax=' + encodeURIComponent(addDays(now, 365).toISOString());
     const r = await gApi('GET', q);
     // Google's own "Birthdays" calendar (from Google Contacts). Read only; ignored if it does not exist.
@@ -111,9 +111,10 @@ async function gRefresh() {
         start: i.start.date ? new Date(i.start.date + 'T00:00') : new Date(i.start.dateTime),
         end: i.end ? (i.end.date ? new Date(i.end.date + 'T00:00') : new Date(i.end.dateTime)) : null,
       }))
-      .filter((e) => !e.end || e.end > now)
+      .filter((e) => !e.end || e.end > now || (!e.allDay && e.end > addDays(now, -3))) // finished timed items stay for 72 h (Tasks card)
       .sort((x, y) => x.start - y.start);
-    gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); }); // timed, but lasts a day or more (an overnight event stays a normal appointment)
+    gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); });
+    gAgenda = gAgenda.filter((e) => !(e.multi && e.end <= now)); // finished multi-day items do not belong to Events anymore // timed, but lasts a day or more (an overnight event stays a normal appointment)
     gStatus('Updated ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
   } catch (e) {
     gStatus(e.message);
@@ -169,7 +170,7 @@ function renderCalendar() {
   }
   const limit = addDays(new Date(), 30).getTime();
   const now = new Date();
-  const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit && (!e.end || e.end > now)).slice(0, 25); // one-day items with a time, next 30 days
+  const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit && (e.end || e.start) > addDays(now, -3)).slice(0, 40); // one-day items with a time: the last 72 h and the next 30 days
   if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
   // like the Up Next widget of Apple Calendar: a small header per day, then the items with their times
   let day = '';
@@ -187,6 +188,10 @@ function renderCalendar() {
     ul.append(li);
   }
   ul.scrollTop = keepScroll;
+  if (!keepScroll) { // first draw: start at today's header (finished items of earlier days are one scroll up)
+    const head = ul.querySelector('li.dayh.is-today') || ul.querySelector('li.ag:not(.past)');
+    if (head && head !== ul.firstElementChild) ul.scrollTop = head.offsetTop - ul.firstElementChild.offsetTop;
+  }
   matchWeatherHeight();
 }
 
@@ -194,11 +199,13 @@ function agendaDay(d) {
   const n = dayDiff(d);
   if (n === 0) return 'Today';
   if (n === 1) return 'Tomorrow';
+  if (n === -1) return 'Yesterday';
   return new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
 // 'now' while it runs, 'soon' in the last hour before it starts. Words carry the meaning, colour only helps.
 function gState(ev, now) {
+  if ((ev.end || ev.start) <= now) return { cls: 'past', text: '' }; // finished: stays visible, shown quietly
   const mins = Math.round((ev.start - now) / 60000);
   if (mins <= 0) return { cls: 'now', text: 'Now' };
   if (mins <= 60) return { cls: 'soon', text: 'in ' + mins + ' min' };
