@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=139">
+  <link rel="stylesheet" href="style.css?v=140">
 </head>
 <body>
   <header>
@@ -44,7 +44,8 @@
   <main class="grid">
 
     <section class="card" id="card-weather">
-      <h2>Weather <span id="weather-place" class="muted"></span></h2>
+      <h2>Weather <span id="weather-place" class="muted"></span> <span class="hacts"><button id="wx-add" class="hicon" type="button" aria-label="Set weather places" title="Places"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></svg></button></span></h2>
+      <div id="wx-edit" hidden></div>
       <div id="weather">Loading...</div>
       <div id="weather2" class="wx2"></div>
     </section>
@@ -119,7 +120,8 @@
     </section>
 
     <section class="card" id="card-clock">
-      <h2>Time</h2>
+      <h2>Time <span class="hacts"><button id="tz-add" class="hicon" type="button" aria-label="Edit clocks" title="Clocks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
+      <div id="tz-edit" hidden></div>
       <div id="clocks"></div>
       <div id="markets" class="markets" aria-label="Stock exchanges"></div>
     </section>
@@ -202,22 +204,8 @@
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>
 
-      <label>Weather location
-        <span class="row">
-          <input id="set-place" type="text" placeholder="City name">
-          <button type="button" id="set-place-btn" class="ghost">Find</button>
-        </span>
-        <span class="muted small" id="set-place-status"></span>
-      </label>
       <label class="check"><input id="set-geo" type="checkbox"> Use my current location as the main place (this device only)</label>
-
-      <label>Second weather location (optional, shown small, click it to switch)
-        <span class="row">
-          <input id="set-place2" type="text" placeholder="City name, empty = none">
-          <button type="button" id="set-place2-btn" class="ghost">Find</button>
-        </span>
-        <span class="muted small" id="set-place2-status"></span>
-      </label>
+      <span class="muted small" id="set-place-status"></span>
 
       <label>Finnhub API key (stock prices)
         <input id="set-key" type="password" autocomplete="off" placeholder="Stored only in this browser">
@@ -249,18 +237,6 @@
         <span class="muted small">From console.anthropic.com. Food texts are sent to Anthropic for the estimate and, once a day, the last 7 days for tips. Without a key, say "... 500 kcal" yourself.</span>
       </label>
 
-      <label>Default currencies (converter)
-        <span class="row">
-          <select id="set-fx-from" aria-label="Default from currency"></select>
-          <span class="muted">to</span>
-          <select id="set-fx-to" aria-label="Default to currency"></select>
-        </span>
-      </label>
-
-      <label>Clocks (one per line: Label=Time zone)
-        <textarea id="set-zones" rows="3"></textarea>
-      </label>
-
       <h3>Google Calendar</h3>
       <label>Google Client ID
         <input id="set-gclient" type="text" autocomplete="off" placeholder="123456-abc.apps.googleusercontent.com">
@@ -271,7 +247,7 @@
         <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
         <span class="muted small" id="g-status"></span>
       </div>
-      <label class="check"><input id="set-sync" type="checkbox" checked> Sync places, clocks, notes, shopping list and keys between my devices (hidden file in my Google Drive)</label>
+      <label class="check"><input id="set-sync" type="checkbox" checked> Sync notes and keys between my devices (hidden file in my Google Drive)</label>
       <div class="row wrap">
         <button type="button" id="sync-now" class="ghost small">Sync now</button>
         <span class="muted small" id="sync-status"></span>
@@ -295,14 +271,14 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=139"></script>
-  <script src="gcal.js?v=139"></script>
-  <script src="sync.js?v=139"></script>
-  <script src="food.js?v=139"></script>
-  <script src="archive.js?v=139"></script>
-  <script src="recovery.js?v=139"></script>
-  <script src="poker.js?v=139"></script>
-  <script src="weekly.js?v=139"></script>
-  <script src="sheets.js?v=139"></script>
+  <script src="app.js?v=140"></script>
+  <script src="gcal.js?v=140"></script>
+  <script src="sync.js?v=140"></script>
+  <script src="food.js?v=140"></script>
+  <script src="archive.js?v=140"></script>
+  <script src="recovery.js?v=140"></script>
+  <script src="poker.js?v=140"></script>
+  <script src="weekly.js?v=140"></script>
+  <script src="sheets.js?v=140"></script>
 </body>
 </html>

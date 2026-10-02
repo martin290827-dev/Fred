@@ -30,5 +30,6 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 - Edit for tasks and shopping list
 
 ## Storage
-- Everything except settings and keys lives in the Google Sheet "Fred Daten" (sheets.js, one tab per set): tickers (with order), food, weight, poker, daily Whoop values, goals/tips/tolerance/weekly texts, and the raw Whoop history. The browser only keeps a working copy. Needs the Google Sheets API enabled in the user's Cloud project.
-- Places, zones, shopping list, notes, layout and API keys sync through the hidden Drive file (sync.js).
+- Everything except notes and keys lives in the Google Sheet "Fred Daten" (sheets.js, one tab per set): tickers (with order), shopping list, food, weight, poker, daily Whoop values, raw Whoop history, and a settings tab (goals, tips, tolerance, weekly texts, weather places, default currencies, clocks, card layout per kind of device: touch = phone, else desktop). The browser only keeps a working copy. Needs the Google Sheets API enabled in the user's Cloud project.
+- Places, clocks and tickers are edited in their cards (pencil / +), not in Settings. The converter remembers the last pair.
+- Notes and API keys / Client ID sync through the hidden Drive file (sync.js). The Client ID cannot live in the Sheet: it is needed to sign in first.

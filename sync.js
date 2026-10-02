@@ -4,7 +4,7 @@
    Only Fred can see that folder; your other Drive files stay invisible to it.
    Every setting carries the time of its last change; the newer value wins. */
 
-const SYNC_KEYS = ['place', 'place2', 'zones', 'shop', 'notes', 'fxDefault', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
+const SYNC_KEYS = ['notes', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const SYNC_FILE = 'fred-sync.json';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';

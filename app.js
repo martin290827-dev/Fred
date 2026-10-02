@@ -403,6 +403,64 @@ function swapPlaces() {
   loadWeather();
 }
 
+/* ---------- places and clocks: edited right in the cards, saved in the Sheet ---------- */
+let wxOpen = false;
+
+function wxEditor() {
+  const box = $('wx-edit');
+  if (!wxOpen) { box.replaceChildren(); box.hidden = true; return; }
+  const msg = el('p', { class: 'muted small gform-msg' });
+  const row = (label, current, which) => {
+    const input = el('input', { type: 'text', placeholder: which === 1 ? 'City name' : 'Optional', value: current ? current.name : '', 'aria-label': label });
+    const go = async () => {
+      const name = input.value.trim();
+      if (!name && which === 1) return;
+      msg.textContent = 'Searching...';
+      try {
+        const p = name ? await geocode(name) : null;
+        if (which === 1) { place = p; store.set('place', place); } else { place2 = p; store.set('place2', place2); }
+        input.value = p ? p.name : '';
+        msg.textContent = p ? 'Saved: ' + p.name : 'Second place removed.';
+        loadWeather();
+      } catch (e) { msg.textContent = e.message; }
+    };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    return el('div', { class: 'row' }, el('span', { class: 'muted small wx-lbl' }, label), input, el('button', { type: 'button', class: 'ghost small', onclick: go }, 'Set'));
+  };
+  box.replaceChildren(el('div', { class: 'gform' }, row('Main', place, 1), row('Second', place2, 2), msg,
+    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { wxOpen = false; wxEditor(); } }, 'Done'))));
+  box.hidden = false;
+}
+
+let tzOpen = false;
+
+function tzEditor() {
+  const box = $('tz-edit');
+  if (!tzOpen) { box.replaceChildren(); box.hidden = true; return; }
+  const save = () => { store.set('zones', zones); renderClocks(); tzEditor(); };
+  const label = el('input', { type: 'text', placeholder: 'Label, e.g. Berlin', maxlength: '20', 'aria-label': 'Label' });
+  const tz = el('input', { type: 'text', placeholder: 'Europe/Berlin', list: 'tz-list', autocomplete: 'off', 'aria-label': 'Time zone' });
+  const list = el('datalist', { id: 'tz-list' }, ...(Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []).map((z) => el('option', { value: z })));
+  const msg = el('p', { class: 'muted small gform-msg' });
+  const rows = el('div', { class: 'tk-order' }, ...zones.map((z, i) => el('div', { class: 'tk-o' },
+    el('span', { class: 'tk-name' }, z.label, el('span', { class: 'muted small' }, '  ' + z.tz)),
+    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + z.label + ' up', title: 'Up', onclick: () => { if (i > 0) { [zones[i - 1], zones[i]] = [zones[i], zones[i - 1]]; save(); } } }, '\u25b2'),
+    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + z.label + ' down', title: 'Down', onclick: () => { if (i < zones.length - 1) { [zones[i + 1], zones[i]] = [zones[i], zones[i + 1]]; save(); } } }, '\u25bc'),
+    el('button', { type: 'button', class: 'tk-mv tk-rm', 'aria-label': 'Remove ' + z.label, title: 'Remove', onclick: () => { zones = zones.filter((x) => x !== z); save(); } }, '\u00d7'))));
+  const f = el('form', { class: 'gform', autocomplete: 'off' }, rows, el('div', { class: 'row' }, label, tz), list, msg,
+    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { tzOpen = false; tzEditor(); } }, 'Done'), el('button', { type: 'submit' }, 'Add')));
+  f.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const l = label.value.trim(), z = tz.value.trim();
+    try { new Intl.DateTimeFormat('en-GB', { timeZone: z }); } catch { msg.textContent = 'Unknown time zone. Use a name like Europe/Berlin.'; return; }
+    if (!l) { msg.textContent = 'Give the clock a label.'; return; }
+    zones.push({ label: l, tz: z });
+    save();
+  });
+  box.replaceChildren(f);
+  box.hidden = false;
+}
+
 async function loadWeather() {
   const box = $('weather');
   const alt = $('weather2');
@@ -421,7 +479,7 @@ async function loadWeather() {
     }
   }
   if (here && geoSwapped && low) { const t = top; top = low; low = t; }
-  if (!top) { $('weather-place').textContent = ''; box.replaceChildren(el('p', { class: 'empty' }, 'Set your location in Settings.')); return; }
+  if (!top) { $('weather-place').textContent = ''; box.replaceChildren(el('p', { class: 'empty' }, 'Tap the pencil to set a place.')); return; }
   const title = $('weather-place');
   title.replaceChildren(here && !geoSwapped ? hereIcon() : '', top.name, geoNote ? el('span', { class: 'small' }, ' \u00b7 ' + geoNote) : '');
   const [main, second] = await Promise.allSettled([fetchWeather(top), low ? fetchWeather(low) : Promise.resolve(null)]);
@@ -1011,7 +1069,7 @@ function tickEvents() {
 
 /* ---------- 9) Currency converter (Frankfurter, ECB rates, no key) ---------- */
 const CURRENCIES = ['USD', 'EUR', 'MXN', 'GBP', 'CHF', 'JPY', 'CNY', 'PHP'];
-// Default pair for the converter, set in Settings (starts as USD -> EUR).
+// Default pair for the converter: the last pair you picked (starts as USD -> EUR).
 let fxDefault = store.get('fxDefault', { from: 'USD', to: 'EUR' });
 let fx = store.get('fx', null); // { date, rates }
 
@@ -1043,14 +1101,15 @@ function initFx() {
   for (const id of ['fx-from', 'fx-to']) {
     for (const c of CURRENCIES) $(id).append(el('option', { value: c }, c));
   }
-  for (const id of ['set-fx-from', 'set-fx-to']) {
-    for (const c of CURRENCIES) $(id).append(el('option', { value: c }, c));
-  }
   $('fx-from').value = fxDefault.from;
   $('fx-to').value = fxDefault.to;
   ['fx-amount', 'fx-from', 'fx-to'].forEach((id) => $(id).addEventListener('input', convert));
+  // the pair you pick is the default for next time (saved in the Sheet)
+  const saveFxPair = () => { fxDefault = { from: $('fx-from').value, to: $('fx-to').value }; store.set('fxDefault', fxDefault); };
+  $('fx-from').addEventListener('change', saveFxPair);
+  $('fx-to').addEventListener('change', saveFxPair);
   $('fx-swap').addEventListener('click', () => {
-    const a = $('fx-from').value; $('fx-from').value = $('fx-to').value; $('fx-to').value = a; convert();
+    const a = $('fx-from').value; $('fx-from').value = $('fx-to').value; $('fx-to').value = a; convert(); saveFxPair();
   });
 }
 
@@ -1347,24 +1406,14 @@ function initCalc() {
 }
 
 /* ---------- Settings ---------- */
-let pendingPlace = null;
-let pendingPlace2 = null;
 
 function openSettings() {
-  pendingPlace = null;
-  pendingPlace2 = null;
-  $('set-place').value = place ? place.name : '';
   $('set-geo').checked = useGeo;
   $('set-place-status').textContent = '';
-  $('set-place2').value = place2 ? place2.name : '';
-  $('set-place2-status').textContent = '';
   $('set-key').value = finnhubKey;
   $('set-twelve').value = twelveKey;
   $('set-anthropic').value = anthropicKey;
   nutriFillSettings();
-  $('set-fx-from').value = fxDefault.from;
-  $('set-fx-to').value = fxDefault.to;
-  $('set-zones').value = zones.map((z) => z.label + '=' + z.tz).join('\n');
   $('set-gclient').value = googleClientId;
   if (typeof syncNow === 'function') syncNow(); // shows the sync state when Settings opens
   $('g-status').textContent = gHasToken() ? 'Connected.' : '';
@@ -1373,12 +1422,7 @@ function openSettings() {
 }
 
 function saveSettings() {
-  if (pendingPlace) { place = pendingPlace; store.set('place', place); }
   if ($('set-geo').checked !== useGeo) { useGeo = $('set-geo').checked; store.set('useGeo', useGeo); geoSwapped = false; geoPlace = null; }
-  if (pendingPlace2) place2 = pendingPlace2;
-  else if (!$('set-place2').value.trim()) place2 = null;
-  store.set('place2', place2);
-
   finnhubKey = $('set-key').value.trim();
   store.set('finnhubKey', finnhubKey);
   twelveKey = $('set-twelve').value.trim();
@@ -1386,27 +1430,8 @@ function saveSettings() {
   nutriSaveSettings();
   anthropicKey = $('set-anthropic').value.trim();
   store.set('anthropicKey', anthropicKey);
-  const fxNew = { from: $('set-fx-from').value, to: $('set-fx-to').value };
-  if (fxNew.from !== fxDefault.from || fxNew.to !== fxDefault.to) {
-    fxDefault = fxNew;
-    store.set('fxDefault', fxDefault);
-    $('fx-from').value = fxDefault.from;
-    $('fx-to').value = fxDefault.to;
-    convert();
-  }
   sparkCache = {}; // new key or symbols: draw the charts again
   store.set('spark', sparkCache);
-
-  const parsed = [];
-  for (const line of $('set-zones').value.split('\n')) {
-    const i = line.indexOf('=');
-    if (i < 1) continue;
-    const label = line.slice(0, i).trim();
-    const tz = line.slice(i + 1).trim();
-    try { new Intl.DateTimeFormat('en-GB', { timeZone: tz }); parsed.push({ label, tz }); } catch { /* skip invalid zone */ }
-  }
-  if (parsed.length) { zones = parsed; store.set('zones', zones); }
-
 
   setGoogleSettings($('set-gclient').value.trim());
   earn.t = 0;
@@ -1808,31 +1833,11 @@ function init() {
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
   $('btn-refresh').addEventListener('click', loadQuotes);
   $('tk-add').addEventListener('click', () => { tkOpen = !tkOpen; tickerEditor(); });
+  $('wx-add').addEventListener('click', () => { wxOpen = !wxOpen; wxEditor(); });
+  $('tz-add').addEventListener('click', () => { tzOpen = !tzOpen; tzEditor(); });
   $('btn-layout').addEventListener('click', toggleLayoutMode);
   $('btn-settings').addEventListener('click', openSettings);
   $('set-cancel').addEventListener('click', () => $('dlg-settings').close());
-  $('set-place-btn').addEventListener('click', async () => {
-    const status = $('set-place-status');
-    status.textContent = 'Searching...';
-    try {
-      pendingPlace = await geocode($('set-place').value.trim());
-      status.textContent = 'Found: ' + pendingPlace.name;
-    } catch (e) {
-      pendingPlace = null;
-      status.textContent = e.message;
-    }
-  });
-  $('set-place2-btn').addEventListener('click', async () => {
-    const status = $('set-place2-status');
-    status.textContent = 'Searching...';
-    try {
-      pendingPlace2 = await geocode($('set-place2').value.trim());
-      status.textContent = 'Found: ' + pendingPlace2.name;
-    } catch (e) {
-      pendingPlace2 = null;
-      status.textContent = e.message;
-    }
-  });
   $('bk-export').addEventListener('click', exportSettings);
   $('bk-import').addEventListener('click', () => $('bk-file').click());
   $('set-geo').addEventListener('change', () => { if ($('set-geo').checked) geoPosition().catch(() => { $('set-place-status').textContent = 'Location not allowed. iPhone: Settings \u2192 Privacy \u2192 Location Services \u2192 Safari Websites.'; }); });
