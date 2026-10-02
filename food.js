@@ -723,8 +723,8 @@ async function foodMirror() {
   if (typeof gHasToken !== 'function' || !gHasToken()) return; // next time you are connected
   if (!gScopes.includes('drive.file')) { foodMirrorMsg = 'Sheets in Drive need one more Google permission: press Connect.'; $('food-status').textContent = foodMirrorMsg; return; }
   try {
-    const rows = [['date', 'time', 'food', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source']].concat(
-      [...food].sort((a, b) => a.at.localeCompare(b.at)).map((e) => [e.at.slice(0, 10), e.at.slice(11, 16), e.text, e.kcal, e.p, e.c, e.f, e.src || '']));
+    const rows = [['date', 'time', 'food', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'reaction', 'symptoms']].concat(
+      [...food].sort((a, b) => a.at.localeCompare(b.at)).map((e) => [e.at.slice(0, 10), e.at.slice(11, 16), e.text, e.kcal, e.p, e.c, e.f, e.src || '', e.bad ? TOL_LEVELS[e.bad.lvl] : '', e.bad ? e.bad.sym.join('; ') : '']));
     await sheetWrite('Fred Food Log', csv(rows));
     await sheetWrite('Fred Weight Log', csv([['date', 'weight_kg']].concat([...weight].sort((a, b) => a.d.localeCompare(b.d)).map((w) => [w.d, w.kg]))));
     foodMirrorMsg = 'Saved to Google Sheets ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
