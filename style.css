@@ -154,7 +154,7 @@ header h1::before {
 #btn-theme[data-to="light"] .i-moon, #btn-theme[data-to="dark"] .i-sun, #btn-theme:not([data-to]) .i-moon { display: none; }
 
 /* ---------- grid and cards (widgets) ---------- */
-:root { --card-h: 520px; }
+:root { --card-h: 412px; }
 .grid {
   display: grid;
   grid-template-columns: 1fr;
