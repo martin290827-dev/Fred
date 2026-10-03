@@ -109,11 +109,22 @@ const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one
   'and say how often it appeared and roughly what it costs per week on average. Name the real foods and drinks from the diary and give a ' +
   'practical replacement that fits his habits. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
   '(protein, vegetables, fibre), then a swap or addition. Say what is good, too. Never invent problems; if little needs changing, ' +
-  'give fewer tips (3 to 5). The diary leaves out his weekly cheat day on purpose; never mention it. Friendly and direct, no moralizing, no medical advice. ' +
+  'give fewer tips (3 to 5). The diary leaves out his chosen cheat days on purpose; never mention it. Friendly and direct, no moralizing, no medical advice. ' +
   'Reply with JSON only: {"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}]}';
 
-// The cheat day (a weekday from Settings) is left out of the tips.
-function isCheatDay(d) { return nutri.cheat != null && new Date(d + 'T12:00:00').getDay() === nutri.cheat; }
+// Cheat days: with the feature on (Settings), one day per week can be marked in Food. Marked days are left out of the tips.
+function isCheatDay(d) { return !!nutri.cheatOn && (nutri.cheatDays || []).includes(d); }
+function mondayOf(d) { const x = new Date(d + 'T12:00:00'); return toDateStr(addDays(x, -((x.getDay() + 6) % 7))); }
+function cheatOfWeek(d) { return (nutri.cheatDays || []).find((x) => mondayOf(x) === mondayOf(d)) || ''; }
+function toggleCheat(d) {
+  const old = cheatOfWeek(d);
+  const keep = (nutri.cheatDays || []).filter((x) => x !== old && x >= toDateStr(addDays(new Date(), -120)));
+  nutri = Object.assign({}, nutri, { cheatDays: old === d ? keep : keep.concat(d) }); // same day again = unmark, else replace this week's day
+  store.set('nutri', nutri);
+  tips.day = '';
+  renderFood();
+  loadTips(false);
+}
 
 function tipsInput() {
   const tg = targets();
@@ -442,7 +453,7 @@ function nutriFillSettings() {
   $('set-birth').value = nutri.birthYear || '';
   $('set-sex').value = nutri.sex || '';
   $('set-activity').value = String(nutri.activity || 1.45);
-  $('set-cheat').value = nutri.cheat == null ? '' : String(nutri.cheat);
+  $('set-cheaton').checked = !!nutri.cheatOn;
 }
 
 function nutriSaveSettings() {
@@ -458,9 +469,10 @@ function nutriSaveSettings() {
     kcal: Math.round(num('set-kcal') || 2500), goalPct: num('set-goalpct') || 10, startKg: num('set-startkg'),
     height: num('set-height'), birthYear: num('set-birth'), sex: $('set-sex').value, activity: parseFloat($('set-activity').value) || 1.45,
   };
-  if ($('set-cheat').value !== '') next.cheat = parseInt($('set-cheat').value, 10); // weekday 0 = Sunday
+  next.cheatOn = $('set-cheaton').checked;
+  if (nutri.cheatDays) next.cheatDays = nutri.cheatDays; // the marked days stay when the feature is switched off
   if (JSON.stringify(next) !== JSON.stringify(nutri)) {
-    const cheatChanged = next.cheat !== nutri.cheat;
+    const cheatChanged = !!next.cheatOn !== !!nutri.cheatOn;
     nutri = next; store.set('nutri', nutri); renderFood();
     if (cheatChanged) { tips.day = ''; loadTips(false); } // new tips without the cheat day
   }
@@ -581,6 +593,15 @@ function growChart(box, draw) {
 
 /* ---------- card ---------- */
 
+// Cheat day button: only when switched on in Settings.
+function cheatRow(today) {
+  if (!nutri.cheatOn) return '';
+  const wk = cheatOfWeek(today), isToday = wk === today;
+  const note = isToday ? 'Today is your cheat day. It is left out of the tips.' : wk ? 'This week: ' + shortDay(wk) : 'No cheat day this week yet.';
+  return el('div', { class: 'cheat-row' }, el('span', { class: 'muted small' }, note),
+    el('button', { type: 'button', class: 'ghost cheat-btn' + (isToday ? ' on' : ''), onclick: () => toggleCheat(today) }, isToday ? 'Undo' : wk ? 'Move to today' : 'Today is my cheat day'));
+}
+
 function renderFood() {
   const box = $('food');
   if (!box) return;
@@ -616,7 +637,7 @@ function renderFood() {
   }));
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
   const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Settings to get protein, carb and fat targets.');
-  const head = el('div', { class: 'food-today' }, hero, macros);
+  const head = el('div', { class: 'food-today' }, hero, macros, cheatRow(today));
 
   const ul = el('ul', { class: 'list food-list' });
   if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Nothing logged yet. Type or dictate what you ate.'));

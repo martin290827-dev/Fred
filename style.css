@@ -1187,3 +1187,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .pk-kpis .hstat-v { white-space: nowrap; font-size: 1rem; }
 .pk-cancel { flex: 0 0 auto; padding-left: 18px; padding-right: 18px; }
 .pk-add { white-space: nowrap; }
+
+.cheat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.cheat-btn { font-size: 0.8rem; padding: 4px 12px; }
+.cheat-btn.on { color: var(--c-s); border-color: var(--c-s); }
