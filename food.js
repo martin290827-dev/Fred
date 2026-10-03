@@ -278,8 +278,7 @@ function dataStatus() {
 /* In range = share of the target. Protein is a minimum (more is fine),
    calories, carbs and fat are upper limits with some room below. */
 const RANGES = { kcal: [0.9, 1.1], p: [0.9, 1.5], c: [0.7, 1.15], f: [0.75, 1.15], s: [0, 1] }; // sugar: only an upper limit
-const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g']];
-const NUTRI_WEEK = NUTRI.concat([['s', 'Sugar', 'g']]); // sugar has no ring, but it is part of the weekly check
+const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g'], ['s', 'Sugar', 'g']];
 
 function macroStatus(key, val, target) {
   if (!target) return 'none';
@@ -312,9 +311,9 @@ function ring(val, target, cls, size, stroke) {
   return svg;
 }
 
-// Apple-Watch-style stacked rings: calories outside, then protein, carbs, fat. Past 100 % a darker lap starts.
+// Apple-Watch-style stacked rings: calories outside, then protein, carbs, fat, sugar. Past 100 % a darker lap starts.
 function stackRings(parts, size) {
-  const stroke = Math.round(size * 0.1), gap = 3, c = size / 2;
+  const stroke = Math.round(size * (parts.length > 4 ? 0.07 : 0.1)), gap = parts.length > 4 ? 2.5 : 3, c = size / 2; // thinner rings when there are five
   const svg = svgEl('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, class: 'srings', 'aria-hidden': 'true' });
   parts.forEach(([k, val, target], i) => {
     const r = c - stroke / 2 - i * (stroke + gap), C = 2 * Math.PI * r, frac = target ? val / target : 0;
@@ -363,7 +362,7 @@ function weekCheck() {
   const grid = el('div', { class: 'mgrid', role: 'table', 'aria-label': 'Last 7 days against targets' });
   grid.append(el('span', {}), ...days.map((d) => el('span', { class: 'mg-d' }, new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2))));
   const notes = [];
-  for (const [key, label, unit] of NUTRI_WEEK) {
+  for (const [key, label, unit] of NUTRI) {
     if (!tg[key]) continue;
     grid.append(el('span', { class: 'mg-l' }, label));
     const count = { low: 0, high: 0 };
@@ -601,14 +600,14 @@ function renderFood() {
   const parts = NUTRI.filter(([k]) => tg[k]).map(([k]) => [k, t[k], tg[k]]);
   const legend = el('div', { class: 'lgd' }, ...NUTRI.filter(([k]) => tg[k]).map(([k, label, unit]) => {
     const h = macroHint(k, t[k], tg[k], unit);
-    return el('div', { class: 'lg lg-' + k },
-      el('div', { class: 'lg-l' }, label),
-      el('div', { class: 'lg-v' }, fmtN(t[k]), el('span', { class: 'lg-t' }, '/' + fmtN(tg[k])), el('span', { class: 'lg-u' }, unit.toUpperCase())),
-      el('div', { class: 'lg-h ' + h.cls }, h.hint));
+    const star = k === 's' && t.ms && t.n ? '*' : ''; // * = some meals have no sugar value, so the sum is a minimum
+    return el('div', { class: 'lg lg-' + k, title: k === 's' ? 'Limit: 10 % of your calories. Total sugar incl. fruit and milk.' + (star ? ' * Some meals have no sugar value.' : '') : '' },
+      el('div', { class: 'lg-top' }, el('span', { class: 'lg-l' }, label), el('span', { class: 'lg-h ' + h.cls }, h.hint + star)),
+      el('div', { class: 'lg-v' }, fmtN(t[k]), el('span', { class: 'lg-t' }, '/' + fmtN(tg[k])), el('span', { class: 'lg-u' }, unit.toUpperCase())));
   }));
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
   const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Settings to get protein, carb and fat targets.');
-  const head = el('div', { class: 'food-today' }, hero, sugarLine(t, tg), macros);
+  const head = el('div', { class: 'food-today' }, hero, macros);
 
   const ul = el('ul', { class: 'list food-list' });
   if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Nothing logged yet. Type or dictate what you ate.'));
@@ -665,16 +664,6 @@ function renderFood() {
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
   if (typeof renderWeekly === 'function') renderWeekly();
-}
-
-// Today's sugar against the limit, one line under the rings.
-function sugarLine(t, tg) {
-  const h = macroHint('s', t.s, tg.s, 'g');
-  const note = t.ms && t.n ? '*' : ''; // * = some meals today have no sugar value (own calories), so the sum is a minimum
-  return el('div', { class: 'sugar-line', title: 'Limit: 10 % of your calories. Sugar is total sugar incl. fruit and milk.' + (note ? ' * Some meals have no sugar value.' : '') },
-    el('span', { class: 'sg-l' }, 'Sugar'),
-    el('span', { class: 'sg-v' }, fmtN(t.s), el('span', { class: 'lg-t' }, ' / ' + fmtN(tg.s) + ' g')),
-    el('span', { class: 'lg-h ' + h.cls }, h.hint + note));
 }
 
 // One line per meal: time, what, kcal. Protein/carbs/fat show on hover.
