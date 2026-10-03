@@ -1,7 +1,7 @@
 // Minimal service worker: makes Fred installable and lets the app shell load offline.
 // API calls are never cached here. Bump CACHE when you change app files.
 const CACHE = 'fred-v146';
-const SHELL = ['./', 'index.html', 'style.css?v=145', 'app.js?v=145', 'gcal.js?v=145', 'sync.js?v=145', 'food.js?v=145', 'archive.js?v=145', 'recovery.js?v=145', 'poker.js?v=145', 'weekly.js?v=145', 'sheets.js?v=145', 'manifest.webmanifest', 'icon.svg', 'apple-touch-icon.png'];
+const SHELL = ['./', 'index.html', 'style.css?v=146', 'app.js?v=146', 'gcal.js?v=146', 'sync.js?v=146', 'food.js?v=146', 'archive.js?v=146', 'recovery.js?v=146', 'poker.js?v=146', 'weekly.js?v=146', 'sheets.js?v=146', 'manifest.webmanifest', 'icon.svg', 'apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
