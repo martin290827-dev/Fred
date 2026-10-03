@@ -773,6 +773,14 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .grid > .card { scroll-margin-top: calc(var(--head-h, 110px) + 12px); }
 .card.flash { box-shadow: 0 0 0 3px var(--accent), var(--shadow); transition: box-shadow 0.3s; }
 @media (max-width: 700px) { .jumpbar button { padding: 4px 6px 4px 5px; } .jumpbar button span.jl { display: none; } }
+/* phone: all chips in exactly two rows, bigger icons (the number of columns is set from the script: half the visible cards, rounded up) */
+@media (max-width: 700px) {
+  .jumpbar { display: grid; grid-template-columns: repeat(var(--jb-cols, 9), minmax(0, 1fr)); gap: 10px 4px; overflow: visible; margin: 6px 0 0; padding: 0; }
+  .jumpbar > :first-child, .jumpbar > :last-child { margin: 0; }
+  .jumpbar button { width: 100%; padding: 0; background: none; justify-content: center; border-radius: 12px; }
+  .jumpbar .cicon { width: min(38px, 100%); height: auto; aspect-ratio: 1; border-radius: 10px; }
+  .jumpbar .cicon svg { width: 58%; height: 58%; }
+}
 .notes-hint { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); font-size: 0.85rem; line-height: 1.35; }
 .notes-hint[hidden] { display: none; }
 
