@@ -1006,31 +1006,21 @@ async function loadEarnings() {
 // Highlight an event that is today or already running.
 function isEventNow(e) { return dayDiff(e.at) <= 0 && dayDiff(e.to || e.at) >= 0; }
 
-function renderEvents() {
-  const ul = $('events');
-  ul.replaceChildren();
-  const sorted = eventList().filter((e) => dayDiff(e.to || e.at) >= -30).sort((a, b) => a.at.localeCompare(b.at));
-  if (!sorted.length) {
-    const on = typeof gHasToken === 'function' && gHasToken();
-    ul.append(el('li', { class: 'muted empty' }, on ? 'No events.' : 'Connect Google Calendar to see your events.'));
-  }
-  if (typeof gSessionEnded === 'function' && gSessionEnded()) ul.append(gReconnectRow());
-  for (const e of sorted) {
-    // a small calendar leaf (month and day), the title, and a countdown pill on the right
-    const kind = e.earnings ? 'Earnings' : e.src && e.src.birthday ? 'Birthday' : '';
-    const wd = new Date(e.at + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long' });
-    const li = el('li', { class: 'evr' + (isEventNow(e) ? ' now' : '') + (e.earnings ? ' earn' : '') },
-      dateLeaf(e.at),
-      el('span', { class: 'grow ev-main' },
-        el('span', { class: 'ev-t' }, e.label, e.src && e.src.series && !e.src.birthday ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : ''),
-        el('span', { class: 'ev-s' }, [wd, kind].filter(Boolean).join(' \u00b7 '))),
-      el('span', { class: 'ev-when', 'data-id': e.id }));
-    if (e.src && typeof gRowActions === 'function') gRowActions(li, e.src, 'event');
-    ul.append(li);
-  }
-  tickEvents();
-  matchWeatherHeight();
+// One row for an event (whole days, birthday, earnings): a small calendar leaf, the title and a countdown pill.
+function eventRow(e) {
+  const kind = e.earnings ? 'Earnings' : e.src && e.src.birthday ? 'Birthday' : '';
+  const wd = new Date(e.at + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long' });
+  const li = el('li', { class: 'evr' + (isEventNow(e) ? ' now' : '') + (e.earnings ? ' earn' : '') },
+    dateLeaf(e.at),
+    el('span', { class: 'grow ev-main' },
+      el('span', { class: 'ev-t' }, e.label, e.src && e.src.series && !e.src.birthday ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : ''),
+      el('span', { class: 'ev-s' }, [wd, kind].filter(Boolean).join(' \u00b7 '))),
+    el('span', { class: 'ev-when', 'data-id': e.id }));
+  if (e.src && typeof gRowActions === 'function') gRowActions(li, e.src, 'event');
+  return li;
 }
+
+function renderEvents() { if (typeof renderCalendar === 'function') renderCalendar(); } // events share the list with the tasks
 
 function dateLeaf(dateStr) {
   const d = new Date(dateStr + 'T00:00');
@@ -1060,7 +1050,7 @@ function matchWeatherHeight() {
 }
 
 function tickEvents() {
-  document.querySelectorAll('#events [data-id]').forEach((n) => {
+  document.querySelectorAll('#cal-list [data-id]').forEach((n) => {
     const e = eventList().find((x) => x.id === n.getAttribute('data-id'));
     n.textContent = e ? fmtEventWhen(e) : '';
     if (n.parentElement) n.parentElement.classList.toggle('now', !!e && isEventNow(e)); // also right after midnight
@@ -1787,7 +1777,7 @@ function init() {
   renderShop();
   initNotes();
   // touch: tap a Tasks or Events row to show its edit and delete buttons (tap again to hide)
-  for (const id of ['cal-list', 'events']) $(id).addEventListener('click', (ev) => {
+  for (const id of ['cal-list']) $(id).addEventListener('click', (ev) => {
     const li = ev.target.closest('li.ag, li.evr');
     if (!li || ev.target.closest('button')) return;
     const on = !li.classList.contains('show-act');

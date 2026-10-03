@@ -31,6 +31,6 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 
 ## Storage
 - Everything except notes and keys lives in the Google Sheet "Fred Daten" (sheets.js, one tab per set): tickers (with order), shopping list, food, weight, poker, daily Whoop values, raw Whoop history, and a settings tab (goals, tips, tolerance, weekly texts, weather places, default currencies, clocks, card layout per kind of device: touch = phone, else desktop). The browser only keeps a working copy. Needs the Google Sheets API enabled in the user's Cloud project.
-- Tasks and Events are one card "Tasks & Events" with a Tasks | Events switch (the + creates what the open tab shows).
+- Tasks and Events are one card "Tasks & Events" with ONE list sorted by day (events first on a day, then timed items). The + opens a form with a Task | Event switch.
 - Places, clocks and tickers are edited in their cards (pencil / +), not in Settings. The converter remembers the last pair.
 - Notes and API keys / Client ID sync through the hidden Drive file (sync.js). The Client ID cannot live in the Sheet: it is needed to sign in first.

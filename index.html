@@ -15,7 +15,7 @@
     /* set the saved day/night choice before the first paint, so there is no flash */
     try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="style.css?v=142">
+  <link rel="stylesheet" href="style.css?v=143">
 </head>
 <body>
   <header>
@@ -52,11 +52,8 @@
 
     <section class="card" id="card-cal">
       <h2>Tasks &amp; Events <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-scan" class="hicon" type="button" aria-label="Add appointment from a photo" title="Photo" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button><input id="cal-photo" type="file" accept="image/*" hidden><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
-      <div class="tk-seg cal-seg" id="cal-seg" role="group" aria-label="Show"><button id="seg-tasks" type="button" class="on">Tasks</button><button id="seg-events" type="button">Events</button></div>
       <div id="cal-edit" hidden></div>
-      <div id="ev-edit" hidden></div>
       <ul id="cal-list" class="list"></ul>
-      <ul id="events" class="list" hidden></ul>
       <p class="muted small" id="cal-status"></p>
     </section>
 
@@ -268,14 +265,14 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=142"></script>
-  <script src="gcal.js?v=142"></script>
-  <script src="sync.js?v=142"></script>
-  <script src="food.js?v=142"></script>
-  <script src="archive.js?v=142"></script>
-  <script src="recovery.js?v=142"></script>
-  <script src="poker.js?v=142"></script>
-  <script src="weekly.js?v=142"></script>
-  <script src="sheets.js?v=142"></script>
+  <script src="app.js?v=143"></script>
+  <script src="gcal.js?v=143"></script>
+  <script src="sync.js?v=143"></script>
+  <script src="food.js?v=143"></script>
+  <script src="archive.js?v=143"></script>
+  <script src="recovery.js?v=143"></script>
+  <script src="poker.js?v=143"></script>
+  <script src="weekly.js?v=143"></script>
+  <script src="sheets.js?v=143"></script>
 </body>
 </html>
