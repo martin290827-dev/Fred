@@ -59,7 +59,7 @@ async function gRequestToken(prompt) {
         gExpiry = Date.now() + (parseInt(r.expires_in, 10) || 3600) * 1000;
         store.set('gConnected', true);
         clearTimeout(gEndTimer); // show the Reconnect button the moment the hour is over
-        gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); renderEvents(); }, gExpiry - Date.now() - 25000);
+        gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); }, gExpiry - Date.now() - 25000);
         resolve();
       },
       error_callback: (err) => { clearTimeout(timer); reject(new Error(err && err.type ? err.type : 'sign-in cancelled')); },
@@ -119,7 +119,7 @@ async function gRefresh() {
   } catch (e) {
     gStatus(e.message);
   }
-  if (!gUiBusy()) { renderCalendar(); renderEvents(); }
+  if (!gUiBusy()) { renderCalendar(); }
 }
 
 // Last day of an item. Google's end is exclusive: all-day ends at midnight after the last day.
@@ -155,28 +155,27 @@ function renderCalendar() {
     btn.hidden = true;
     $('cal-add').hidden = true;
     $('cal-scan').hidden = true;
-    ul.append(el('li', { class: 'muted empty' }, 'Add your Google Client ID in Settings to see your calendar.'));
-    return;
+  } else {
+    btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
+    $('cal-add').hidden = !gHasToken();
+    $('cal-scan').hidden = !gHasToken();
+    if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
+    else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
   }
-  btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
-  $('cal-add').hidden = !gHasToken();
-  $('cal-scan').hidden = !gHasToken();
-  if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
-  else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
-  if (!gHasToken()) {
-    if (!gSessionEnded()) { ul.append(el('li', { class: 'muted' }, 'Not connected.')); return; }
-    ul.append(gReconnectRow()); // the older list stays visible below
-    if (!gAgenda.length) return;
+  const items = gAgendaItems();
+  if (!googleClientId) ul.append(el('li', { class: 'muted empty' }, 'Add your Google Client ID in Settings to see your calendar.'));
+  else if (!gHasToken()) {
+    if (gSessionEnded()) ul.append(gReconnectRow()); // the older list stays visible below
+    else ul.append(el('li', { class: 'muted' }, 'Not connected.'));
   }
-  const limit = addDays(new Date(), 30).getTime();
+  if (!items.length && gHasToken()) ul.append(el('li', { class: 'muted' }, 'Nothing coming up.'));
+  // like the Up Next widget of Apple Calendar: a small header per day, then whole-day events, then the timed items
   const now = new Date();
-  const list = gAgenda.filter((e) => !e.allDay && !e.multi && e.start.getTime() < limit && (e.end || e.start) > addDays(now, -3)).slice(0, 40); // one-day items with a time: the last 72 h and the next 30 days
-  if (!list.length) { ul.append(el('li', { class: 'muted' }, 'Nothing coming up in the next 30 days.')); return; }
-  // like the Up Next widget of Apple Calendar: a small header per day, then the items with their times
   let day = '';
-  for (const ev of list) {
-    const d = toDateStr(ev.start);
-    if (d !== day) { day = d; ul.append(el('li', { class: 'dayh' + (dayDiff(d) === 0 ? ' is-today' : '') }, agendaDay(d))); }
+  for (const it of items) {
+    if (it.day !== day) { day = it.day; ul.append(el('li', { class: 'dayh' + (dayDiff(day) === 0 ? ' is-today' : '') }, agendaDay(day))); }
+    if (it.event) { ul.append(eventRow(it.event)); continue; }
+    const ev = it.task;
     const state = gState(ev, now);
     const li = el('li', { class: 'ag ' + state.cls },
       el('span', { class: 'ag-bar', 'aria-hidden': 'true' }),
@@ -187,12 +186,32 @@ function renderCalendar() {
     gRowActions(li, ev, 'task');
     ul.append(li);
   }
+  tickEvents();
   ul.scrollTop = keepScroll;
   if (!keepScroll) { // first draw: start at today's header (finished items of earlier days are one scroll up)
-    const head = ul.querySelector('li.dayh.is-today') || ul.querySelector('li.ag:not(.past)');
+    const head = ul.querySelector('li.dayh.is-today') || ul.querySelector('li.ag:not(.past), li.evr');
     if (head && head !== ul.firstElementChild) ul.scrollTop = head.offsetTop - ul.firstElementChild.offsetTop;
   }
   matchWeatherHeight();
+}
+
+// Timed items and events in one list, sorted by day; on a day the events come first.
+// Timed items: the last 72 h and the next 30 days. Events: running ones sit under today, finished ones stay 3 days.
+function gAgendaItems() {
+  const limit = addDays(new Date(), 30).getTime();
+  const now = new Date();
+  const items = [];
+  if (gHasToken() || gAgenda.length) {
+    for (const e of gAgenda.filter((x) => !x.allDay && !x.multi && x.start.getTime() < limit && (x.end || x.start) > addDays(now, -3))) {
+      items.push({ day: toDateStr(e.start), order: 1, time: e.start.getTime(), task: e });
+    }
+  }
+  const today = toDateStr(now);
+  for (const e of eventList().filter((x) => dayDiff(x.to || x.at) >= -3)) {
+    const running = dayDiff(e.at) < 0 && dayDiff(e.to || e.at) >= 0;
+    items.push({ day: running ? today : e.at, order: 0, time: 0, event: e });
+  }
+  return items.sort((a, b) => a.day.localeCompare(b.day) || a.order - b.order || a.time - b.time).slice(0, 80);
 }
 
 function agendaDay(d) {
@@ -262,10 +281,7 @@ function gcalInit() {
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
   setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
-  $('cal-add').addEventListener('click', () => gOpenEditor(calTab === 'events' ? 'event' : 'task', null)); // the + creates what the open tab shows
-  $('seg-tasks').addEventListener('click', () => calTabSet('tasks'));
-  $('seg-events').addEventListener('click', () => calTabSet('events'));
-  calTabSet(calTab);
+  $('cal-add').addEventListener('click', () => gOpenEditor('task', null)); // new items can be switched to Event inside the form
   $('cal-scan').addEventListener('click', () => $('cal-photo').click());
   $('cal-photo').addEventListener('change', (e) => { const file = e.target.files[0]; e.target.value = ''; if (file) gScanPhoto(file); });
 }
@@ -327,32 +343,17 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const hhmm = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
 const myZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-// One card, two lists: 'tasks' (timed items) or 'events' (all-day items, birthdays, earnings). The choice is kept on this device.
-let calTab = store.get('calTab', 'tasks');
-function calTabSet(tab) {
-  calTab = tab;
-  store.set('calTab', tab);
-  $('seg-tasks').classList.toggle('on', tab === 'tasks');
-  $('seg-events').classList.toggle('on', tab === 'events');
-  $('cal-list').hidden = tab !== 'tasks';
-  $('events').hidden = tab !== 'events';
-  gCloseEditor(false);
-  gEditing = null;
-}
-
 function gOpenEditor(kind, item, pre) {
   gCloseEditor(false);
   gEditing = { kind, item };
-  const isEvent = kind === 'event' || (kind === 'titleonly' && item && (item.allDay || item.multi));
-  if ((calTab === 'events') !== !!isEvent) { // show the list the item belongs to
-    calTab = isEvent ? 'events' : 'tasks';
-    $('seg-tasks').classList.toggle('on', !isEvent); $('seg-events').classList.toggle('on', !!isEvent);
-    $('cal-list').hidden = !!isEvent; $('events').hidden = !isEvent;
-  }
-  const box = $(isEvent ? 'ev-edit' : 'cal-edit');
+  const box = $('cal-edit');
   const f = el('form', { class: 'gform', autocomplete: 'off' });
   const title = el('input', { type: 'text', name: 'title', placeholder: kind === 'event' ? 'Event' : 'Task or appointment', required: '', maxlength: '120', 'aria-label': 'Title' });
   title.value = item ? item.title : '';
+  if (!item) { // a new entry is a Task (with time) or an Event (whole days); switching keeps what you typed
+    const pick = (k, label) => el('button', { type: 'button', class: kind === k ? 'on' : '', onclick: () => { const d = f.elements.date; gOpenEditor(k, null, { title: title.value, date: d ? d.value : '' }); } }, label);
+    f.append(el('div', { class: 'tk-seg gk-seg', role: 'group', 'aria-label': 'Type' }, pick('task', 'Task'), pick('event', 'Event')));
+  }
   f.append(title);
   const now = new Date();
   if (kind === 'task') {
@@ -411,8 +412,8 @@ function gOpenEditor(kind, item, pre) {
 
 function gCloseEditor(redraw) {
   gEditing = null;
-  for (const id of ['cal-edit', 'ev-edit']) { const b = $(id); if (b) { b.replaceChildren(); b.hidden = true; } }
-  if (redraw) { renderCalendar(); renderEvents(); }
+  const b = $('cal-edit'); if (b) { b.replaceChildren(); b.hidden = true; }
+  if (redraw) { renderCalendar(); }
 }
 
 function gReminders(v) {
@@ -462,7 +463,7 @@ async function gSave(kind, item, fd) {
 // Ask in the row itself (no pop-up). Repeating items: this date or the whole series.
 function gAskDelete(li, ev) {
   gAsking = ev.id;
-  const done = () => { gAsking = null; renderCalendar(); renderEvents(); };
+  const done = () => { gAsking = null; renderCalendar(); };
   const del = async (id, what) => {
     li.replaceChildren(el('span', { class: 'grow muted small' }, 'Deleting ' + what + '...'));
     try {
@@ -471,7 +472,7 @@ function gAskDelete(li, ev) {
     } catch (e) { if (!gIsGone(e)) gStatus('Could not delete: ' + e.message); }
     gAsking = null;
     await gRefresh();
-    renderCalendar(); renderEvents();
+    renderCalendar();
   };
   const btns = ev.series
     ? [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'this date') }, 'Only this'),
