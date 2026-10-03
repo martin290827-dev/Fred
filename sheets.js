@@ -22,14 +22,14 @@ const SH_SETS = {
     show: () => { if (typeof tickerEditor === 'function') tickerEditor(); loadQuotes(); earn.t = 0; loadEarnings(); loadNews(true); },
   },
   food: {
-    tab: 'Food', cols: ['id', 'date', 'time', 'meal', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'reaction', 'symptoms'], key: 'id',
+    tab: 'Food', cols: ['id', 'date', 'time', 'meal', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'reaction', 'symptoms', 'sugar_g'], key: 'id',
     get: () => food.filter((e) => !e.busy && e.at).map((e) => ({
       id: e.id, date: e.at.slice(0, 10), time: e.at.slice(11, 16), meal: e.text, kcal: e.kcal, protein_g: e.p, carbs_g: e.c, fat_g: e.f,
-      source: e.src || '', reaction: e.bad ? TOL_LEVELS[e.bad.lvl] : '', symptoms: e.bad ? e.bad.sym.join('; ') : '',
+      source: e.src || '', reaction: e.bad ? TOL_LEVELS[e.bad.lvl] : '', symptoms: e.bad ? e.bad.sym.join('; ') : '', sugar_g: e.s == null ? '' : e.s,
     })),
     set: (rows) => {
       food = rows.map((r) => {
-        const e = { id: r.id, at: r.date + 'T' + r.time, text: r.meal, kcal: num(r.kcal), p: num(r.protein_g), c: num(r.carbs_g), f: num(r.fat_g) };
+        const e = { id: r.id, at: r.date + 'T' + r.time, text: r.meal, kcal: nn(r.kcal), p: nn(r.protein_g), c: nn(r.carbs_g), f: nn(r.fat_g), s: nn(r.sugar_g) }; // empty cell = not known (not 0)
         if (r.source) e.src = r.source;
         const lvl = TOL_LEVELS.indexOf(r.reaction);
         if (lvl > 0) e.bad = { lvl, sym: r.symptoms ? String(r.symptoms).split('; ') : [] };
@@ -123,6 +123,7 @@ const SH_RAW = { cycles: 'Whoop Zyklen', sleep: 'Whoop Schlaf', workouts: 'Whoop
 const SH_TABS = SH_KEYS.map((k) => SH_SETS[k].tab).concat(Object.values(SH_RAW));
 const shSetOf = (key) => SH_KEYS.find((k) => k === key || (SH_SETS[k].keys || []).includes(key));
 
+const nn = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const num = (v) => (v === '' || v === null || v === undefined ? 0 : Number(v));
 
 let shId = store.get('shId', null);       // id of the Sheet

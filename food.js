@@ -18,8 +18,8 @@ let nutri = store.get('nutri', { kcal: 2500, goalPct: 10, startKg: null, height:
 const AI_MODEL = 'claude-haiku-4-5-20251001';
 const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input is a short, often dictated description ' +
   '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
-  'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0}],' +
-  '"kcal":0,"protein":0,"carbs":0,"fat":0}. protein, carbs and fat in grams. Whole numbers. ' +
+  'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}],' +
+  '"kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}. protein, carbs, fat and sugar in grams; sugar is the total sugar content (part of carbs), including sugar in fruit and milk. Whole numbers. ' +
   'If the text is not about food or drink, reply with kcal 0 and an empty items list.';
 
 function saveFood() { store.set('food', food); foodMirrorSoon(); arcScan(); }
@@ -54,12 +54,12 @@ async function aiJSON(system, text, maxTokens, image) {
 async function aiEstimate(text) {
   const json = await aiJSON(AI_SYSTEM, text, 700);
   const n = (v) => Math.max(0, Math.round(Number(v) || 0));
-  return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat) };
+  return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat), s: n(json.sugar) };
 }
 
 async function estimateEntry(e) {
   const own = manualKcal(e.text);
-  if (own !== null) { Object.assign(e, { kcal: own, p: null, c: null, f: null, src: 'manual', err: null }); saveFood(); renderFood(); return; }
+  if (own !== null) { Object.assign(e, { kcal: own, p: null, c: null, f: null, s: null, src: 'manual', err: null }); saveFood(); renderFood(); return; }
   if (!anthropicKey) { Object.assign(e, { kcal: null, src: null, err: 'Add an Anthropic key in Settings, or say "... 500 kcal"' }); saveFood(); renderFood(); return; }
   e.busy = true;
   renderFood();
@@ -71,6 +71,29 @@ async function estimateEntry(e) {
   delete e.busy;
   saveFood();
   renderFood();
+}
+
+// Meals logged before sugar existed: ask once for their sugar, 25 meals per call. Own-calorie entries stay unknown.
+const SUGAR_SYSTEM = 'You estimate the total sugar content in grams for each meal of a personal food diary. Input lines: id | meal | kcal | carbs g. ' +
+  'Reply with JSON only: {"items":[{"id":"","sugar":0}]}. Whole numbers; sugar can not be more than the carbs.';
+let sugarBusy = false;
+async function backfillSugar() {
+  const todo = food.filter((e) => e.s == null && e.src === 'ai' && e.kcal != null && !e.busy);
+  if (!todo.length || !anthropicKey || sugarBusy) return;
+  sugarBusy = true;
+  try {
+    for (let i = 0; i < todo.length; i += 25) {
+      const part = todo.slice(i, i + 25);
+      const r = await aiJSON(SUGAR_SYSTEM, part.map((e) => e.id + ' | ' + e.text + ' | ' + e.kcal + ' | ' + (e.c ?? '?')).join('\n'), 1500);
+      for (const it of r.items || []) {
+        const e = part.find((x) => x.id === it.id);
+        if (e) e.s = Math.max(0, Math.min(Math.round(Number(it.sugar) || 0), e.c != null ? e.c : 9999));
+      }
+    }
+    saveFood();
+    renderFood();
+  } catch { /* try again next time Fred starts */ }
+  sugarBusy = false;
 }
 
 /* ---------- nutrition tips: once a day from your last 14 days (Claude, your own key) ---------- */
@@ -95,15 +118,15 @@ function tipsInput() {
   const lines = days.map((d) => {
     const t = dayTotals(d);
     const meals = food.filter((e) => e.at.slice(0, 10) === d).sort((a, b) => a.at.localeCompare(b.at))
-      .map((e) => e.at.slice(11, 16) + ' ' + e.text + (e.kcal != null ? ' (' + e.kcal + ' kcal' + (e.p != null ? ', P' + e.p + ' C' + e.c + ' F' + e.f : '') + ')' : ''));
-    return d + ': total ' + Math.round(t.kcal) + ' kcal, protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g\n  ' + meals.join('\n  ');
+      .map((e) => e.at.slice(11, 16) + ' ' + e.text + (e.kcal != null ? ' (' + e.kcal + ' kcal' + (e.p != null ? ', P' + e.p + ' C' + e.c + ' F' + e.f + (e.s != null ? ' sugar ' + e.s : '') : '') + ')' : ''));
+    return d + ': total ' + Math.round(t.kcal) + ' kcal, protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g' + (t.ms ? '' : ', sugar ' + Math.round(t.s) + ' g') + '\n  ' + meals.join('\n  ');
   });
   const kc = days.map((d) => dayTotals(d).kcal);
   const over = kc.filter((v) => v > tg.kcal).length;
   const avg = kc.length ? Math.round(kc.reduce((x, y) => x + y, 0) / kc.length) : 0;
   const week = 'Average ' + avg + ' kcal per logged day, ' + over + ' of ' + kc.length + ' days above the target.\n';
   return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
-    'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + '\n' +
+    'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + ', sugar at most ' + tg.s + ' g' + '\n' +
     week + 'Diary:\n' + lines.join('\n');
 }
 
@@ -144,12 +167,13 @@ function tipsBlock() {
 /* ---------- numbers ---------- */
 
 function dayTotals(d) {
-  const t = { kcal: 0, p: 0, c: 0, f: 0, n: 0, m: 0 };
+  const t = { kcal: 0, p: 0, c: 0, f: 0, s: 0, n: 0, m: 0, ms: 0 };
   for (const e of food) {
     if (e.at.slice(0, 10) !== d) continue;
     t.n++;
     if (e.p == null) t.m++; // no protein/carbs/fat known for this entry
-    t.kcal += e.kcal || 0; t.p += e.p || 0; t.c += e.c || 0; t.f += e.f || 0;
+    if (e.s == null && (e.kcal != null || e.src === 'manual')) t.ms++; // sugar unknown: meals from before sugar existed, or your own calories
+    t.kcal += e.kcal || 0; t.p += e.p || 0; t.c += e.c || 0; t.f += e.f || 0; t.s += e.s || 0;
   }
   return t;
 }
@@ -193,11 +217,12 @@ function goalInfo() {
 function targets() {
   const g = goalInfo();
   const kcal = nutri.kcal || 2500;
-  if (!g) return { kcal, p: null, f: null, c: null };
+  const s = round5((kcal * 0.1) / 4); // sugar: at most 10 % of the calories (WHO advice for free sugars)
+  if (!g) return { kcal, p: null, f: null, c: null, s };
   const p = round5(1.8 * g.goal);
   const f = Math.max(round5((kcal * 0.28) / 9), round5(0.8 * g.cur));
   const c = Math.max(0, round5((kcal - p * 4 - f * 9) / 4));
-  return { kcal, p, f, c };
+  return { kcal, p, f, c, s };
 }
 
 // Estimated from height, age, sex and activity (Settings).
@@ -252,8 +277,9 @@ function dataStatus() {
 
 /* In range = share of the target. Protein is a minimum (more is fine),
    calories, carbs and fat are upper limits with some room below. */
-const RANGES = { kcal: [0.9, 1.1], p: [0.9, 1.5], c: [0.7, 1.15], f: [0.75, 1.15] };
+const RANGES = { kcal: [0.9, 1.1], p: [0.9, 1.5], c: [0.7, 1.15], f: [0.75, 1.15], s: [0, 1] }; // sugar: only an upper limit
 const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g']];
+const NUTRI_WEEK = NUTRI.concat([['s', 'Sugar', 'g']]); // sugar has no ring, but it is part of the weekly check
 
 function macroStatus(key, val, target) {
   if (!target) return 'none';
@@ -337,7 +363,7 @@ function weekCheck() {
   const grid = el('div', { class: 'mgrid', role: 'table', 'aria-label': 'Last 7 days against targets' });
   grid.append(el('span', {}), ...days.map((d) => el('span', { class: 'mg-d' }, new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2))));
   const notes = [];
-  for (const [key, label, unit] of NUTRI) {
+  for (const [key, label, unit] of NUTRI_WEEK) {
     if (!tg[key]) continue;
     grid.append(el('span', { class: 'mg-l' }, label));
     const count = { low: 0, high: 0 };
@@ -346,12 +372,12 @@ function weekCheck() {
       let st = 'none', txt = '–';
       if (t.n) {
         const val = t[key];
-        st = key !== 'kcal' && t.m ? 'unk' : macroStatus(key, val, tg[key]);
+        st = key !== 'kcal' && (key === 's' ? t.ms : t.m) ? 'unk' : macroStatus(key, val, tg[key]);
         txt = key === 'kcal' ? (val / 1000).toFixed(1) + 'k' : fmtN(val);
         if (st === 'low' || st === 'high') count[st]++;
         if (st !== 'unk') vals.push(val);
       }
-      const why = { low: 'too low', high: 'too high', ok: 'in range', unk: 'some entries without protein/carbs/fat', none: 'nothing logged' }[st];
+      const why = { low: 'too low', high: 'too high', ok: 'in range', unk: 'some entries without protein/carbs/fat/sugar', none: 'nothing logged' }[st];
       grid.append(el('span', { class: 'mg-c ' + st, title: shortDay(days[i]) + ' · ' + label + ': ' + (t.n ? fmtN(t[key]) + ' ' + unit + ' of ' + fmtN(tg[key]) + ' · ' : '') + why }, txt + MARK[st]));
     });
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
@@ -481,10 +507,12 @@ const getKcal = (t) => (t.n ? t.kcal : null);
 const getProtein = (t) => (t.n && !t.m ? t.p : null);
 const getCarbs = (t) => (t.n && !t.m ? t.c : null);
 const getFat = (t) => (t.n && !t.m ? t.f : null);
+const getSugar = (t) => (t.n && !t.ms ? t.s : null);
 
 function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Calories', judge: true }); }
 function carbsChart(days, h) { return barChart(days, { get: getCarbs, target: targets().c, unit: 'g', h, cls: 'b-c', name: 'Carbs' }); }
 function fatChart(days, h) { return barChart(days, { get: getFat, target: targets().f, unit: 'g', h, cls: 'b-f', name: 'Fat' }); }
+function sugarChart(days, h) { return barChart(days, { get: getSugar, target: targets().s, unit: 'g', h, cls: 'b-s', name: 'Sugar' }); }
 function proteinChart(days, h) { return barChart(days, { get: getProtein, target: targets().p, unit: 'g', h, cls: 'b-p', name: 'Protein' }); }
 
 function weightChart(all, h) {
@@ -561,7 +589,7 @@ function renderFood() {
     ev.preventDefault();
     const text = input.value.trim();
     if (!text) return;
-    const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, src: null, err: null };
+    const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, s: null, src: null, err: null };
     food.push(e);
     saveFood();
     input.value = '';
@@ -580,7 +608,7 @@ function renderFood() {
   }));
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
   const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Settings to get protein, carb and fat targets.');
-  const head = el('div', { class: 'food-today' }, hero, macros);
+  const head = el('div', { class: 'food-today' }, hero, sugarLine(t, tg), macros);
 
   const ul = el('ul', { class: 'list food-list' });
   if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Nothing logged yet. Type or dictate what you ate.'));
@@ -601,7 +629,7 @@ function renderFood() {
   const daysN = lastDays(n);
   const seg = el('div', { class: 'seg', role: 'tablist', 'aria-label': 'Time range' }, ...[[7, 'W'], [30, 'M'], [90, '3M']].map(([v, l]) =>
     el('button', { type: 'button', role: 'tab', 'aria-selected': String(v === n), class: v === n ? 'on' : '', onclick: () => { trendRange = v; store.set('trendRange', v); renderFood(); } }, l)));
-  const avgK = avgOfDays(daysN, getKcal), avgP = avgOfDays(daysN, getProtein), avgC = avgOfDays(daysN, getCarbs), avgF = avgOfDays(daysN, getFat);
+  const avgK = avgOfDays(daysN, getKcal), avgP = avgOfDays(daysN, getProtein), avgC = avgOfDays(daysN, getCarbs), avgF = avgOfDays(daysN, getFat), avgS = avgOfDays(daysN, getSugar);
   const rangeTxt = n === 7 ? '7 days' : n === 30 ? '30 days' : '3 months';
   const wRange = weight.filter((p) => p.d >= daysN[0]).sort((a, b) => a.d.localeCompare(b.d));
   const wChange = wRange.length > 1 ? wRange[wRange.length - 1].kg - wRange[0].kg : null;
@@ -610,6 +638,7 @@ function renderFood() {
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
     tg.c !== null ? hcard('bars', 'teal', 'Carbs', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
     tg.f ? hcard('bars', 'gold', 'Fat', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
+    hcard('bars', 'sugar', 'Sugar', avgS ? 'Ø ' + fmtN(avgS) + ' g' : rangeTxt, sugarChart(daysN, 100)),
     hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
       el('div', { class: 'muted small food-stats w-cap' }, '')),
     n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
@@ -638,12 +667,22 @@ function renderFood() {
   if (typeof renderWeekly === 'function') renderWeekly();
 }
 
+// Today's sugar against the limit, one line under the rings.
+function sugarLine(t, tg) {
+  const h = macroHint('s', t.s, tg.s, 'g');
+  const note = t.ms && t.n ? '*' : ''; // * = some meals today have no sugar value (own calories), so the sum is a minimum
+  return el('div', { class: 'sugar-line', title: 'Limit: 10 % of your calories. Sugar is total sugar incl. fruit and milk.' + (note ? ' * Some meals have no sugar value.' : '') },
+    el('span', { class: 'sg-l' }, 'Sugar'),
+    el('span', { class: 'sg-v' }, fmtN(t.s), el('span', { class: 'lg-t' }, ' / ' + fmtN(tg.s) + ' g')),
+    el('span', { class: 'lg-h ' + h.cls }, h.hint + note));
+}
+
 // One line per meal: time, what, kcal. Protein/carbs/fat show on hover.
 function foodRow(e) {
   const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
     : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
       : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
-  const macro = e.p != null ? 'Protein ' + fmtN(e.p) + ' g · Carbs ' + fmtN(e.c) + ' g · Fat ' + fmtN(e.f) + ' g' : e.src === 'manual' ? 'Own value' : '';
+  const macro = e.p != null ? 'Protein ' + fmtN(e.p) + ' g · Carbs ' + fmtN(e.c) + ' g · Fat ' + fmtN(e.f) + ' g' + (e.s != null ? ' · Sugar ' + fmtN(e.s) + ' g' : '') : e.src === 'manual' ? 'Own value' : '';
   return el('li', { class: 'meal', title: macro },
     el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)),
     el('span', { class: 'grow meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
@@ -669,7 +708,7 @@ function foodEditRow(e) {
     e.text = newText;
     e.at = e.at.slice(0, 11) + (time.value || e.at.slice(11, 16));
     foodEditId = null;
-    if (kcalChanged && newKcal !== null) Object.assign(e, { kcal: newKcal, p: null, c: null, f: null, src: 'manual', err: null });
+    if (kcalChanged && newKcal !== null) Object.assign(e, { kcal: newKcal, p: null, c: null, f: null, s: null, src: 'manual', err: null });
     saveFood();
     if (newKcal === null && (textChanged || kcalChanged)) estimateEntry(e); // calories cleared or new text without own calories: estimate again
     else if (textChanged && !kcalChanged) estimateEntry(e);
@@ -738,6 +777,7 @@ async function foodMirror() {
 function initFood() {
   renderFood();
   setTimeout(() => loadTips(false), 1500); // once a day
+  setTimeout(backfillSugar, 4000); // meals from before sugar existed
   setInterval(() => { if (!document.hidden) loadTips(false); }, 30 * 60000);
   let rt = null; // new size of the window: draw again, so the charts fill the cards
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderFood, 250); });

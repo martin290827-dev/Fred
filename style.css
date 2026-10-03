@@ -468,9 +468,9 @@ button.danger { background: var(--down); color: #fff; }
 @media (max-width: 800px) { .food { grid-template-columns: 1fr; } }
 
 /* ---------- food: Apple Health style ---------- */
-.food { --c-kcal: #ff375f; --c-p: #7d7aff; --c-c: #1fa39c; --c-f: #b8860b; --panel: var(--bg); }
-:root[data-theme="light"] .food { --c-kcal: #ff2d55; --c-p: #5e5ce6; --c-c: #0f9189; --c-f: #b07d00; }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .food { --c-kcal: #ff2d55; --c-p: #5e5ce6; --c-c: #0f9189; --c-f: #b07d00; } }
+.food { --c-s: #ff9f0a; --c-kcal: #ff375f; --c-p: #7d7aff; --c-c: #1fa39c; --c-f: #b8860b; --panel: var(--bg); }
+:root[data-theme="light"] .food { --c-s: #e08600; --c-kcal: #ff2d55; --c-p: #5e5ce6; --c-c: #0f9189; --c-f: #b07d00; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .food { --c-s: #e08600; --c-kcal: #ff2d55; --c-p: #5e5ce6; --c-c: #0f9189; --c-f: #b07d00; } }
 .food-col { display: flex; flex-direction: column; gap: 12px; }
 .food-add { margin: 0; }
 .food-add input { border-radius: 12px; }
@@ -961,6 +961,12 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .fh-teal { color: var(--c-c); } .fh-gold { color: var(--c-f); }
 .food .fchart.b-c .bar rect:not(.hit) { fill: var(--c-c); }
 .food .fchart.b-f .bar rect:not(.hit) { fill: var(--c-f); }
+.food .fchart.b-s .bar rect:not(.hit) { fill: var(--c-s); }
+.fh-sugar { color: var(--c-s); }
+/* today's sugar: one line under the rings */
+.sugar-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: nowrap; white-space: nowrap; padding: 8px 4px 0; border-top: 1px solid var(--line, rgba(128,128,128,.2)); margin-top: 6px; }
+.sg-l { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; color: var(--c-s); }
+.sg-v { font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--c-s); font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
 
 /* chart tooltip */
 .ctip { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; max-width: 260px; padding: 6px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; line-height: 1.3; color: #fff; background: rgba(28, 28, 30, 0.92); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
