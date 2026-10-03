@@ -109,12 +109,15 @@ const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one
   'and say how often it appeared and roughly what it costs per week on average. Name the real foods and drinks from the diary and give a ' +
   'practical replacement that fits his habits. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
   '(protein, vegetables, fibre), then a swap or addition. Say what is good, too. Never invent problems; if little needs changing, ' +
-  'give fewer tips (3 to 5). Friendly and direct, no moralizing, no medical advice. ' +
+  'give fewer tips (3 to 5). The diary leaves out his weekly cheat day on purpose; never mention it. Friendly and direct, no moralizing, no medical advice. ' +
   'Reply with JSON only: {"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}]}';
+
+// The cheat day (a weekday from Settings) is left out of the tips.
+function isCheatDay(d) { return nutri.cheat != null && new Date(d + 'T12:00:00').getDay() === nutri.cheat; }
 
 function tipsInput() {
   const tg = targets();
-  const days = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n);
+  const days = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n && !isCheatDay(d));
   const lines = days.map((d) => {
     const t = dayTotals(d);
     const meals = food.filter((e) => e.at.slice(0, 10) === d).sort((a, b) => a.at.localeCompare(b.at))
@@ -153,7 +156,7 @@ const TIP_KINDS = { cut: 'Cut', swap: 'Swap', add: 'Add', good: 'Good' };
 
 function tipsBlock() {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
-  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n).length;
+  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n && !isCheatDay(d)).length;
   if (!tips.list.length) {
     return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : '');
   }
@@ -439,6 +442,7 @@ function nutriFillSettings() {
   $('set-birth').value = nutri.birthYear || '';
   $('set-sex').value = nutri.sex || '';
   $('set-activity').value = String(nutri.activity || 1.45);
+  $('set-cheat').value = nutri.cheat == null ? '' : String(nutri.cheat);
 }
 
 function nutriSaveSettings() {
@@ -454,7 +458,12 @@ function nutriSaveSettings() {
     kcal: Math.round(num('set-kcal') || 2500), goalPct: num('set-goalpct') || 10, startKg: num('set-startkg'),
     height: num('set-height'), birthYear: num('set-birth'), sex: $('set-sex').value, activity: parseFloat($('set-activity').value) || 1.45,
   };
-  if (JSON.stringify(next) !== JSON.stringify(nutri)) { nutri = next; store.set('nutri', nutri); renderFood(); }
+  if ($('set-cheat').value !== '') next.cheat = parseInt($('set-cheat').value, 10); // weekday 0 = Sunday
+  if (JSON.stringify(next) !== JSON.stringify(nutri)) {
+    const cheatChanged = next.cheat !== nutri.cheat;
+    nutri = next; store.set('nutri', nutri); renderFood();
+    if (cheatChanged) { tips.day = ''; loadTips(false); } // new tips without the cheat day
+  }
 }
 
 /* ---------- charts (plain SVG, one series each, hover shows the value) ---------- */
