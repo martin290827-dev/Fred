@@ -155,14 +155,12 @@ function renderCalendar() {
     btn.hidden = true;
     $('cal-add').hidden = true;
     $('cal-scan').hidden = true;
-    $('ev-add').hidden = true;
     ul.append(el('li', { class: 'muted empty' }, 'Add your Google Client ID in Settings to see your calendar.'));
     return;
   }
   btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
   $('cal-add').hidden = !gHasToken();
   $('cal-scan').hidden = !gHasToken();
-  $('ev-add').hidden = !gHasToken();
   if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
   else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
   if (!gHasToken()) {
@@ -264,8 +262,10 @@ function gcalInit() {
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
   setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
-  $('cal-add').addEventListener('click', () => gOpenEditor('task', null));
-  $('ev-add').addEventListener('click', () => gOpenEditor('event', null));
+  $('cal-add').addEventListener('click', () => gOpenEditor(calTab === 'events' ? 'event' : 'task', null)); // the + creates what the open tab shows
+  $('seg-tasks').addEventListener('click', () => calTabSet('tasks'));
+  $('seg-events').addEventListener('click', () => calTabSet('events'));
+  calTabSet(calTab);
   $('cal-scan').addEventListener('click', () => $('cal-photo').click());
   $('cal-photo').addEventListener('change', (e) => { const file = e.target.files[0]; e.target.value = ''; if (file) gScanPhoto(file); });
 }
@@ -327,10 +327,29 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const hhmm = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
 const myZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+// One card, two lists: 'tasks' (timed items) or 'events' (all-day items, birthdays, earnings). The choice is kept on this device.
+let calTab = store.get('calTab', 'tasks');
+function calTabSet(tab) {
+  calTab = tab;
+  store.set('calTab', tab);
+  $('seg-tasks').classList.toggle('on', tab === 'tasks');
+  $('seg-events').classList.toggle('on', tab === 'events');
+  $('cal-list').hidden = tab !== 'tasks';
+  $('events').hidden = tab !== 'events';
+  gCloseEditor(false);
+  gEditing = null;
+}
+
 function gOpenEditor(kind, item, pre) {
   gCloseEditor(false);
   gEditing = { kind, item };
-  const box = $(kind === 'event' || (kind === 'titleonly' && item && (item.allDay || item.multi)) ? 'ev-edit' : 'cal-edit');
+  const isEvent = kind === 'event' || (kind === 'titleonly' && item && (item.allDay || item.multi));
+  if ((calTab === 'events') !== !!isEvent) { // show the list the item belongs to
+    calTab = isEvent ? 'events' : 'tasks';
+    $('seg-tasks').classList.toggle('on', !isEvent); $('seg-events').classList.toggle('on', !!isEvent);
+    $('cal-list').hidden = !!isEvent; $('events').hidden = !isEvent;
+  }
+  const box = $(isEvent ? 'ev-edit' : 'cal-edit');
   const f = el('form', { class: 'gform', autocomplete: 'off' });
   const title = el('input', { type: 'text', name: 'title', placeholder: kind === 'event' ? 'Event' : 'Task or appointment', required: '', maxlength: '120', 'aria-label': 'Title' });
   title.value = item ? item.title : '';

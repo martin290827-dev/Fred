@@ -335,7 +335,8 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 /* ---------- add / edit form for Google items ---------- */
 .hacts { display: inline-flex; align-items: center; gap: 6px; }
 .hacts [hidden] { display: none; }
-#cal-edit[hidden], #ev-edit[hidden] { display: none; }
+#cal-edit[hidden], #ev-edit[hidden], #cal-list[hidden], #events[hidden] { display: none; }
+.cal-seg { width: 100%; margin-bottom: 8px; }
 .gform { display: grid; gap: 8px; background: var(--card-2); border-radius: 14px; padding: 10px; margin-bottom: 10px; }
 .gform input, .gform select { background: var(--card); }
 .gform .grow-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -728,7 +729,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .grid { gap: 14px; padding: 16px 16px 32px; }
   .card { max-height: none; border-radius: 20px; padding: 16px 18px; }
   .cardbody > ul.list { min-height: 0; }
-  #card-weather, #card-cal, #card-events { max-height: none; } /* one common height, set in app.js */
+  #card-weather, #card-cal { max-height: none; } /* one common height, set in app.js */
   .card-wide { max-height: none; }
   #banners { top: 96px; padding: 0 16px; }
 }
