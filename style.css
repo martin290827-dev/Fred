@@ -485,7 +485,7 @@ button.danger { background: var(--down); color: #fff; }
 .ring-track { fill: none; stroke: currentColor; opacity: 0.2; }
 .ring-arc { fill: none; stroke: currentColor; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
 .ring-lap { filter: brightness(0.7) drop-shadow(0 0 2px rgba(0, 0, 0, 0.45)); }
-.r-kcal { color: var(--c-kcal); } .r-p { color: var(--c-p); } .r-c { color: var(--c-c); } .r-f { color: var(--c-f); }
+.r-kcal { color: var(--c-kcal); } .r-p { color: var(--c-p); } .r-c { color: var(--c-c); } .r-f { color: var(--c-f); } .r-s { color: var(--c-s); }
 .ring-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.05; }
 .ring-num { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif; }
@@ -796,9 +796,12 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .srings { display: block; width: 100%; height: 100%; }
 .srings .ring-track { opacity: 0.18; }
 .srings .ring-lap { filter: brightness(0.72) drop-shadow(0 0 2px rgba(0, 0, 0, 0.5)); }
-.lgd { display: grid; gap: 7px; min-width: 0; flex: 1; }
+.lgd { display: grid; gap: 5px; min-width: 0; flex: 1; }
+.lgd .lg { min-width: 0; }
+.lg-top { flex-wrap: wrap; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.lg-top .lg-h { text-align: right; }
 .lg-l { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; }
-.lg-v { font-size: 1.28rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lg-v { font-size: 1.15rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lg-t { font-weight: 600; }
 .lg-u { font-size: 0.68rem; font-weight: 700; margin-left: 2px; letter-spacing: 0.03em; }
 .lg-h { font-size: 0.74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -809,6 +812,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .lg-p .lg-l, .lg-p .lg-v { color: var(--c-p); }
 .lg-c .lg-l, .lg-c .lg-v { color: var(--c-c); }
 .lg-f .lg-l, .lg-f .lg-v { color: var(--c-f); }
+.lg-s .lg-l, .lg-s .lg-v { color: var(--c-s); }
 .fsum-foot { margin: 8px 2px 0; }
 .fsum-foot:empty { display: none; }
 /* section cards with a colored icon and title, like Apple Health */
@@ -963,10 +967,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .food .fchart.b-f .bar rect:not(.hit) { fill: var(--c-f); }
 .food .fchart.b-s .bar rect:not(.hit) { fill: var(--c-s); }
 .fh-sugar { color: var(--c-s); }
-/* today's sugar: one line under the rings */
-.sugar-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: nowrap; white-space: nowrap; padding: 8px 4px 0; border-top: 1px solid var(--line, rgba(128,128,128,.2)); margin-top: 6px; }
-.sg-l { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; color: var(--c-s); }
-.sg-v { font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--c-s); font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
 
 /* chart tooltip */
 .ctip { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; max-width: 260px; padding: 6px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; line-height: 1.3; color: #fff; background: rgba(28, 28, 30, 0.92); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
