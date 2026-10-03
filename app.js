@@ -1055,7 +1055,7 @@ function matchWeatherHeight() {
   requestAnimationFrame(() => {
     const phone = window.matchMedia('(max-width: 699px)').matches;
     const h = $('card-weather').offsetHeight;
-    for (const id of ['card-cal', 'card-events']) $(id).style.height = ''; // every card has the same height (--card-h)
+    $('card-cal').style.height = ''; // every card has the same height (--card-h)
   });
 }
 
@@ -1681,7 +1681,6 @@ const CARD_ICONS = {
   'card-cal': ['#007aff', 'M9 6h11M9 12h11M9 18h11M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17'],
   'card-weather': ['#32ade6', 'M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.1 3.5 3.5 0 0 0 7 18z'],
   'card-tickers': ['#34c759', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
-  'card-events': ['#af52de', 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4'],
   'card-clock': ['#5856d6', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'],
   'card-shop': ['#ff2d55', 'M3 4h2l2.5 11h11L21 7H6.2M9 20h.01M18 20h.01'],
   'card-timer': ['#ff9500', 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4'],
