@@ -1553,6 +1553,7 @@ function renderJumpbar(visible) {
     return el('button', { type: 'button', title, 'aria-label': 'Go to ' + title, onclick: () => jumpTo(c) },
       cardIcon(id) || '', el('span', { class: 'jl' }, shortTitle(title)));
   }));
+  bar.style.setProperty('--jb-cols', Math.max(1, Math.ceil(visible.length / 2))); // phone: two rows
   document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px');
 }
 
