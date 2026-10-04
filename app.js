@@ -1030,6 +1030,14 @@ function dateLeaf(dateStr) {
 }
 
 // Show at most n rows; the rest scrolls inside the list.
+// Repeat fn every ms, but only while the tab is visible; coming back after a longer pause refreshes at once.
+function poll(fn, ms) {
+  let last = Date.now();
+  const run = () => { last = Date.now(); fn(); };
+  setInterval(() => { if (!document.hidden) run(); }, ms);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - last > ms) run(); });
+}
+
 function fitRows(ul, n) {
   requestAnimationFrame(() => {
     const rows = [...ul.children];
@@ -1849,17 +1857,17 @@ function init() {
   setInterval(() => { tickClocks(); tickTimer(); updateTimerAlt(); }, 250);
   setInterval(() => { if (sw.start) tickStopwatch(); }, 100);
   setInterval(tickEvents, 30000);
-  setInterval(loadQuotes, 60000);
-  setInterval(loadWeather, 15 * 60000);
-  setInterval(loadFx, 60 * 60000);
+  poll(loadQuotes, 60000);
+  poll(loadWeather, 15 * 60000);
+  poll(loadFx, 60 * 60000);
 
   loadWeather();
   loadQuotes();
   loadFx();
   loadEarnings();
-  setInterval(loadEarnings, 6 * 3600000);
+  poll(loadEarnings, 6 * 3600000);
   loadNews();
-  setInterval(loadNews, NEWS_TTL);
+  poll(loadNews, NEWS_TTL);
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
