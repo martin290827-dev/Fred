@@ -455,6 +455,7 @@ button.danger { background: var(--down); color: #fff; }
 .nutri-grid label { margin: 8px 0; }
 .nutri-grid .wide { grid-column: 1 / -1; }
 .nutri-grid select, .nutri-grid input { width: 100%; }
+.nutri-grid input[type="checkbox"] { width: 20px; }
 .fchart .grid { stroke: var(--line); stroke-width: 1; }
 .fchart .ax { fill: var(--muted); font-size: 16px; } /* viewBox units: about 11 px on screen */
 .fchart .bar rect:not(.hit) { fill: var(--accent); opacity: 0.55; }
