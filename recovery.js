@@ -402,7 +402,7 @@ function renderRecovery() {
 
 // Fade the bottom edge of the health cards while more content sits below.
 function rcWatchScroll() {
-  for (const id of ['card-food', 'card-health', 'card-trends', 'card-recovery', 'card-sleep', 'card-habits']) {
+  for (const id of ['card-food', 'card-health', 'card-tips', 'card-trends', 'card-recovery', 'card-sleep', 'card-habits']) {
     const b = document.querySelector('#' + id + ' .cardbody');
     if (!b) continue;
     const upd = () => b.classList.toggle('more', b.scrollHeight - b.scrollTop - b.clientHeight > 4);

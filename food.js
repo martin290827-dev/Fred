@@ -165,7 +165,7 @@ async function loadTips(force) {
 
 const TIP_KINDS = { cut: 'Cut', swap: 'Swap', add: 'Add', good: 'Good' };
 
-function tipsBlock() {
+function tipsBlock(all) {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
   const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n && !isCheatDay(d)).length;
   if (!tips.list.length) {
@@ -174,7 +174,7 @@ function tipsBlock() {
   const ul = el('ul', { class: 'tips' }, ...tips.list.map((t, i) => el('li', { class: 'tip' },
     el('span', { class: 'tip-k k-' + (t.kind || 'none'), title: t.kind ? TIP_KINDS[t.kind] : '' }, t.kind ? TIP_KINDS[t.kind] : String(i + 1)),
     el('span', { class: 'tip-b' }, t.title ? el('span', { class: 'tip-t' }, t.title) : '', el('span', { class: 'tip-x' }, t.text)))));
-  fitRows(ul, 2); // two tips; the rest scrolls
+  if (!all) fitRows(ul, 2); // two tips; the rest scrolls
   return ul;
 }
 
@@ -693,11 +693,8 @@ function renderFood() {
   const wsvg = wcard.querySelector('svg.fchart');
   const wcap = wcard.querySelector('.w-cap');
   if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
-  const refresh = el('button', { type: 'button', class: 'tip-refresh', title: 'New tips', 'aria-label': 'New tips', onclick: () => loadTips(true) }, tipsBusy ? '\u2026' : '\u21bb');
-  const tipsCard = hcard('bulb', 'yellow', 'Tips', '', tipsBlock());
-  tipsCard.querySelector('.fh').append(refresh);
   goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
-  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard, tolCard()));
+  $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tolCard()));
   const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat day') : '';
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, cheatKey, ...trendCards));
   fitRows(ul, 1); // the last meal; the rest scrolls
@@ -708,6 +705,7 @@ function renderFood() {
   if (typing !== null) { input.value = typing; input.focus(); }
   $('food-status').textContent = foodMirrorMsg;
   if (typeof renderWeekly === 'function') renderWeekly();
+  if (typeof renderTips === 'function') renderTips();
 }
 
 // One line per meal: time, what, kcal. Protein/carbs/fat show on hover.
