@@ -22,3 +22,11 @@ Hinweise:
 - Fred liest und schreibt nur deine Termine: "Tasks & Reminders" zeigt Termine mit Uhrzeit (30 Tage), "Events" ganztägige und mehrtägige Termine (ein Jahr). Mit **+**, Stift und Mülleimer legst du Termine direkt in Google an, änderst oder löschst sie.
 - Abgleich zwischen Geräten: Fred speichert Einstellungen, Notizen und Einkaufsliste in einer versteckten Datei in deinem Google Drive (Ordner "App-Daten", nur für Fred sichtbar). Auf einem neuen Gerät nur die Client-ID eintragen und Connect drücken.
 - Food: Fred schreibt dein Essensprotokoll und dein Gewicht in zwei Google Sheets in deinem Drive ("Fred Food Log", "Fred Weight Log"). Mit `drive.file` sieht Fred nur Dateien, die Fred selbst angelegt hat. Kalorien schätzt Claude über deinen eigenen Anthropic-Key (Settings); die Texte gehen dafür an Anthropic.
+
+## Sicherheit (kurz)
+
+- Fred hat kein Backend. Alle Schlüssel (Anthropic, Finnhub, Twelve Data, Google Client-ID) liegen im Browser (localStorage) und, wenn Sync an ist, in einer versteckten Datei in deinem eigenen Google Drive. Wer Skripte auf der Seite ausführen oder deinen Browser lesen kann, kommt an sie heran.
+- Gegenmittel: eine Content-Security-Policy in `index.html` (nur eigene Skripte plus das Google-Anmeldeskript, nur die genannten API-Hosts, keine Inline-Skripte), kein `innerHTML` mit fremden Daten, kein Fremdcode außer dem Google-Anmeldeskript.
+- Anthropic-Schlüssel: in der Anthropic Console ein eigenes Ausgabenlimit für diesen Schlüssel setzen. Dann ist der Schaden bei Verlust begrenzt.
+- Das Google-Zugriffstoken lebt nur im Arbeitsspeicher der Seite, eine Stunde lang.
+- Neue API-Hosts müssen in der CSP (`connect-src`) ergänzt werden, sonst blockiert der Browser sie.

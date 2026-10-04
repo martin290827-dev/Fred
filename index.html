@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://www.googleapis.com https://sheets.googleapis.com https://api.anthropic.com https://finnhub.io https://api.twelvedata.com https://data-api.binance.vision https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.frankfurter.dev https://api.bigdatacloud.net; frame-src https://accounts.google.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <title>Fred</title>
@@ -11,11 +12,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Fred">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script>
-    /* set the saved day/night choice before the first paint, so there is no flash */
-    try { var t = JSON.parse(localStorage.getItem('fred.theme')); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-  </script>
-  <link rel="stylesheet" href="style.css?v=153">
+  <script src="theme.js?v=154"></script>
+  <link rel="stylesheet" href="style.css?v=154">
 </head>
 <body>
   <header>
@@ -207,12 +205,12 @@
       <span class="muted small" id="set-place-status"></span>
 
       <label>Finnhub API key (stock prices)
-        <input id="set-key" type="password" autocomplete="off" placeholder="Stored only in this browser">
+        <input id="set-key" type="password" autocomplete="off" placeholder="Stored in this browser and your Google Drive sync">
         <span class="muted small">Free key at finnhub.io. Never put it in the code or the repo.</span>
       </label>
 
       <label>Twelve Data API key (optional, for stock charts)
-        <input id="set-twelve" type="password" autocomplete="off" placeholder="Stored only in this browser">
+        <input id="set-twelve" type="password" autocomplete="off" placeholder="Stored in this browser and your Google Drive sync">
         <span class="muted small">Free key at twelvedata.com. Without it, only crypto shows a chart.</span>
       </label>
 
@@ -271,15 +269,15 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=153"></script>
-  <script src="gcal.js?v=153"></script>
-  <script src="sync.js?v=153"></script>
-  <script src="food.js?v=153"></script>
-  <script src="tips.js?v=153"></script>
-  <script src="archive.js?v=153"></script>
-  <script src="recovery.js?v=153"></script>
-  <script src="poker.js?v=153"></script>
-  <script src="weekly.js?v=153"></script>
-  <script src="sheets.js?v=153"></script>
+  <script src="app.js?v=154"></script>
+  <script src="gcal.js?v=154"></script>
+  <script src="sync.js?v=154"></script>
+  <script src="food.js?v=154"></script>
+  <script src="tips.js?v=154"></script>
+  <script src="archive.js?v=154"></script>
+  <script src="recovery.js?v=154"></script>
+  <script src="poker.js?v=154"></script>
+  <script src="weekly.js?v=154"></script>
+  <script src="sheets.js?v=154"></script>
 </body>
 </html>
