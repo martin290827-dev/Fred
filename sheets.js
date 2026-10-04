@@ -74,7 +74,23 @@ const SH_SETS = {
     save: () => store.set('whoop', whoop),
     show: () => { if (typeof renderRecovery === 'function') renderRecovery(); if (typeof renderWeekly === 'function') renderWeekly(); },
   },
-  // one row per setting, the value is JSON text: goals, tips, tolerance, weekly texts, places, default currencies, clocks,
+  // the written weekly summaries, one readable row per week
+  review: {
+    tab: 'Weekly Review', cols: ['week_start', 'week_end', 'summary', 'went_well', 'next_week'], key: 'week_start',
+    get: () => Object.entries(weeklyAi).filter(([, v]) => v && v.summary).map(([d, v]) => ({
+      week_start: d, week_end: toDateStr(addDays(new Date(d + 'T00:00'), 6)), summary: v.summary, went_well: (v.wins || []).join('\n'), next_week: (v.focus || []).join('\n'),
+    })),
+    set: (rows) => {
+      weeklyAi = Object.fromEntries(rows.map((r) => [String(r.week_start), {
+        summary: String(r.summary || ''), wins: String(r.went_well || '').split('\n').filter(Boolean), focus: String(r.next_week || '').split('\n').filter(Boolean), err: '',
+      }]));
+    },
+    order: (a, b) => String(a.week_start).localeCompare(String(b.week_start)),
+    save: () => store.set('weekly', weeklyAi),
+    show: () => renderWeekly(),
+    keys: ['weekly'],
+  },
+  // one row per setting, the value is JSON text: goals, tips, tolerance, places, default currencies, clocks,
   // and the card layout (one row per kind of device, so Mac and iPhone can differ)
   settings: {
     tab: 'Einstellungen', cols: ['name', 'json'], key: 'name',
@@ -94,13 +110,13 @@ const SH_SETS = {
     save: () => { for (const v of Object.values(SH_VALUES)) store.set(v.key, v.get()); },
     show: () => {
       const has = (n) => shChanged.includes(n);
-      if (has('nutri') || has('tips') || has('tolerance') || has('weekly')) { renderFood(); if (typeof renderWeekly === 'function') renderWeekly(); }
+      if (has('nutri') || has('tips') || has('tolerance')) { renderFood(); if (typeof renderWeekly === 'function') renderWeekly(); }
       if (has('place') || has('place2')) { loadWeather(); if (typeof wxEditor === 'function') wxEditor(); }
       if (has('zones')) { renderClocks(); if (typeof tzEditor === 'function') tzEditor(); }
       if (has('fxDefault')) { $('fx-from').value = fxDefault.from; $('fx-to').value = fxDefault.to; convert(); }
       if (has(SH_LAYOUT)) applyLayout();
     },
-    keys: ['nutri', 'tips', 'tolerance', 'weekly', 'place', 'place2', 'fxDefault', 'zones', 'layout'], // local storage keys that belong to this set
+    keys: ['nutri', 'tips', 'tolerance', 'place', 'place2', 'fxDefault', 'zones', 'layout'], // local storage keys that belong to this set
   },
 };
 // The settings rows. The layout row is named after the kind of device: touch screen = phone, otherwise desktop.
@@ -110,7 +126,6 @@ const SH_VALUES = {
   nutri: { key: 'nutri', get: () => nutri, put: (v) => { nutri = v; } },
   tips: { key: 'tips', get: () => tips, put: (v) => { tips = v; } },
   tolerance: { key: 'tolerance', get: () => tol, put: (v) => { tol = v; } },
-  weekly: { key: 'weekly', get: () => weeklyAi, put: (v) => { weeklyAi = v; } },
   place: { key: 'place', get: () => place, put: (v) => { place = v; } },
   place2: { key: 'place2', get: () => place2, put: (v) => { place2 = v; } },
   fxDefault: { key: 'fxDefault', get: () => fxDefault, put: (v) => { fxDefault = v; } },
