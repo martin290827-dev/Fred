@@ -116,11 +116,10 @@ const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one
 function isCheatDay(d) { return !!nutri.cheatOn && (nutri.cheatDays || []).includes(d); }
 function mondayOf(d) { const x = new Date(d + 'T12:00:00'); return toDateStr(addDays(x, -((x.getDay() + 6) % 7))); }
 function cheatOfWeek(d) { return (nutri.cheatDays || []).find((x) => mondayOf(x) === mondayOf(d)) || ''; }
-function toggleCheat(d) {
-  const old = cheatOfWeek(d);
-  if (old && old !== d) return; // only one cheat day per week
-  const keep = (nutri.cheatDays || []).filter((x) => x !== old && x >= toDateStr(addDays(new Date(), -120)));
-  nutri = Object.assign({}, nutri, { cheatDays: old === d ? keep : keep.concat(d) }); // same day again = unmark, else replace this week's day
+function setCheat(d, on) {
+  if (on && cheatOfWeek(d)) return; // only one cheat day per week
+  const keep = (nutri.cheatDays || []).filter((x) => x !== d && x >= toDateStr(addDays(new Date(), -120)));
+  nutri = Object.assign({}, nutri, { cheatDays: on ? keep.concat(d) : keep });
   store.set('nutri', nutri);
   tips.day = '';
   renderFood();
@@ -599,13 +598,21 @@ function growChart(box, draw) {
 
 /* ---------- card ---------- */
 
-// Cheat day button: only when switched on in Settings.
+// Cheat days in Food: only when switched on in Settings. Any of the last 7 days can be marked (also afterwards), one per week.
 function cheatRow(today) {
   if (!nutri.cheatOn) return '';
-  const wk = cheatOfWeek(today), isToday = wk === today;
-  const note = isToday ? 'Today is your cheat day. It is left out of the tips.' : wk ? 'Cheat day this week: ' + shortDay(wk) + '. One per week.' : 'No cheat day this week yet.';
-  return el('div', { class: 'cheat-row' }, el('span', { class: 'muted small' }, note),
-    wk && !isToday ? '' : el('button', { type: 'button', class: 'ghost cheat-btn' + (isToday ? ' on' : ''), onclick: () => toggleCheat(today) }, isToday ? 'Undo' : 'Today is my cheat day'));
+  const days = lastDays(7).reverse();
+  const name = (d) => (d === today ? 'Today' : new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }));
+  const rows = days.filter(isCheatDay).map((d) => el('div', { class: 'cheat-row' },
+    el('span', { class: 'muted small' }, 'Cheat day: ' + name(d) + '. Left out of the tips.'),
+    el('button', { type: 'button', class: 'ghost cheat-btn on', onclick: () => setCheat(d, false) }, 'Undo')));
+  const free = days.filter((d) => !cheatOfWeek(d));
+  if (free.length) {
+    const pick = el('select', { class: 'cheat-pick', 'aria-label': 'Day' }, ...free.map((d) => el('option', { value: d }, name(d))));
+    rows.push(el('div', { class: 'cheat-row' }, pick,
+      el('button', { type: 'button', class: 'ghost cheat-btn', onclick: () => setCheat(pick.value, true) }, 'Mark as cheat day')));
+  } else rows.push(el('p', { class: 'muted small cheat-one' }, 'One cheat day per week.'));
+  return el('div', { class: 'cheat-box' }, ...rows);
 }
 
 function renderFood() {
