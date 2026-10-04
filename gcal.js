@@ -371,6 +371,16 @@ function gOpenEditor(kind, item, pre) {
     const to = el('input', { type: 'time', name: 'to', 'aria-label': 'Until' }); to.value = hhmm(end);
     const rem = el('select', { name: 'rem', 'aria-label': 'Reminder' });
     for (const [v, t] of (item ? [['keep', 'Reminder: keep']] : []).concat([['default', 'Reminder: calendar default'], ['0', 'Reminder: at start'], ['10', 'Reminder: 10 min before'], ['60', 'Reminder: 1 hour before'], ['none', 'No reminder']])) rem.append(el('option', { value: v }, t));
+    // Changing the start moves the end with it: a new entry always lasts 60 minutes, an existing one keeps its length. Once you set the end yourself it stays.
+    const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const clock = (n) => { n = ((n % 1440) + 1440) % 1440; return String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0'); };
+    let endTouched = false, prevFrom = from.value;
+    to.addEventListener('input', () => { endTouched = true; });
+    from.addEventListener('input', () => {
+      if (!from.value) return;
+      if (!endTouched) to.value = clock(mins(from.value) + (item && to.value && prevFrom ? mins(to.value) - mins(prevFrom) : 60));
+      prevFrom = from.value;
+    });
     f.append(date, el('div', { class: 'time-row' }, from, el('span', { class: 'muted' }, '–'), to), rem);
   } else if (kind === 'event') {
     const first = item ? item.start : now;
