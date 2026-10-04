@@ -1191,3 +1191,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .cheat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .cheat-btn { font-size: 0.8rem; padding: 4px 12px; }
 .cheat-btn.on { color: var(--c-s); border-color: var(--c-s); }
+.fchart .cheat-mark { fill: var(--text); stroke: var(--card); stroke-width: 1.5; }
+.food .fchart .bar.cheat rect:not(.hit) { opacity: 1; }
+.cheat-key { margin: 0; text-align: right; }
+.cheat-dia { color: var(--text); }

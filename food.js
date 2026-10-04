@@ -118,6 +118,7 @@ function mondayOf(d) { const x = new Date(d + 'T12:00:00'); return toDateStr(add
 function cheatOfWeek(d) { return (nutri.cheatDays || []).find((x) => mondayOf(x) === mondayOf(d)) || ''; }
 function toggleCheat(d) {
   const old = cheatOfWeek(d);
+  if (old && old !== d) return; // only one cheat day per week
   const keep = (nutri.cheatDays || []).filter((x) => x !== old && x >= toDateStr(addDays(new Date(), -120)));
   nutri = Object.assign({}, nutri, { cheatDays: old === d ? keep : keep.concat(d) }); // same day again = unmark, else replace this week's day
   store.set('nutri', nutri);
@@ -507,10 +508,15 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
     const w = Math.max(1.5, bw - (days.length > 40 ? 1.5 : 3));
     const x = L + i * bw + (bw - w) / 2;
     const over = judge && target && v > target; // judge: red above the target, green up to it
-    const g = svgEl('g', { class: 'bar' + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data')));
+    const cheat = isCheatDay(d);
+    const g = svgEl('g', { class: 'bar' + (cheat ? ' cheat' : '') + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') });
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data') + (cheat ? ' \u00b7 cheat day' : '')));
     g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
     if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
+    if (cheat && v) { // small diamond above the bar
+      const cx = x + w / 2, cy = Math.max(T + 8, y(v) - 10), r = days.length > 40 ? 5 : 8;
+      g.append(svgEl('polygon', { points: [cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy].join(' '), class: 'cheat-mark' }));
+    }
     svg.append(g);
     const last = i === days.length - 1;
     if ((days.length - 1 - i) % every === 0) {
@@ -597,9 +603,9 @@ function growChart(box, draw) {
 function cheatRow(today) {
   if (!nutri.cheatOn) return '';
   const wk = cheatOfWeek(today), isToday = wk === today;
-  const note = isToday ? 'Today is your cheat day. It is left out of the tips.' : wk ? 'This week: ' + shortDay(wk) : 'No cheat day this week yet.';
+  const note = isToday ? 'Today is your cheat day. It is left out of the tips.' : wk ? 'Cheat day this week: ' + shortDay(wk) + '. One per week.' : 'No cheat day this week yet.';
   return el('div', { class: 'cheat-row' }, el('span', { class: 'muted small' }, note),
-    el('button', { type: 'button', class: 'ghost cheat-btn' + (isToday ? ' on' : ''), onclick: () => toggleCheat(today) }, isToday ? 'Undo' : wk ? 'Move to today' : 'Today is my cheat day'));
+    wk && !isToday ? '' : el('button', { type: 'button', class: 'ghost cheat-btn' + (isToday ? ' on' : ''), onclick: () => toggleCheat(today) }, isToday ? 'Undo' : 'Today is my cheat day'));
 }
 
 function renderFood() {
@@ -685,7 +691,8 @@ function renderFood() {
   tipsCard.querySelector('.fh').append(refresh);
   goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
   $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tipsCard, tolCard()));
-  $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, ...trendCards));
+  const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat day') : '';
+  $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, cheatKey, ...trendCards));
   fitRows(ul, 1); // the last meal; the rest scrolls
   requestAnimationFrame(() => {
     // card height is fixed in CSS; more content scrolls inside the card
