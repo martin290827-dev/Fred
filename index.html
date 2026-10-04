@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Fred">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="theme.js?v=154"></script>
-  <link rel="stylesheet" href="style.css?v=154">
+  <script src="theme.js?v=155"></script>
+  <link rel="stylesheet" href="style.css?v=155">
 </head>
 <body>
   <header>
@@ -52,11 +52,11 @@
       <h2>Tasks &amp; Events <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-scan" class="hicon" type="button" aria-label="Add appointment from a photo" title="Photo" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button><input id="cal-photo" type="file" accept="image/*" hidden><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
       <div id="cal-edit" hidden></div>
       <ul id="cal-list" class="list"></ul>
-      <p class="muted small" id="cal-status"></p>
+      <p class="muted small" id="cal-status" aria-live="polite"></p>
     </section>
 
     <section class="card" id="card-notes">
-      <h2>Notes <span class="hacts"><span id="notes-status" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="Dictate into the note" title="Dictate" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Clear note" title="Clear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Share note (for example to Apple Notes)" title="Share to Notes, Mail, ..."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
+      <h2>Notes <span class="hacts"><span id="notes-status" aria-live="polite" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="Dictate into the note" title="Dictate" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Clear note" title="Clear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Share note (for example to Apple Notes)" title="Share to Notes, Mail, ..."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
       <p id="notes-hint" class="notes-hint" hidden></p>
       <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
     </section>
@@ -74,7 +74,7 @@
       <h2>Tickers <span class="hacts"><button id="tk-add" class="hicon" type="button" aria-label="Add or remove tickers" title="Add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="btn-refresh" class="ghost small">Refresh</button></span></h2>
       <div id="tk-edit" hidden></div>
       <div id="tickers">Loading...</div>
-      <p class="muted small" id="tickers-status"></p>
+      <p class="muted small" id="tickers-status" aria-live="polite"></p>
     </section>
 
     <section class="card" id="card-timer">
@@ -142,11 +142,11 @@
         </div>
       </div>
       <p class="muted small fx-rate" id="fx-rate"></p>
-      <p class="muted small" id="fx-status"></p>
+      <p class="muted small" id="fx-status" aria-live="polite"></p>
     </section>
 
     <section class="card" id="card-food">
-      <h2>Food <span id="food-status" class="muted small"></span></h2>
+      <h2>Food <span id="food-status" aria-live="polite" class="muted small"></span></h2>
       <div id="food" class="food"></div>
     </section>
 
@@ -193,7 +193,7 @@
     <section class="card card-wide" id="card-news">
       <h2>Market News <button id="news-refresh" class="ghost small" type="button">Refresh</button></h2>
       <div id="news" class="news"></div>
-      <p class="muted small" id="news-status"></p>
+      <p class="muted small" id="news-status" aria-live="polite"></p>
     </section>
   </main>
 
@@ -232,7 +232,7 @@
 
       <label>Anthropic API key (optional, for calorie estimates)
         <input id="set-anthropic" type="password" autocomplete="off" placeholder="Stored only in your browser and your Google Drive sync">
-        <span class="muted small">From console.anthropic.com. Food texts are sent to Anthropic for the estimate and, once a day, the last 7 days for tips. Without a key, say "... 500 kcal" yourself.</span>
+        <span class="muted small">From console.anthropic.com. Sent to Anthropic: each meal text, your meals of the last 14 days (tips), today&rsquo;s meals and the foods you list when you ask what to cook, photos you scan, and weekly totals for the Weekly Review (sleep, recovery, weight, poker result). Not sent: raw Whoop files, your Sheet, your calendar. Without a key, say "... 500 kcal" yourself.</span>
       </label>
 
       <h3>Google Calendar</h3>
@@ -243,13 +243,13 @@
       <div class="row wrap">
         <button type="button" id="g-connect" class="ghost">Connect</button>
         <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
-        <span class="muted small" id="g-status"></span>
+        <span class="muted small" id="g-status" aria-live="polite"></span>
       </div>
       <label class="check"><input id="set-sync" type="checkbox" checked> Sync notes and keys between my devices (hidden file in my Google Drive)</label>
       <div class="row wrap">
         <button type="button" id="sync-now" class="ghost small">Sync now</button>
-        <span class="muted small" id="sync-status"></span>
-        <span class="muted small" id="sheet-status"></span>
+        <span class="muted small" id="sync-status" aria-live="polite"></span>
+        <span class="muted small" id="sheet-status" aria-live="polite"></span>
       </div>
 
       <h3>Backup</h3>
@@ -259,7 +259,7 @@
         <button type="button" id="bk-export" class="ghost">Download settings</button>
         <button type="button" id="bk-import" class="ghost">Load settings from file</button>
         <input id="bk-file" type="file" accept="application/json,.json" hidden>
-        <span class="muted small" id="bk-status"></span>
+        <span class="muted small" id="bk-status" aria-live="polite"></span>
       </div>
 
       <div class="row end">
@@ -269,15 +269,15 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=154"></script>
-  <script src="gcal.js?v=154"></script>
-  <script src="sync.js?v=154"></script>
-  <script src="food.js?v=154"></script>
-  <script src="tips.js?v=154"></script>
-  <script src="archive.js?v=154"></script>
-  <script src="recovery.js?v=154"></script>
-  <script src="poker.js?v=154"></script>
-  <script src="weekly.js?v=154"></script>
-  <script src="sheets.js?v=154"></script>
+  <script src="app.js?v=155"></script>
+  <script src="gcal.js?v=155"></script>
+  <script src="sync.js?v=155"></script>
+  <script src="food.js?v=155"></script>
+  <script src="tips.js?v=155"></script>
+  <script src="archive.js?v=155"></script>
+  <script src="recovery.js?v=155"></script>
+  <script src="poker.js?v=155"></script>
+  <script src="weekly.js?v=155"></script>
+  <script src="sheets.js?v=155"></script>
 </body>
 </html>

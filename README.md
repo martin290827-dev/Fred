@@ -30,3 +30,6 @@ Hinweise:
 - Anthropic-Schlüssel: in der Anthropic Console ein eigenes Ausgabenlimit für diesen Schlüssel setzen. Dann ist der Schaden bei Verlust begrenzt.
 - Das Google-Zugriffstoken lebt nur im Arbeitsspeicher der Seite, eine Stunde lang.
 - Neue API-Hosts müssen in der CSP (`connect-src`) ergänzt werden, sonst blockiert der Browser sie.
+- Rechte (Scopes) sind knapp gehalten: `calendar.events` (nur Termine), `drive.appdata` (versteckter Ordner der App) und `drive.file` (nur Dateien, die Fred selbst angelegt hat, z. B. "Fred Daten"). Fred sieht dein restliches Drive nicht.
+- An Anthropic gehen nur die Daten, die eine Funktion braucht: Mahlzeitentexte, die Mahlzeiten der letzten 14 Tage (Tips), die von heute (Missing today, Kochvorschläge), Fotos, die du scannst, und Wochensummen für die Weekly Review (Schlaf, Recovery gesamt, Gewicht, Pokerergebnis). Rohdateien von Whoop, dein Sheet und dein Kalender gehen nicht an Anthropic.
+- Vor jedem Push: `node tools/check.js` (prüft Service-Worker-Liste, Versionen und CSP-Hosts).

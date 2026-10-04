@@ -280,6 +280,13 @@ function gcalInit() {
     gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
+  // Back in the app after the hour ran out: try a silent renewal once (no window). If Google refuses, the Reconnect button stays.
+  let tryAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !googleClientId || !store.get('gConnected', false) || gHasToken() || Date.now() - tryAt < 120000) return;
+    tryAt = Date.now();
+    gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => {});
+  });
   setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
   $('cal-add').addEventListener('click', () => gOpenEditor('task', null)); // new items can be switched to Event inside the form
   $('cal-scan').addEventListener('click', () => $('cal-photo').click());
