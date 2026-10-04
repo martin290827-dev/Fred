@@ -502,6 +502,18 @@ async function geocode(name) {
 /* ---------- 4) Tickers (Binance public data for crypto, Finnhub for stocks) ---------- */
 let lastQuotes = {};
 
+// Indices: the free data sources have no index levels, so an index is followed through its ETF (same direction, price in USD, not index points).
+const INDEX_ETF = { SPY: 'S&P 500', QQQ: 'Nasdaq 100', DIA: 'Dow Jones', IWM: 'Russell 2000' };
+const INDEX_ALIAS = { SPX: 'SPY', GSPC: 'SPY', SP500: 'SPY', 'S&P500': 'SPY', 'S&P': 'SPY', NDX: 'QQQ', NASDAQ: 'QQQ', NASDAQ100: 'QQQ', DJI: 'DIA', DOW: 'DIA', DOWJONES: 'DIA', RUT: 'IWM', RUSSELL2000: 'IWM' };
+const normSym = (raw) => { const k = String(raw).trim().toUpperCase().replace(/^\^/, '').replace(/\s+/g, ''); return INDEX_ALIAS[k] || k; };
+const isStock = (s) => !s.startsWith('c:') && !INDEX_ETF[s]; // stocks only: these have company news and earnings
+
+// Old index symbols (SPX, ^GSPC ...) become their ETF once.
+function migrateIndexTickers() {
+  const next = [...new Set(tickers.map((t) => (t.startsWith('c:') ? t : normSym(t))))];
+  if (next.join() !== tickers.join()) { tickers = next; store.set('tickers', tickers); }
+}
+
 async function fetchQuote(sym) {
   if (sym.startsWith('c:')) {
     const pair = sym.slice(2).toUpperCase() + 'USDT';
@@ -544,10 +556,18 @@ function tickerEditor() {
   const box = $('tk-edit');
   if (!tkOpen) { box.replaceChildren(); box.hidden = true; return; }
   const sym = el('input', { type: 'text', placeholder: 'AAPL or BTC', maxlength: '20', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Symbol' });
-  let crypto = false;
-  const stock = el('button', { type: 'button', class: 'on' }, 'Stock'), coin = el('button', { type: 'button' }, 'Crypto');
-  const pick = (c) => { crypto = c; stock.classList.toggle('on', !c); coin.classList.toggle('on', c); sym.placeholder = c ? 'BTC' : 'AAPL'; sym.focus(); };
-  stock.addEventListener('click', () => pick(false)); coin.addEventListener('click', () => pick(true));
+  let kind = 'stock'; // stock | crypto | index
+  const idx = el('select', { 'aria-label': 'Index', hidden: '' }, ...Object.entries(INDEX_ETF).map(([k, n]) => el('option', { value: k }, n + ' (' + k + ')')));
+  const hint = el('p', { class: 'muted small', hidden: '' }, 'An index is followed through its ETF: the price is in USD, not index points. The daily change is almost the same.');
+  const stock = el('button', { type: 'button', class: 'on' }, 'Stock'), coin = el('button', { type: 'button' }, 'Crypto'), ix = el('button', { type: 'button' }, 'Index');
+  const pick = (k) => {
+    kind = k;
+    stock.classList.toggle('on', k === 'stock'); coin.classList.toggle('on', k === 'crypto'); ix.classList.toggle('on', k === 'index');
+    sym.hidden = k === 'index'; idx.hidden = k !== 'index'; hint.hidden = k !== 'index';
+    sym.placeholder = k === 'crypto' ? 'BTC' : 'AAPL';
+    (k === 'index' ? idx : sym).focus();
+  };
+  stock.addEventListener('click', () => pick('stock')); coin.addEventListener('click', () => pick('crypto')); ix.addEventListener('click', () => pick('index'));
   const msg = el('p', { class: 'muted small gform-msg' });
   const chips = el('div', { class: 'tk-order' }, ...tickers.map((s, i) => el('div', { class: 'tk-o' },
     el('span', { class: 'tk-name' }, tickerLabel(s)),
@@ -555,15 +575,16 @@ function tickerEditor() {
     el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + tickerLabel(s) + ' down', title: 'Down', onclick: () => tickerMove(i, 1) }, '\u25bc'),
     el('button', { type: 'button', class: 'tk-mv tk-rm', 'aria-label': 'Remove ' + tickerLabel(s), title: 'Remove', onclick: () => { tickers = tickers.filter((x) => x !== s); tickerSaved(); tickerEditor(); } }, '\u00d7'))));
   const f = el('form', { class: 'gform', autocomplete: 'off' },
-    el('div', { class: 'row' }, sym, el('div', { class: 'tk-seg', role: 'group', 'aria-label': 'Type' }, stock, coin)),
-    tickers.length ? chips : '', msg,
+    el('div', { class: 'row' }, sym, idx, el('div', { class: 'tk-seg', role: 'group', 'aria-label': 'Type' }, stock, coin, ix)),
+    hint, tickers.length ? chips : '', msg,
     el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { tkOpen = false; tickerEditor(); } }, 'Done'), el('button', { type: 'submit' }, 'Add')));
   f.addEventListener('submit', (ev) => {
     ev.preventDefault();
-    let s = sym.value.trim().toUpperCase().replace(/^C:/, '');
-    if (crypto) s = s.replace(/(USDT|-USD|USD)$/, '');
+    let s = kind === 'index' ? idx.value : sym.value.trim().toUpperCase().replace(/^C:/, '');
+    if (kind === 'crypto') s = s.replace(/(USDT|-USD|USD)$/, '');
+    if (kind !== 'crypto') s = normSym(s); // SPX, ^GSPC, S&P 500 ... become the ETF
     if (!/^[A-Z0-9.\-]{1,15}$/.test(s)) { msg.textContent = 'Use the ticker symbol only, e.g. AAPL or BTC.'; return; }
-    const id = crypto ? 'c:' + s : s;
+    const id = kind === 'crypto' ? 'c:' + s : s;
     if (tickers.includes(id)) { msg.textContent = s + ' is already in the list.'; return; }
     tickers.push(id);
     tickerSaved();
@@ -577,6 +598,7 @@ function tickerEditor() {
 }
 
 function tickerLabel(s) { return s.startsWith('c:') ? s.slice(2).toUpperCase() : s.toUpperCase(); }
+const tickerSym = (s) => el('span', { class: 'tsym' }, tickerLabel(s), INDEX_ETF[s] ? el('small', { class: 'tidx' }, INDEX_ETF[s]) : '');
 
 async function loadQuotes() {
   const syms = [...new Set(tickers)];
@@ -594,12 +616,12 @@ async function loadQuotes() {
     const q = lastQuotes[s];
     const slot = el('span', { class: 'sparkslot', 'data-sym': s });
     if (errors[s] && !q) {
-      box.append(el('div', { class: 'tick' }, el('span', { class: 'tsym' }, tickerLabel(s)), slot, el('span', { class: 'muted tprice terr' }, errors[s])));
+      box.append(el('div', { class: 'tick' }, tickerSym(s), slot, el('span', { class: 'muted tprice terr' }, errors[s])));
       continue;
     }
     const cls = q.pct >= 0 ? 'up' : 'down';
     box.append(el('div', { class: 'tick' },
-      el('span', { class: 'tsym' }, tickerLabel(s)),
+      tickerSym(s),
       slot,
       el('span', { class: 'tprice' }, '$' + fmtPrice(q.price)),
       el('span', { class: 'pct ' + cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%')));
@@ -647,7 +669,7 @@ async function loadNews(force) {
   const to = toDateStr(new Date());
   const tok = '&token=' + encodeURIComponent(finnhubKey);
   try {
-    for (const s of tickers.filter((x) => !x.startsWith('c:'))) {
+    for (const s of tickers.filter(isStock)) {
       try {
         const r = await getJSON('https://finnhub.io/api/v1/company-news?symbol=' + encodeURIComponent(s) + '&from=' + from + '&to=' + to + tok);
         groups[s] = pickNews(Array.isArray(r) ? r : []);
@@ -676,7 +698,7 @@ function renderNews() {
   if (!news.t) { box.replaceChildren(el('p', { class: 'muted' }, 'Loading news...')); return; }
   // biggest movers of the day first
   const move = (s) => (lastQuotes[s] ? Math.abs(lastQuotes[s].pct || 0) : -1);
-  const order = [...tickers].sort((x, y) => move(y) - move(x));
+  const order = tickers.filter((s) => !INDEX_ETF[s]).sort((x, y) => move(y) - move(x)); // indices have no company news
   if (news.groups.crypto) order.push('crypto');
   const quiet = order.filter((s) => s !== 'crypto' && (news.groups[s] === null || (news.groups[s] && !news.groups[s].length)));
   const shown = order.filter((s) => !quiet.includes(s));
@@ -980,7 +1002,7 @@ function eventList() {
 let earn = store.get('earn', { t: 0, key: '', list: [] });
 
 async function loadEarnings() {
-  const stocks = tickers.filter((s) => !s.startsWith('c:'));
+  const stocks = tickers.filter(isStock);
   const key = stocks.join(',');
   if (!finnhubKey || !stocks.length) { earn = { t: 0, key: '', list: [] }; renderEvents(); return; }
   if (earn.key === key && Date.now() - earn.t < 12 * 3600000) { renderEvents(); return; } // cached for 12 hours
@@ -1861,6 +1883,7 @@ function init() {
   poll(loadWeather, 15 * 60000);
   poll(loadFx, 60 * 60000);
 
+  migrateIndexTickers();
   loadWeather();
   loadQuotes();
   loadFx();
