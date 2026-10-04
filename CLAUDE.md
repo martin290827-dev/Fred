@@ -10,6 +10,7 @@ Personal dashboard PWA. Hosted on GitHub Pages (static only, public repo).
 - Keep the code simple and readable. Small functions, short comments.
 - One feature per session. Do not refactor unrelated code.
 - After changing app files, bump `CACHE` in `sw.js` AND the `?v=` number on style.css, app.js, gcal.js, sync.js, food.js and recovery.js (and in `SHELL` in sw.js) in index.html (GitHub Pages caches files for 10 minutes).
+- Before every push run `node tools/check.js`. It checks the SHELL list, all `?v=` numbers and that every API host is in the CSP.
 - Phone and desktop always have the same features. Only the layout may differ.
 
 ## Files
