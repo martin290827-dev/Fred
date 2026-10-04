@@ -132,7 +132,7 @@ function renderTips(force) {
   p2.querySelector('.fh').append(gapRefresh);
   const p3 = hcard('meals', 'pink', 'What shall I cook?', '', cookBlock());
   const keep = document.activeElement && document.activeElement.id === 'cook-text' ? [document.activeElement.selectionStart] : null;
-  box.replaceChildren(el('div', { class: 'food-col' }, p1, p2, p3));
+  box.replaceChildren(el('div', { class: 'food-col' }, p2, p1, p3)); // missing today, last 14 days, cook
   if (keep) { const i = $('cook-text'); i.focus(); i.setSelectionRange(keep[0], keep[0]); }
 }
 
