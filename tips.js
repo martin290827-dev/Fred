@@ -100,10 +100,12 @@ function cookBlock() {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings.');
   const l = leftToday();
   const left = 'Left today: ' + fmtN(l.kcal) + ' kcal' + (l.p !== null ? ' · P ' + l.p + ' g · C ' + l.c + ' g · F ' + l.f + ' g' : '') + (l.over ? ' · above target' : '');
-  const input = el('input', { type: 'text', id: 'cook-text', placeholder: 'What do you have? e.g. chicken, rice, broccoli', maxlength: '300', autocomplete: 'off', 'aria-label': 'Food at home', value: cookText });
+  const input = el('textarea', { id: 'cook-text', rows: '4', placeholder: 'What do you have at home? e.g. chicken, rice, broccoli, eggs', maxlength: '600', 'aria-label': 'Food at home' });
+  input.value = cookText;
   input.addEventListener('input', () => { cookText = input.value; });
-  const form = el('form', { class: 'row food-add' }, input, el('button', cookBusy ? { type: 'submit', disabled: '' } : { type: 'submit' }, cookBusy ? '…' : 'Suggest'));
+  const form = el('form', { class: 'cook-form' }, input, el('button', cookBusy ? { type: 'submit', disabled: '' } : { type: 'submit' }, cookBusy ? '\u2026' : 'Suggest'));
   form.addEventListener('submit', (ev) => { ev.preventDefault(); askCook(input.value); });
+  input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); askCook(input.value); } });
   const out = [];
   if (cook.err) out.push(el('p', { class: 'muted small' }, 'Cook: ' + cook.err));
   if (cook.ideas.length && cook.day === toDateStr(new Date())) {
@@ -121,7 +123,7 @@ function cookBlock() {
 function renderTips(force) {
   const box = $('tips');
   if (!box) return;
-  if (!force && box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return; // typing: do not redraw
+  if (!force && box.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return; // typing: do not redraw
   const tipRefresh = el('button', { type: 'button', class: 'tip-refresh', title: 'New tips', 'aria-label': 'New tips', onclick: () => loadTips(true) }, tipsBusy ? '…' : '↻');
   const gapRefresh = el('button', { type: 'button', class: 'tip-refresh', title: 'Check today again', 'aria-label': 'Check today again', onclick: () => loadGaps(true) }, gapsBusy ? '…' : '↻');
   const p1 = hcard('bulb', 'yellow', 'Last 14 days', '', tipsBlock(true));
