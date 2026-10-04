@@ -1212,3 +1212,4 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 
 .tsym .tidx { display: block; font-size: 0.62rem; font-weight: 500; letter-spacing: 0; color: var(--muted); line-height: 1.1; }
 .gform select { min-width: 0; flex: 1; }
+.cook-note { margin: 8px 0 0; }
