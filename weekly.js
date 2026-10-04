@@ -2,7 +2,7 @@
 /* Weekly Review: the last full week (Monday to Sunday) from your own data, compared with the week before.
    The numbers are computed here. The written summary is optional (Claude, one call per week, saved). */
 
-let weeklyOff = 0;            // 0 = last full week, 1 = the week before ...
+let weeklyOff = new Date().getDay() === 0 ? -1 : 0; // -1 = this week (so far), 0 = last full week, 1 = the week before ... On Sunday the week is over, so it opens first
 let weeklyBusy = false;
 let weeklyAi = store.get('weekly', {}); // { 'YYYY-MM-DD' (Monday): { summary, wins: [], focus: [], err } }
 const WEEKLY_MAX = 26;
@@ -58,6 +58,8 @@ function wkGroup(title, ...rows) {
   return el('div', { class: 'wk-sec' }, el('div', { class: 'food-sub' }, title), el('div', { class: 'pk-group' }, ...rows));
 }
 
+const wkNone = (title, text) => el('div', { class: 'wk-sec' }, el('div', { class: 'food-sub' }, title), el('p', { class: 'muted small' }, text));
+
 function weeklyAiBlock(start, cur, prev) {
   const r = weeklyAi[start];
   const btn = el('button', { type: 'button', class: 'pk-add', onclick: () => loadWeeklyAi(start, cur, prev) }, weeklyBusy ? 'Writing…' : r && r.summary ? 'Write again' : 'Write summary');
@@ -80,21 +82,21 @@ function renderWeekly() {
   const older = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Earlier week', onclick: () => { weeklyOff++; renderWeekly(); } }, '\u2039');
   const newer = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Later week', onclick: () => { weeklyOff--; renderWeekly(); } }, '\u203a');
   older.disabled = weeklyOff >= WEEKLY_MAX;
-  newer.disabled = weeklyOff === 0;
-  const nav = el('div', { class: 'wk-nav' }, older, el('span', { class: 'wk-range' }, range, weeklyOff === 0 ? el('span', { class: 'wk-cap muted small' }, 'Last week') : ''), newer);
+  newer.disabled = weeklyOff <= -1;
+  const nav = el('div', { class: 'wk-nav' }, older, el('span', { class: 'wk-range' }, range, weeklyOff <= 0 ? el('span', { class: 'wk-cap muted small' }, weeklyOff === 0 ? 'Last week' : new Date().getDay() === 0 ? 'This week' : 'This week so far') : ''), newer);
   const tg = targets();
   const min = (v) => rcHmShort(v);
   const empty = !c.foodDays && !c.nights && !c.pokerSessions && c.weight === null;
   box.replaceChildren(el('div', { class: 'food-col' }, nav,
     empty ? el('p', { class: 'muted small' }, 'No data in this week.') : el('div', { class: 'wk-all' },
-      wkGroup('Food',
+      !c.foodDays ? wkNone('Food', 'No food logged in this week.') : wkGroup('Food',
         wkRow('Days logged', c.foodDays ? c.foodDays + ' of 7' : null, null, String, 0),
         wkRow('Calories per day', c.kcal === null ? null : fmtN(c.kcal) + ' kcal', dlt(c.kcal, p.kcal), (v) => fmtN(v), 0),
         wkRow('Days above target', c.over === null || !c.foodDays ? null : String(c.over), null, String, 0),
         wkRow('Protein per day', c.protein === null ? null : fmtN(c.protein) + ' g', dlt(c.protein, p.protein), (v) => fmtN(v), tg.p ? 1 : 0)),
-      wkGroup('Body',
+      c.weight === null ? wkNone('Body', 'No weigh-in in this week.') : wkGroup('Body',
         wkRow('Weight', c.weight === null ? null : fmtKg(c.weight) + ' kg', c.weightChange, (v) => fmtKg(v), -1)),
-      wkGroup('Sleep',
+      !c.nights ? wkNone('Sleep', 'No Whoop nights in this week. Import the newest Whoop files in Recovery.') : wkGroup('Sleep',
         wkRow('Nights', c.nights ? c.nights + ' of 7' : null, null, String, 0),
         wkRow('Sleep per night', c.sleepMin === null ? null : min(c.sleepMin), dlt(c.sleepMin, p.sleepMin), (v) => Math.round(v) + ' min', 1),
         wkRow('Fred Score', c.score === null ? null : String(Math.round(c.score)), dlt(c.score, p.score), (v) => String(Math.round(v)), 1),
