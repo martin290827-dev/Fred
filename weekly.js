@@ -88,6 +88,7 @@ function renderWeekly() {
   const min = (v) => rcHmShort(v);
   const empty = !c.foodDays && !c.nights && !c.pokerSessions && c.weight === null;
   box.replaceChildren(el('div', { class: 'food-col' }, nav,
+    empty ? '' : weeklyAiBlock(start, c, p), // summary first
     empty ? el('p', { class: 'muted small' }, 'No data in this week.') : el('div', { class: 'wk-all' },
       !c.foodDays ? wkNone('Food', 'No food logged in this week.') : wkGroup('Food',
         wkRow('Days logged', c.foodDays ? c.foodDays + ' of 7' : null, null, String, 0),
@@ -105,7 +106,7 @@ function renderWeekly() {
         wkRow('Sessions', c.pokerSessions ? String(c.pokerSessions) : null, null, String, 0),
         wkRow('Result', c.pokerResult === null ? null : eur(c.pokerResult, true), dlt(c.pokerResult, p.pokerResult), (v) => eur(v), 1)),
       c.reactions || p.reactions ? wkGroup('Reactions', wkRow('Flagged meals', String(c.reactions), c.reactions - p.reactions, String, -1)) : '',
-      weeklyAiBlock(start, c, p))));
+      )));
 }
 
 /* ---------- written summary ---------- */
