@@ -1625,6 +1625,13 @@ function initLayout() {
     if (n >= 0) { o.splice(n + 1, 0, 'card-health', 'card-trends'); layout.order = o; store.set('layout', layout); }
     store.set('mig.splitFood', true);
   }
+  // one-time: the Health & Nutrition Tips card goes right after Health
+  if (!store.get('mig.tipsCard', false)) {
+    const o = layout.order.filter((id) => id !== 'card-tips');
+    const n = o.indexOf('card-health');
+    if (n >= 0) { o.splice(n + 1, 0, 'card-tips'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.tipsCard', true);
+  }
   // one-time: the Sleep card goes right after Recovery
   if (!store.get('mig.splitRecovery', false)) {
     const o = layout.order.filter((id) => id !== 'card-sleep');
@@ -1678,6 +1685,7 @@ const CARD_ICONS = {
   'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
   'card-food': ['#30b0c7', 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3'],
   'card-health': ['#af52de', 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z'],
+  'card-tips': ['#ffcc00', 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z'],
   'card-trends': ['#ff9500', 'M5 20V10M10 20V4M15 20v-7M20 20V8'],
   'card-recovery': ['#5e5ce6', 'M3 12h4l2-6 4 12 2-6h6'],
   'card-poker': ['#ff9f0a', 'M12 3c3 4 7 6 7 10a4 4 0 0 1-7 2.6A4 4 0 0 1 5 13c0-4 4-6 7-10zM12 15v5M9.5 20h5'],
@@ -1785,6 +1793,7 @@ function init() {
     li.classList.toggle('show-act', on);
   });
   initFood();
+  initTips();
   initArchive();
   initRecovery();
   initPoker();

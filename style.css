@@ -1015,7 +1015,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 
 /* Health cards (Food, Health, Trends, Recovery, Sleep): one look */
 .fh-gray { color: var(--muted); }
-#card-food .cardbody, #card-health .cardbody, #card-trends .cardbody, #card-recovery .cardbody, :is(#card-sleep, #card-habits) .cardbody {
+#card-food .cardbody, #card-health .cardbody, #card-tips .cardbody, #card-trends .cardbody, #card-recovery .cardbody, :is(#card-sleep, #card-habits) .cardbody {
   overflow-y: auto; scrollbar-width: thin; overscroll-behavior: contain; }
 /* soft fade at the bottom while there is more to scroll (class set in recovery.js) */
 .cardbody.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
@@ -1199,3 +1199,9 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .cheat-box .cheat-row { margin-top: 0; }
 .cheat-pick { font-size: 0.85rem; padding: 4px 8px; min-width: 0; flex: 1; max-width: 190px; }
 .cheat-one { margin: 0; }
+
+/* Health & Nutrition Tips card */
+#tips .tips { overflow: visible; }
+.cook-left { margin: 0 0 6px; }
+.cook-ideas { margin-top: 6px; }
+.cook-ideas .tip-b { gap: 2px; }
