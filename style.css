@@ -1166,8 +1166,8 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .wx-lbl { width: 46px; flex: none; }
 #wx-edit .row, #tz-edit .row { gap: 8px; flex-wrap: nowrap; }
 #wx-edit .row input, #tz-edit .row input { min-width: 0; flex: 1; }
-.tk-seg { display: inline-grid; grid-template-columns: 1fr 1fr; background: var(--fill-2, rgba(118, 118, 128, 0.24)); border-radius: 9px; padding: 2px; gap: 2px; flex: none; }
-.tk-seg button { background: transparent; color: var(--text); font-size: 0.8rem; font-weight: 600; padding: 5px 10px; border-radius: 7px; min-height: 0; box-shadow: none; }
+.tk-seg { display: inline-grid; grid-template-columns: repeat(3, auto); background: var(--fill-2, rgba(118, 118, 128, 0.24)); border-radius: 9px; padding: 2px; gap: 2px; flex: none; }
+.tk-seg button { background: transparent; color: var(--text); font-size: 0.8rem; font-weight: 600; padding: 5px 8px; border-radius: 7px; min-height: 0; box-shadow: none; }
 .tk-seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
 .tk-order { display: flex; flex-direction: column; max-height: 150px; overflow-y: auto; }
 .tk-o { display: flex; align-items: center; gap: 4px; padding: 3px 0; border-bottom: 1px solid var(--line, rgba(128,128,128,.2)); }
@@ -1209,3 +1209,6 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .cook-form { display: grid; gap: 8px; }
 .cook-form textarea { width: 100%; min-height: 96px; resize: vertical; font: inherit; font-size: 0.95rem; line-height: 1.4; padding: 10px 12px; box-sizing: border-box; }
 .cook-form button { width: 100%; }
+
+.tsym .tidx { display: block; font-size: 0.62rem; font-weight: 500; letter-spacing: 0; color: var(--muted); line-height: 1.1; }
+.gform select { min-width: 0; flex: 1; }
