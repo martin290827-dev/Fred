@@ -1195,3 +1195,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .food .fchart .bar.cheat rect:not(.hit) { opacity: 1; }
 .cheat-key { margin: 0; text-align: right; }
 .cheat-dia { color: var(--text); }
+.cheat-box { display: grid; gap: 6px; margin-top: 8px; }
+.cheat-box .cheat-row { margin-top: 0; }
+.cheat-pick { font-size: 0.85rem; padding: 4px 8px; min-width: 0; flex: 1; max-width: 190px; }
+.cheat-one { margin: 0; }
