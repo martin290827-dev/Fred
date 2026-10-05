@@ -48,7 +48,9 @@ async function aiJSON(system, text, maxTokens, image) {
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
   const out = (j.content || []).map((x) => x.text || '').join('');
-  return JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+  // The answer is an object {...} or an array [...]: cut from whichever opens first.
+  const a = out.indexOf('['), o = out.indexOf('{'), arr = a >= 0 && (o < 0 || a < o);
+  return JSON.parse(arr ? out.slice(a, out.lastIndexOf(']') + 1) : out.slice(o, out.lastIndexOf('}') + 1));
 }
 
 async function aiEstimate(text) {
