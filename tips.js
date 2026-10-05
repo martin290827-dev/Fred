@@ -27,53 +27,82 @@ function mealsToday() {
     .map((e) => e.at.slice(11, 16) + ' ' + e.text + (e.kcal != null ? ' (' + e.kcal + ' kcal' + (e.p != null ? ', P' + e.p + ' C' + e.c + ' F' + e.f : '') + ')' : ''));
 }
 
+// DATENBLOCK for the tips prompt: all "verbleibend" values are computed here, the AI does not calculate.
 function dayContext() {
   const tg = targets(), t = dayTotals(toDateStr(new Date())), l = leftToday();
-  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
-    'Time now: ' + new Date().toTimeString().slice(0, 5) + ' (' + dayPhase() + ')\n' +
-    'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + '\n' +
-    'Eaten so far today: ' + Math.round(t.kcal) + ' kcal' + (t.m ? '' : ', protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g') + '\n' +
-    'Left today: ' + l.kcal + ' kcal' + (l.p !== null ? ', protein ' + l.p + ' g, carbs ' + l.c + ' g, fat ' + l.f + ' g' : '') + (l.over ? ' (already above the calorie target)' : '') + '\n' +
-    'Meals today:\n' + (mealsToday().join('\n') || '(none yet)');
+  const sLeft = tg.s ? Math.max(0, Math.round(tg.s - t.s)) : null;
+  return 'Uhrzeit: ' + new Date().toTimeString().slice(0, 5) + '\n' +
+    'Kalorien: ' + Math.round(t.kcal) + ' von ' + tg.kcal + ' kcal gegessen, verbleibend ' + l.kcal + ' kcal' + (l.over ? ' (Ziel schon überschritten)' : '') + '\n' +
+    (tg.p ? 'Protein: ' + Math.round(t.p) + ' von ' + tg.p + ' g, verbleibend ' + l.p + ' g\n' : '') +
+    (tg.c ? 'Kohlenhydrate: ' + Math.round(t.c) + ' von ' + tg.c + ' g, verbleibend ' + l.c + ' g\n' : '') +
+    (tg.f ? 'Fett (Limit): ' + Math.round(t.f) + ' von ' + tg.f + ' g, Fettbudget verbleibend ' + l.f + ' g\n' : '') +
+    (sLeft !== null ? 'Zucker (Limit): ' + Math.round(t.s) + ' von ' + tg.s + ' g, verbleibend ' + sLeft + ' g\n' : '') +
+    'Ballaststoffe: nicht erfasst (kein Ziel). Kalzium: nicht erfasst (kein Ziel). Gemüse nur anhand der Mahlzeitenliste beurteilen.\n' +
+    (late() ? 'Hinweis: Es ist nach 21 Uhr oder es sind weniger als 250 kcal übrig. Empfiehl keine neue Mahlzeit. Nenne höchstens einen kleinen Snack, nur falls Hunger da ist, sonst nur GOOD.\n' : '') +
+    'Mahlzeiten heute:\n' + (mealsToday().join('\n') || '(keine)');
 }
+const late = () => dayPhase() === 'late evening' || leftToday().kcal < 250;
 
 /* what is missing today */
-const GAPS_SYSTEM = 'You are a fair, evidence-based nutrition expert. You get what one adult has eaten so far today, the time now, and his daily targets. ' +
-  'Judge the day like an expert would at this time of day. Small gaps are normal and are never worth eating for late at night; a gap can be closed tomorrow. ' +
-  'Rules: (1) Never suggest food that is bigger than the calories left today (a tolerance of 50 kcal). (2) Time matters. Morning to afternoon: say what is still missing ' +
-  '(protein, vegetables, fibre, fruit, healthy fats, calcium, iron, omega-3, judged only from the foods listed) and name concrete foods that fit the calories left. ' +
-  'Evening (18 to 21): suggest at most one practical meal or snack that fits. Late evening (after 21:00), or less than about 250 kcal left: do NOT tell him to eat a meal. ' +
-  'Say that the day is essentially done and that it is fine not to eat more; at most name ONE small snack that fits the calories left, only if he is hungry (for example skyr or quark for protein). ' +
-  'Put what was missing as a short hint for tomorrow. (3) A target missed or exceeded by a small amount (about 5 percent) is on target; say so. (4) Name one thing that went well. ' +
-  'The day may not be over before 21:00, so never blame him for meals not logged yet. 3 to 4 items, no moralizing, no medical advice. ' +
-  'kind: add = eat this now, watch = limit or avoid, good = went well, tomorrow = for tomorrow, done = no need to eat more. ' +
-  'Reply with JSON only: {"items":[{"kind":"add|watch|good|tomorrow|done","title":"max 5 words","text":"max 24 words"}]}';
+const GAPS_SYSTEM = `Du bist ein evidenzbasierter Ernährungscoach für kontrolliertes Abnehmen (Kaloriendefizit, Muskelerhalt).
+
+Du bekommst am Ende einen DATENBLOCK. Nutze nur Zahlen aus diesem Block. Erfinde keine Werte und rechne nicht selbst, alle "verbleibend"-Werte sind schon berechnet.
+
+Ziel: Sage, was heute noch fehlt oder verbessert werden kann, passend zu den Mahlzeiten, die noch kommen.
+
+Regeln:
+1. Kaloriendefizit hat Vorrang. Schlage nichts vor, das die verbleibenden kcal überschreitet.
+2. Protein: Wenn verbleibendes Protein > 15 g, schlage eine konkrete Menge (20–30 g) mit Lebensmittel vor. Ist das Ziel erreicht oder fast erreicht, lobe das.
+3. Fett ist ein LIMIT, kein Ziel. Empfiehl nie, Fett "aufzufüllen". Nur wenn verbleibendes Fettbudget > 10 g, darfst du 10–25 g aus Nüssen, Avocado, Olivenöl oder fettem Fisch erwähnen. Sonst kein Fett-Tipp.
+4. Gemüse und Ballaststoffe: Nur empfehlen, wenn Ballaststoffe unter Ziel liegen oder Gemüse nicht erfasst ist.
+5. Kalzium: Nur wenn es unter Ziel liegt. Nenne fettarme Quellen (Magerquark, Skyr, fettarmer Joghurt, Käse ≤ 20 % Fett).
+6. Jeder Tipp: 1–2 Sätze, nennt den aktuellen Stand mit Zahl, schlägt eine kleine konkrete Handlung vor und nennt den Kalorieneffekt mit "ca.".
+7. Maximal 1 GOOD und 3 ADD. Wenn nichts fehlt, gib nur GOOD aus. Weniger Tipps sind besser als schwache Tipps.
+8. Sprache: Deutsch, direkt, ohne Werbesprache.
+9. Fehlen Daten, gib ein leeres Array aus.
+
+Referenzwerte (ca.): 25 g Nüsse 150 kcal; 1 EL Olivenöl 90 kcal; 150 g Magerquark 100 kcal; 150 g Skyr 95 kcal; 200 g Brokkoli 70 kcal; 100 g Hühnerbrust 110 kcal.
+
+Ausgabe: nur gültiges JSON, kein weiterer Text:
+[{"type":"GOOD"|"ADD","title":"max 4 Wörter","text":"1–2 Sätze"}]
+
+Beispiel (Daten: 07:30 Uhr, Protein 66/150 g, kcal verbleibend 1700, Fettbudget verbleibend 5 g):
+[{"type":"GOOD","title":"Starker Proteinstart","text":"66 g Protein am Morgen sind sehr gut, dir fehlen noch 84 g."},
+ {"type":"ADD","title":"Protein mittags","text":"Plane zum Mittag 150 g Hühnerbrust (ca. 165 kcal, ca. 35 g Protein)."}]
+
+Schlechtes Beispiel (nie so): "Du brauchst noch 80 g Fett."
+
+DATENBLOCK steht in der Nachricht des Nutzers.`;
 
 async function loadGaps(force) {
   if (gapsBusy || !anthropicKey) return;
   const today = toDateStr(new Date()), sig = todaySig();
   if (!dayTotals(today).n) return;
-  if (!force && gaps.sig === sig && gaps.list.length) return;
+  if (!force && gaps.sig === sig && (gaps.list.length || gaps.empty)) return;
   gapsBusy = true;
   renderTips(true);
   try {
-    const j = await aiJSON(GAPS_SYSTEM, dayContext(), 700);
-    gaps = { day: today, sig, err: '', list: (j.items || []).filter((x) => x && x.text).slice(0, 5).map((x) => ({ kind: ['add', 'watch', 'good', 'tomorrow', 'done'].includes(x.kind) ? x.kind : '', title: String(x.title || ''), text: String(x.text) })) };
+    const j = await aiJSON(GAPS_SYSTEM, 'DATENBLOCK:\n' + dayContext(), 700);
+    if (!Array.isArray(j)) throw new Error('unexpected answer');
+    const arr = j;
+    const good = arr.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = arr.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
+    gaps = { day: today, sig, err: '', empty: !good.length && !add.length, list: good.concat(add).map((x) => ({ kind: x.type === 'GOOD' ? 'good' : 'add', title: String(x.title || ''), text: String(x.text) })) };
   } catch (e) {
-    gaps = Object.assign({}, gaps, { err: e.message });
+    gaps = Object.assign({}, gaps, { err: e.message, empty: false });
   }
   gapsBusy = false;
   store.set('gaps', gaps);
   renderTips(true);
 }
 
-const GAP_KINDS = { add: 'Add', watch: 'Watch', good: 'Good', tomorrow: 'Tomorrow', done: 'Enough' };
-const GAP_CLS = { add: 'add', watch: 'cut', good: 'good', tomorrow: 'swap', done: 'good' };
+const GAP_KINDS = { add: 'Add', good: 'Good' };
+const GAP_CLS = { add: 'add', good: 'good' };
 
 function gapsBlock() {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings.');
   const today = toDateStr(new Date());
   if (!dayTotals(today).n) return el('p', { class: 'muted small' }, 'Log a meal to see what is still missing today.');
+  if (gaps.day === today && gaps.empty && !gapsBusy) return el('p', { class: 'muted small' }, 'Nothing to add right now.');
   if (gaps.day !== today || !gaps.list.length) return el('p', { class: 'muted small' }, gapsBusy ? 'Looking at today’s meals…' : gaps.err ? 'Tips: ' + gaps.err : 'Tap ↻ to check today.');
   const old = gaps.sig !== todaySig();
   return el('div', {},
