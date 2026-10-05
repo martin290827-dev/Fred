@@ -37,10 +37,12 @@ function dayContext() {
     (tg.c ? 'Kohlenhydrate: ' + Math.round(t.c) + ' von ' + tg.c + ' g, verbleibend ' + l.c + ' g\n' : '') +
     (tg.f ? 'Fett (Limit): ' + Math.round(t.f) + ' von ' + tg.f + ' g, Fettbudget verbleibend ' + l.f + ' g\n' : '') +
     (sLeft !== null ? 'Zucker (Limit): ' + Math.round(t.s) + ' von ' + tg.s + ' g, verbleibend ' + sLeft + ' g\n' : '') +
-    'Ballaststoffe: nicht erfasst (kein Ziel). Kalzium: nicht erfasst (kein Ziel). Gemüse nur anhand der Mahlzeitenliste beurteilen.\n' +
+    'Gemüse/Obst erfasst: ' + (VEG.test(mealsToday().join(' ')) ? 'ja' : 'nein') + ' (Schlagwortsuche in der Mahlzeitenliste)\n' +
+    'Ballaststoffe: nicht erfasst (kein Ziel). Kalzium: nicht erfasst (kein Ziel).\n' +
     (late() ? 'Hinweis: Es ist nach 21 Uhr oder es sind weniger als 250 kcal übrig. Empfiehl keine neue Mahlzeit. Nenne höchstens einen kleinen Snack, nur falls Hunger da ist, sonst nur GOOD.\n' : '') +
     'Mahlzeiten heute:\n' + (mealsToday().join('\n') || '(keine)');
 }
+const VEG = /gemüse|salat|brokkoli|tomate|paprika|karotte|möhre|gurke|spinat|zucchini|kürbis|kraut|pilz|bohne|erbse|obst|apfel|banane|beere|orange|birne|traube|veg|salad|fruit|berr/i;
 const late = () => dayPhase() === 'late evening' || leftToday().kcal < 250;
 
 /* what is missing today */
@@ -52,12 +54,12 @@ Ziel: Sage, was heute noch fehlt oder verbessert werden kann, passend zu den Mah
 
 Regeln:
 1. Kaloriendefizit hat Vorrang. Schlage nichts vor, das die verbleibenden kcal überschreitet.
-2. Protein: Wenn verbleibendes Protein > 15 g, schlage eine konkrete Menge (20–30 g) mit Lebensmittel vor. Ist das Ziel erreicht oder fast erreicht, lobe das.
+2. Protein: Wenn verbleibendes Protein > 15 g, schlage eine konkrete Menge (20–30 g) mit Lebensmittel vor. Ist das Ziel erreicht oder fast erreicht, lobe das. Es gibt höchstens EINEN Protein-Tipp.
 3. Fett ist ein LIMIT, kein Ziel. Empfiehl nie, Fett "aufzufüllen". Nur wenn verbleibendes Fettbudget > 10 g, darfst du 10–25 g aus Nüssen, Avocado, Olivenöl oder fettem Fisch erwähnen. Sonst kein Fett-Tipp.
-4. Gemüse und Ballaststoffe: Nur empfehlen, wenn Ballaststoffe unter Ziel liegen oder Gemüse nicht erfasst ist.
+4. Gemüse, Obst und Ballaststoffe: Steht im DATENBLOCK "Gemüse/Obst erfasst: nein", gib einen eigenen Tipp dafür (z. B. Brokkoli, Salat, Beeren). Das gilt auch dann, wenn es morgens ist.
 5. Kalzium: Nur wenn es unter Ziel liegt. Nenne fettarme Quellen (Magerquark, Skyr, fettarmer Joghurt, Käse ≤ 20 % Fett).
 6. Jeder Tipp: 1–2 Sätze, nennt den aktuellen Stand mit Zahl, schlägt eine kleine konkrete Handlung vor und nennt den Kalorieneffekt mit "ca.".
-7. Maximal 1 GOOD und 3 ADD. Wenn nichts fehlt, gib nur GOOD aus. Weniger Tipps sind besser als schwache Tipps.
+7. Maximal 1 GOOD und 3 ADD. Jeder ADD behandelt ein anderes Thema (Protein, Gemüse/Obst, Kohlenhydrate als Energie, Trinken); nie zwei Tipps zum selben Thema. Prüfe alle Themen, nicht nur Protein. Kohlenhydrate sind erlaubt, solange Kalorien übrig sind; schlage z. B. Haferflocken, Kartoffeln oder Vollkornbrot vor, wenn Kohlenhydrate stark unter dem Ziel liegen. Wenn nichts fehlt, gib nur GOOD aus. Weniger Tipps sind besser als schwache Tipps.
 8. Sprache: Deutsch, direkt, ohne Werbesprache.
 9. Fehlen Daten, gib ein leeres Array aus.
 
@@ -66,9 +68,10 @@ Referenzwerte (ca.): 25 g Nüsse 150 kcal; 1 EL Olivenöl 90 kcal; 150 g Magerqu
 Ausgabe: nur gültiges JSON, kein weiterer Text:
 [{"type":"GOOD"|"ADD","title":"max 4 Wörter","text":"1–2 Sätze"}]
 
-Beispiel (Daten: 07:30 Uhr, Protein 66/150 g, kcal verbleibend 1700, Fettbudget verbleibend 5 g):
-[{"type":"GOOD","title":"Starker Proteinstart","text":"66 g Protein am Morgen sind sehr gut, dir fehlen noch 84 g."},
- {"type":"ADD","title":"Protein mittags","text":"Plane zum Mittag 150 g Hühnerbrust (ca. 165 kcal, ca. 35 g Protein)."}]
+Beispiel (Daten: 13:00 Uhr, kcal verbleibend 1100, Protein 70/150 g, Kohlenhydrate 90/200 g, Gemüse/Obst erfasst: nein):
+[{"type":"GOOD","title":"Kalorien im Plan","text":"900 von 2000 kcal bis mittags passen gut zum Defizit."},
+ {"type":"ADD","title":"Gemüse einplanen","text":"Bisher kein Gemüse erfasst. Ergänze am Nachmittag 200 g Brokkoli oder einen Salat (ca. 70 kcal)."},
+ {"type":"ADD","title":"Eiweiß abends","text":"Dir fehlen noch 80 g Protein. 150 g Skyr (ca. 95 kcal, ca. 16 g Protein) sind ein kleiner Anfang."}]
 
 Schlechtes Beispiel (nie so): "Du brauchst noch 80 g Fett."
 
