@@ -1213,3 +1213,13 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .tsym .tidx { display: block; font-size: 0.62rem; font-weight: 500; letter-spacing: 0; color: var(--muted); line-height: 1.1; }
 .gform select { min-width: 0; flex: 1; }
 .cook-note { margin: 8px 0 0; }
+
+/* Food: meal rows twice as big, easy to tap and edit */
+.food-list li.meal { padding: 15px 0; gap: 10px; min-height: 64px; }
+.meal .food-time { width: 46px; font-size: 0.9rem; }
+.meal-t { font-size: 1.02rem; }
+.meal .food-kc { font-size: 1.15rem; }
+.meal-act { opacity: 1; }
+.meal-act button.icon { width: 44px; height: 44px; }
+.meal-act button.icon svg { width: 20px; height: 20px; }
+@media (hover: hover) { .list li.meal button.icon { opacity: 0.6; } .list li.meal:hover button.icon { opacity: 1; } }

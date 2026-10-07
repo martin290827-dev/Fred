@@ -37,12 +37,20 @@ function dayContext() {
     (tg.c ? 'Kohlenhydrate: ' + Math.round(t.c) + ' von ' + tg.c + ' g, verbleibend ' + l.c + ' g\n' : '') +
     (tg.f ? 'Fett (Limit): ' + Math.round(t.f) + ' von ' + tg.f + ' g, Fettbudget verbleibend ' + l.f + ' g\n' : '') +
     (sLeft !== null ? 'Zucker (Limit): ' + Math.round(t.s) + ' von ' + tg.s + ' g, verbleibend ' + sLeft + ' g\n' : '') +
+    proteinLine(t, tg, l) +
     'Gemüse/Obst erfasst: ' + (VEG.test(mealsToday().join(' ')) ? 'ja' : 'nein') + ' (Schlagwortsuche in der Mahlzeitenliste)\n' +
     'Ballaststoffe: nicht erfasst (kein Ziel). Kalzium: nicht erfasst (kein Ziel).\n' +
     (late() ? 'Hinweis: Es ist nach 21 Uhr oder es sind weniger als 250 kcal übrig. Empfiehl keine neue Mahlzeit. Nenne höchstens einen kleinen Snack, nur falls Hunger da ist, sonst nur GOOD.\n' : '') +
     'Mahlzeiten heute:\n' + (mealsToday().join('\n') || '(keine)');
 }
 const VEG = /gemüse|salat|brokkoli|tomate|paprika|karotte|möhre|gurke|spinat|zucchini|kürbis|kraut|pilz|bohne|erbse|obst|apfel|banane|beere|orange|birne|traube|veg|salad|fruit|berr/i;
+// Protein gap against the calories left. A lean source costs about 5 kcal per g protein; the AI should not calculate this.
+function proteinLine(t, tg, l) {
+  if (!tg.p || l.p === null || l.p <= 15) return '';
+  const need = l.p * 5, over = Math.round(need - l.kcal);
+  return 'Protein-Lücke: ' + l.p + ' g, mit magerer Quelle ca. ' + need + ' kcal. ' +
+    (over > 0 ? 'Das passt NICHT in die verbleibenden ' + l.kcal + ' kcal (ca. ' + over + ' kcal zu viel). Entscheide nach Regel 10.\n' : 'Das passt in die verbleibenden kcal.\n');
+}
 const late = () => dayPhase() === 'late evening' || leftToday().kcal < 250;
 
 /* what is missing today */
@@ -74,6 +82,9 @@ Beispiel (Daten: 13:00 Uhr, kcal verbleibend 1100, Protein 70/150 g, Kohlenhydra
  {"type":"ADD","title":"Eiweiß abends","text":"Dir fehlen noch 80 g Protein. 150 g Skyr (ca. 95 kcal, ca. 16 g Protein) sind ein kleiner Anfang."}]
 
 Schlechtes Beispiel (nie so): "Du brauchst noch 80 g Fett."
+
+10. Protein gegen Kalorien: Meldet der DATENBLOCK, dass die Protein-Lücke NICHT in die verbleibenden kcal passt, entscheide selbst und sage die Entscheidung klar. Ist die Überschreitung klein (bis ca. 100 kcal) und die Lücke größer als 30 g, empfiehl EINE kleine, sehr magere Portion (z. B. 150 g Magerquark, ca. 100 kcal) und nenne die Überschreitung offen. Sonst gilt Regel 1: Kalorien halten, das Protein morgen früher einplanen. Schreibe nie "unmöglich" ohne Lösung.
+11. Lebensmittel statt Lücken in Gramm: Nenne fehlende Gramm (z. B. Kohlenhydrate) höchstens nebenbei. Gib stattdessen ein oder zwei konkrete Beispiele, was gut passt. Der Vorschlag muss zur Uhrzeit und zur nächsten Mahlzeit passen (Frühstück, Mittag, Abendessen, Snack). Schlage nie etwas vor, das zu dieser Zeit unüblich ist, zum Beispiel Vollkornbrot als Mittagessen. Mittags: Reis, Kartoffeln, Vollkornnudeln, Hülsenfrüchte. Morgens: Haferflocken, Vollkornbrot, Obst. Abends: leicht, wenig Kohlenhydrate.
 
 DATENBLOCK steht in der Nachricht des Nutzers.`;
 

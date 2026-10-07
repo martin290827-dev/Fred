@@ -20,17 +20,22 @@ const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input i
   '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
   'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}],' +
   '"kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}. protein, carbs, fat and sugar in grams; sugar is the total sugar content (part of carbs), including sugar in fruit and milk. Whole numbers. ' +
-  'If the text is not about food or drink, reply with kcal 0 and an empty items list.';
+  'If the text is not about food or drink, reply with kcal 0 and an empty items list. ' +
+  'If a number with kcal is given for an item (for example "Frankfurter 240 kcal"), it belongs only to the item right before it: use exactly that value for this item, estimate every other item, and make the totals the sum of all items. A "#", "+" or comma separates items.';
 
 function saveFood() { store.set('food', food); foodMirrorSoon(); arcScan(); }
 function saveWeight() { store.set('weight', weight); foodMirrorSoon(); arcScan(); }
 
 /* ---------- estimating ---------- */
 
-// "... 650 kcal" in the text: the user's own number wins, no AI call.
+// "... 650 kcal" at the end of the text: the user's own number for the whole meal wins, no AI call.
+// If more food follows the number ("Frankfurter 240 kcal, 2 Laugenstangerl"), the number is only for the item before it: Claude estimates the rest.
+const KCAL_RE = /(\d{2,5})\s*(kcal|kalorien|calories|cal)\b/i;
 function manualKcal(text) {
-  const m = text.match(/(\d{2,5})\s*(kcal|kalorien|calories|cal)\b/i);
-  return m ? parseInt(m[1], 10) : null;
+  const m = text.match(KCAL_RE);
+  if (!m) return null;
+  const rest = text.slice(m.index + m[0].length);
+  return /[a-zäöüß]/i.test(rest) ? null : parseInt(m[1], 10);
 }
 
 // One call to Claude; returns the JSON object in the reply.
@@ -111,7 +116,10 @@ const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one
   'and say how often it appeared and roughly what it costs per week on average. Name the real foods and drinks from the diary and give a ' +
   'practical replacement that fits his habits. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
   '(protein, vegetables, fibre), then a swap or addition. Say what is good, too. Never invent problems; if little needs changing, ' +
-  'give fewer tips (3 to 5). The diary leaves out his chosen cheat days on purpose; never mention it. Friendly and direct, no moralizing, no medical advice. ' +
+  'give fewer tips (3 to 5). A food or drink that appears only once or twice in the 14 days is NOT a pattern: never write a tip about it. ' +
+  'Cluster similar unhealthy foods (fried food, fast food, sweets, alcohol, large portions) into ONE tip with the total count and the average cost per week; never one tip per dish. ' +
+  'You also get the tips shown on earlier days. Do not repeat the same advice. Only repeat a topic if the numbers got clearly worse, and then say what changed. ' +
+  'If there is nothing new, return only one or two tips (a good one is fine) or an empty list. The diary leaves out his chosen cheat days on purpose; never mention it. Friendly and direct, no moralizing, no medical advice. ' +
   'Reply with JSON only: {"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}]}';
 
 // Cheat days: with the feature on (Settings), one day per week can be marked in Food. Marked days are left out of the tips.
@@ -141,9 +149,10 @@ function tipsInput() {
   const over = kc.filter((v) => v > tg.kcal).length;
   const avg = kc.length ? Math.round(kc.reduce((x, y) => x + y, 0) / kc.length) : 0;
   const week = 'Average ' + avg + ' kcal per logged day, ' + over + ' of ' + kc.length + ' days above the target.\n';
+  const seen = (tips.hist || []).length ? 'Tips already shown on earlier days (do not repeat them):\n' + tips.hist.join('\n') + '\n' : '';
   return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
     'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + ', sugar at most ' + tg.s + ' g' + '\n' +
-    week + 'Diary:\n' + lines.join('\n');
+    week + seen + 'Diary:\n' + lines.join('\n');
 }
 
 async function loadTips(force) {
@@ -155,8 +164,9 @@ async function loadTips(force) {
   tipsBusy = true;
   renderFood();
   try {
+    tips.hist = tipsHist(today); // earlier tips go into the question, so they are not repeated
     const j = await aiJSON(TIPS_SYSTEM, tipsInput(), 900);
-    tips = { day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
+    tips = { hist: tips.hist, day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
   } catch (e) {
     tips = Object.assign({}, tips, { err: e.message });
   }
@@ -165,13 +175,20 @@ async function loadTips(force) {
   renderFood();
 }
 
+// Tips of earlier days (short, last 12) go back to Claude so it does not repeat itself.
+function tipsHist(today) {
+  const old = (tips.hist || []).slice();
+  if (tips.day && tips.day !== today) for (const t of tips.list) { const s = tips.day + ': ' + t.title + ' - ' + t.text; if (!old.includes(s)) old.push(s); }
+  return old.slice(-12);
+}
+
 const TIP_KINDS = { cut: 'Cut', swap: 'Swap', add: 'Add', good: 'Good' };
 
 function tipsBlock(all) {
   if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
   const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n && !isCheatDay(d)).length;
   if (!tips.list.length) {
-    return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : '');
+    return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : tips.day === toDateStr(new Date()) ? 'Nothing new today.' : '');
   }
   const ul = el('ul', { class: 'tips' }, ...tips.list.map((t, i) => el('li', { class: 'tip' },
     el('span', { class: 'tip-k k-' + (t.kind || 'none'), title: t.kind ? TIP_KINDS[t.kind] : '' }, t.kind ? TIP_KINDS[t.kind] : String(i + 1)),
@@ -617,6 +634,17 @@ function cheatRow(today) {
   return el('div', { class: 'cheat-box' }, ...rows);
 }
 
+// Suggestions while typing: what you logged before (newest first, each text once).
+function foodHistList() {
+  const seen = new Set(), out = [];
+  for (const e of [...food].sort((a, b) => b.at.localeCompare(a.at))) {
+    const k = e.text.trim().toLowerCase();
+    if (k && !seen.has(k)) { seen.add(k); out.push(e.text.trim()); }
+    if (out.length >= 150) break;
+  }
+  return el('datalist', { id: 'food-hist' }, ...out.map((v) => el('option', { value: v })));
+}
+
 function renderFood() {
   const box = $('food');
   if (!box) return;
@@ -627,8 +655,8 @@ function renderFood() {
   const avg7 = avgKcal(lastDays(7));
   const list = food.filter((e) => e.at.slice(0, 10) === today).sort((a, b) => b.at.localeCompare(a.at));
 
-  const input = el('input', { type: 'text', id: 'food-text', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '300', autocomplete: 'off', 'aria-label': 'What did you eat' });
-  const form = el('form', { class: 'row food-add' }, input, el('button', { type: 'submit' }, 'Add'));
+  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '300', autocomplete: 'off', 'aria-label': 'What did you eat' });
+  const form = el('form', { class: 'row food-add' }, input, foodHistList(), el('button', { type: 'submit' }, 'Add'));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const text = input.value.trim();
