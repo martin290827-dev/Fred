@@ -15,7 +15,8 @@ let foodEditId = null;
 let trendRange = store.get('trendRange', 30); // Trends: 7, 30 or 90 days (per device)
 let nutri = store.get('nutri', { kcal: 2500, goalPct: 10, startKg: null, height: null, birthYear: null, sex: '', activity: 1.45 });
 
-const AI_MODEL = 'claude-haiku-4-5-20251001';
+const AI_MODEL = 'claude-haiku-4-5-20251001'; // food estimates and everything else
+const TIPS_MODEL = 'claude-sonnet-5-5'; // health tips (Missing today, Last 14 days): better judgement
 const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input is a short, often dictated description ' +
   '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
   'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}],' +
@@ -39,7 +40,7 @@ function manualKcal(text) {
 }
 
 // One call to Claude; returns the JSON object in the reply.
-async function aiJSON(system, text, maxTokens, image) {
+async function aiJSON(system, text, maxTokens, image, model) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -48,7 +49,7 @@ async function aiJSON(system, text, maxTokens, image) {
       'anthropic-dangerous-direct-browser-access': 'true', // the key is yours and stays in this browser
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens || 700, system, messages: [{ role: 'user', content: image ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text }] : text }] }),
+    body: JSON.stringify({ model: model || AI_MODEL, max_tokens: maxTokens || 700, system, messages: [{ role: 'user', content: image ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text }] : text }] }),
   });
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
@@ -56,6 +57,14 @@ async function aiJSON(system, text, maxTokens, image) {
   // The answer is an object {...} or an array [...]: cut from whichever opens first.
   const a = out.indexOf('['), o = out.indexOf('{'), arr = a >= 0 && (o < 0 || a < o);
   return JSON.parse(arr ? out.slice(a, out.lastIndexOf(']') + 1) : out.slice(o, out.lastIndexOf('}') + 1));
+}
+
+// Tips use the stronger model; if it is not available for this key, fall back to the default one.
+async function aiTips(system, text, maxTokens) {
+  try { return await aiJSON(system, text, maxTokens, null, TIPS_MODEL); } catch (e) {
+    if (/model|not_found|404/i.test(e.message)) return aiJSON(system, text, maxTokens);
+    throw e;
+  }
 }
 
 async function aiEstimate(text) {
@@ -165,7 +174,7 @@ async function loadTips(force) {
   renderFood();
   try {
     tips.hist = tipsHist(today); // earlier tips go into the question, so they are not repeated
-    const j = await aiJSON(TIPS_SYSTEM, tipsInput(), 900);
+    const j = await aiTips(TIPS_SYSTEM, tipsInput(), 900);
     tips = { hist: tips.hist, day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
   } catch (e) {
     tips = Object.assign({}, tips, { err: e.message });

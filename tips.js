@@ -96,7 +96,7 @@ async function loadGaps(force) {
   gapsBusy = true;
   renderTips(true);
   try {
-    const j = await aiJSON(GAPS_SYSTEM, 'DATENBLOCK:\n' + dayContext(), 700);
+    const j = await aiTips(GAPS_SYSTEM, 'DATENBLOCK:\n' + dayContext(), 700);
     if (!Array.isArray(j)) throw new Error('unexpected answer');
     const arr = j;
     const good = arr.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = arr.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
