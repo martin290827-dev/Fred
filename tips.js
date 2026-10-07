@@ -123,7 +123,8 @@ function gapsBlock() {
     el('ul', { class: 'tips' }, ...gaps.list.map((t) => el('li', { class: 'tip' },
       el('span', { class: 'tip-k k-' + (GAP_CLS[t.kind] || 'none') }, GAP_KINDS[t.kind] || '•'),
       el('span', { class: 'tip-b' }, t.title ? el('span', { class: 'tip-t' }, t.title) : '', el('span', { class: 'tip-x' }, t.text))))),
-    old ? el('p', { class: 'muted small' }, 'Out of date (new meals or a later time of day). Tap ↻ to update.') : '');
+    old ? el('p', { class: 'muted small' }, 'Out of date (new meals or a later time of day). Tap ↻ to update.') : '',
+    tipsModelNote ? el('p', { class: 'muted small' }, tipsModelNote) : '');
 }
 
 /* what shall I cook */

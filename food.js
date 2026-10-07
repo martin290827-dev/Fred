@@ -40,9 +40,34 @@ function manualKcal(text) {
 }
 
 // One call to Claude; returns the JSON object in the reply.
-async function aiJSON(system, text, maxTokens, image, model) {
+// The answer is an object {...} or an array [...], maybe with text around it (stronger models like to explain). Try each start in order.
+function parseAiJson(out) {
+  for (let s = 0; s < out.length; s++) {
+    if (out[s] !== '[' && out[s] !== '{') continue;
+    const e = matchEnd(out, s);
+    if (e < 0) continue;
+    try { return JSON.parse(out.slice(s, e + 1)); } catch { /* not JSON, try the next start */ }
+  }
+  throw new Error('The answer was not valid JSON');
+}
+
+// Index of the bracket that closes the one at position s (strings are skipped), or -1.
+function matchEnd(str, s) {
+  let depth = 0, inStr = false;
+  for (let i = s; i < str.length; i++) {
+    const c = str[i];
+    if (inStr) { if (c === '\\') i++; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true;
+    else if (c === '[' || c === '{') depth++;
+    else if ((c === ']' || c === '}') && --depth === 0) return i;
+  }
+  return -1;
+}
+
+async function aiJSON(system, text, maxTokens, image, model, timeoutMs) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     headers: {
       'x-api-key': anthropicKey,
       'anthropic-version': '2023-06-01',
@@ -54,16 +79,21 @@ async function aiJSON(system, text, maxTokens, image, model) {
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
   const out = (j.content || []).map((x) => x.text || '').join('');
-  // The answer is an object {...} or an array [...]: cut from whichever opens first.
-  const a = out.indexOf('['), o = out.indexOf('{'), arr = a >= 0 && (o < 0 || a < o);
-  return JSON.parse(arr ? out.slice(a, out.lastIndexOf(']') + 1) : out.slice(o, out.lastIndexOf('}') + 1));
+  return parseAiJson(out);
 }
 
 // Tips use the stronger model; if it is not available for this key, fall back to the default one.
+// Any problem with the stronger model (not available, slow, network, odd answer) falls back to the default one, and the reason is shown in the card.
+let tipsModelNote = '';
 async function aiTips(system, text, maxTokens) {
-  try { return await aiJSON(system, text, maxTokens, null, TIPS_MODEL); } catch (e) {
-    if (/model|not_found|404/i.test(e.message)) return aiJSON(system, text, maxTokens);
-    throw e;
+  try {
+    const r = await aiJSON(system, text, maxTokens, null, TIPS_MODEL, 40000);
+    tipsModelNote = '';
+    return r;
+  } catch (e) {
+    if (/api key|authentication|401|403/i.test(e.message)) throw e;
+    tipsModelNote = 'Sonnet failed (' + e.message + '), answered with Haiku.';
+    return aiJSON(system, text, maxTokens);
   }
 }
 
