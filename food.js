@@ -79,7 +79,10 @@ async function aiJSON(system, text, maxTokens, image, model, timeoutMs) {
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
   const out = (j.content || []).map((x) => x.text || '').join('');
-  return parseAiJson(out);
+  try { return parseAiJson(out); } catch (e) {
+    // say why: cut off by the token limit, or what the start of the answer looked like
+    throw new Error(j.stop_reason === 'max_tokens' ? 'answer cut off (token limit)' : 'not valid JSON, starts with: ' + out.replace(/\s+/g, ' ').slice(0, 60));
+  }
 }
 
 // Tips use the stronger model; if it is not available for this key, fall back to the default one.
@@ -87,7 +90,7 @@ async function aiJSON(system, text, maxTokens, image, model, timeoutMs) {
 let tipsModelNote = '';
 async function aiTips(system, text, maxTokens) {
   try {
-    const r = await aiJSON(system, text, maxTokens, null, TIPS_MODEL, 40000);
+    const r = await aiJSON(system, text, maxTokens * 3, null, TIPS_MODEL, 40000); // Sonnet writes more words than Haiku
     tipsModelNote = '';
     return r;
   } catch (e) {
