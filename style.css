@@ -1223,3 +1223,10 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .meal-act button.icon { width: 44px; height: 44px; }
 .meal-act button.icon svg { width: 20px; height: 20px; }
 @media (hover: hover) { .list li.meal button.icon { opacity: 0.6; } .list li.meal:hover button.icon { opacity: 1; } }
+
+/* Weight & Goal: enter today's weight right in the card */
+.wt-form { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-basis: 100%; }
+.wt-form input { flex: 1 1 0; min-width: 0; width: 0; }
+.wt-form input[aria-invalid="true"] { outline: 2px solid var(--down); }
+.wt-form button { flex: none; min-height: 36px; padding: 0 16px; }
+.food-weight { flex-wrap: wrap; }
