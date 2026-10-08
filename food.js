@@ -64,7 +64,18 @@ function matchEnd(str, s) {
   return -1;
 }
 
+// The default model gets triple the token budget (its thinking counts against max_tokens). If it fails for any
+// reason except the key, the older Haiku answers, so a meal is never left without an estimate.
+const AI_FALLBACK = 'claude-haiku-4-5-20251001';
 async function aiJSON(system, text, maxTokens, image, model, timeoutMs) {
+  if (model) return aiCall(system, text, maxTokens, image, model, timeoutMs);
+  try { return await aiCall(system, text, (maxTokens || 700) * 3, image, AI_MODEL, timeoutMs); } catch (e) {
+    if (/api key|authentication|401|403/i.test(e.message)) throw e;
+    return aiCall(system, text, maxTokens, image, AI_FALLBACK, timeoutMs);
+  }
+}
+
+async function aiCall(system, text, maxTokens, image, model, timeoutMs) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
@@ -883,22 +894,23 @@ function renderFood() {
   if (typeof renderTips === 'function') renderTips();
 }
 
-// One row per meal: time, text (up to 3 lines), then kcal and protein/carbs/fat/sugar below.
+// One row per meal: text (up to 3 lines) with the buttons at its right, below it time, calories and macro chips.
 function foodRow(e) {
   const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
     : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
       : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
-  // macros are shown under the text (no hover needed), so the text gets the full width of the row
-  const macro = e.p != null ? 'Protein ' + fmtN(e.p) + ' g · Carbs ' + fmtN(e.c) + ' g · Fat ' + fmtN(e.f) + ' g' + (e.s != null ? ' · Sugar ' + fmtN(e.s) + ' g' : '') : e.src === 'manual' ? 'Own value' : '';
+  const chip = (cls, letter, v, name) => el('span', { class: 'mchip ' + cls, title: name + ' ' + fmtN(v) + ' g' }, letter + ' ' + fmtN(v));
+  const chips = e.p != null
+    ? [chip('mp', 'P', e.p, 'Protein'), chip('mc', 'C', e.c, 'Carbs'), chip('mf', 'F', e.f, 'Fat')].concat(e.s != null ? [chip('ms', 'S', e.s, 'Sugar')] : [])
+    : e.src === 'manual' ? [el('span', { class: 'muted small' }, 'own value')] : [];
   return el('li', { class: 'meal', title: e.text },
     el('div', { class: 'meal-body' },
-      el('div', { class: 'meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
-      el('div', { class: 'meal-m' },
-        el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)), kc,
-        el('span', { class: 'meal-act' },
-          iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
-          iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); }))),
-      macro ? el('div', { class: 'meal-x muted small' }, macro.replace('Protein', 'P').replace('Carbs', 'C').replace('Fat', 'F')) : ''));
+      el('div', { class: 'meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text),
+      el('span', { class: 'meal-act' },
+        iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
+        iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); })),
+      el('div', { class: 'meal-m' }, el('span', { class: 'food-time muted' }, e.at.slice(11, 16)), kc, ...chips),
+      e.err && !e.busy ? el('div', { class: 'food-err small' }, e.err.slice(0, 140)) : ''));
 }
 
 // Change text, time or calories. A changed text is estimated again (unless you typed the calories).

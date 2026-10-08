@@ -1238,13 +1238,21 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .fchart .wproj-dot { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
 .pchart-cap { margin: 2px 0 10px; font-size: 0.72rem; }
 
-/* Food meal rows: text over the full width (up to 3 lines); below it time, calories and the buttons, then the macros */
-.food-list li.meal { display: block; padding: 10px 0; min-height: 0; }
-.meal-body { min-width: 0; display: grid; gap: 3px; }
-.meal-body .meal-t { -webkit-line-clamp: 3; font-size: 0.98rem; }
-.meal-m { display: flex; align-items: center; gap: 12px; }
-.meal-m .food-time { width: auto; flex: none; }
-.meal-m .food-kc { font-size: 1.05rem; padding-top: 0; }
-.meal-m .meal-act { margin-left: auto; }
-.meal .meal-act button.icon { width: 38px; height: 38px; }
-.meal .meal-act button.icon svg { width: 18px; height: 18px; }
+/* Food meal rows: compact. Text (up to 3 lines) with the buttons at its right; below it time, calories and macro chips. */
+.food-list li.meal { display: block; padding: 8px 0; min-height: 0; }
+.meal-body { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; row-gap: 3px; align-items: start; }
+.meal-body .meal-t { grid-column: 1; font-size: 0.88rem; line-height: 1.28; -webkit-line-clamp: 3; }
+.meal-body .meal-act { grid-column: 2; grid-row: 1; margin: -5px -6px 0 0; opacity: 0.7; }
+.meal .meal-act button.icon { width: 30px; height: 30px; }
+.meal .meal-act button.icon svg { width: 16px; height: 16px; }
+.meal-m { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.meal-m .food-time { width: auto; font-size: 0.72rem; font-variant-numeric: tabular-nums; margin-right: 2px; }
+.meal-m .food-kc { font-size: 0.95rem; padding: 0; margin-right: 4px; }
+.meal-m .food-kcu { font-size: 0.68rem; }
+.meal-m button { padding: 2px 10px; font-size: 0.75rem; }
+.meal-body .food-err { grid-column: 1 / -1; }
+.mchip { font-size: 0.68rem; font-weight: 600; padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mchip.mp { color: var(--c-p); background: color-mix(in srgb, var(--c-p) 15%, transparent); }
+.mchip.mc { color: var(--c-c); background: color-mix(in srgb, var(--c-c) 15%, transparent); }
+.mchip.mf { color: var(--c-f); background: color-mix(in srgb, var(--c-f) 17%, transparent); }
+.mchip.ms { color: var(--c-s); background: color-mix(in srgb, var(--c-s) 16%, transparent); }
