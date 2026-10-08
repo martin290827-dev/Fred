@@ -871,7 +871,7 @@ function renderFood() {
   $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tolCard()));
   const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat day') : '';
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, cheatKey, ...trendCards));
-  fitRows(ul, 1); // the last meal; the rest scrolls
+  fitRows(ul, 2); // the last two meals; the rest scrolls
   requestAnimationFrame(() => {
     // card height is fixed in CSS; more content scrolls inside the card
     growChart($('trends'), (h) => weightChart(daysN, h));
@@ -883,19 +883,22 @@ function renderFood() {
   if (typeof renderTips === 'function') renderTips();
 }
 
-// One line per meal: time, what, kcal. Protein/carbs/fat show on hover.
+// One row per meal: time, text (up to 3 lines), then kcal and protein/carbs/fat/sugar below.
 function foodRow(e) {
   const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
     : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
       : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
+  // macros are shown under the text (no hover needed), so the text gets the full width of the row
   const macro = e.p != null ? 'Protein ' + fmtN(e.p) + ' g · Carbs ' + fmtN(e.c) + ' g · Fat ' + fmtN(e.f) + ' g' + (e.s != null ? ' · Sugar ' + fmtN(e.s) + ' g' : '') : e.src === 'manual' ? 'Own value' : '';
-  return el('li', { class: 'meal', title: macro },
-    el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)),
-    el('span', { class: 'grow meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
-    kc,
-    el('span', { class: 'meal-act' },
-      iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
-      iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); })));
+  return el('li', { class: 'meal', title: e.text },
+    el('div', { class: 'meal-body' },
+      el('div', { class: 'meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text, e.err && !e.busy ? el('span', { class: 'food-err small' }, e.err) : ''),
+      el('div', { class: 'meal-m' },
+        el('span', { class: 'food-time muted small' }, e.at.slice(11, 16)), kc,
+        el('span', { class: 'meal-act' },
+          iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
+          iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); }))),
+      macro ? el('div', { class: 'meal-x muted small' }, macro.replace('Protein', 'P').replace('Carbs', 'C').replace('Fat', 'F')) : ''));
 }
 
 // Change text, time or calories. A changed text is estimated again (unless you typed the calories).

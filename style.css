@@ -1237,3 +1237,14 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .fchart .wproj { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 5; stroke-linecap: round; opacity: 0.8; }
 .fchart .wproj-dot { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
 .pchart-cap { margin: 2px 0 10px; font-size: 0.72rem; }
+
+/* Food meal rows: text over the full width (up to 3 lines); below it time, calories and the buttons, then the macros */
+.food-list li.meal { display: block; padding: 10px 0; min-height: 0; }
+.meal-body { min-width: 0; display: grid; gap: 3px; }
+.meal-body .meal-t { -webkit-line-clamp: 3; font-size: 0.98rem; }
+.meal-m { display: flex; align-items: center; gap: 12px; }
+.meal-m .food-time { width: auto; flex: none; }
+.meal-m .food-kc { font-size: 1.05rem; padding-top: 0; }
+.meal-m .meal-act { margin-left: auto; }
+.meal .meal-act button.icon { width: 38px; height: 38px; }
+.meal .meal-act button.icon svg { width: 18px; height: 18px; }
