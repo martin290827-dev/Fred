@@ -757,7 +757,7 @@ function renderFood() {
   const avg7 = avgKcal(lastDays(7));
   const list = food.filter((e) => e.at.slice(0, 10) === today).sort((a, b) => b.at.localeCompare(a.at));
 
-  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '300', autocomplete: 'off', 'aria-label': 'What did you eat' });
+  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '1500', autocomplete: 'off', 'aria-label': 'What did you eat' });
   const form = el('form', { class: 'row food-add' }, input, foodHistList(), el('button', { type: 'submit' }, 'Add'));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
