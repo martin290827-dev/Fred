@@ -15,7 +15,7 @@ let foodEditId = null;
 let trendRange = store.get('trendRange', 30); // Trends: 7, 30 or 90 days (per device)
 let nutri = store.get('nutri', { kcal: 2500, goalPct: 10, startKg: null, height: null, birthYear: null, sex: '', activity: 1.45 });
 
-const AI_MODEL = 'claude-haiku-4-5-20251001'; // food estimates and everything else
+const AI_MODEL = 'claude-haiku-5-5'; // food estimates and everything else
 const TIPS_MODEL = 'claude-sonnet-5-5'; // health tips (Missing today, Last 14 days): better judgement
 const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input is a short, often dictated description ' +
   '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
