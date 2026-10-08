@@ -106,9 +106,39 @@ async function aiEstimate(text) {
   return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat), s: n(json.sugar) };
 }
 
+// Own calories keep your number. Protein, carbs, fat and sugar are still estimated and scaled to it,
+// because the macro charts show a day only when every meal of that day has macros.
+async function fillMacros(e) {
+  if (!anthropicKey || e.src !== 'manual' || e.kcal == null || e.p != null) return;
+  try {
+    const a = await aiEstimate(e.text.replace(KCAL_RE, '').trim() || e.text);
+    if (!a.kcal) return;
+    const k = e.kcal / a.kcal;
+    const r = (v) => Math.round(v * k);
+    Object.assign(e, { p: r(a.p), c: r(a.c), f: r(a.f), s: Math.min(r(a.s), r(a.c)) });
+  } catch { /* macros stay unknown, tried again at the next start */ }
+}
+
+// Own-calorie meals from before this existed: fill their macros once (30 per start at most).
+let macroBusy = false;
+async function backfillMacros() {
+  const todo = food.filter((e) => e.src === 'manual' && e.kcal != null && e.p == null && !e.busy).slice(0, 30);
+  if (!todo.length || !anthropicKey || macroBusy) return;
+  macroBusy = true;
+  for (const e of todo) await fillMacros(e);
+  saveFood();
+  renderFood();
+  macroBusy = false;
+}
+
 async function estimateEntry(e) {
   const own = manualKcal(e.text);
-  if (own !== null) { Object.assign(e, { kcal: own, p: null, c: null, f: null, s: null, src: 'manual', err: null }); saveFood(); renderFood(); return; }
+  if (own !== null) {
+    Object.assign(e, { kcal: own, p: null, c: null, f: null, s: null, src: 'manual', err: null });
+    saveFood(); renderFood();
+    fillMacros(e).then(() => { saveFood(); renderFood(); });
+    return;
+  }
   if (!anthropicKey) { Object.assign(e, { kcal: null, src: null, err: 'Add an Anthropic key in Settings, or say "... 500 kcal"' }); saveFood(); renderFood(); return; }
   e.busy = true;
   renderFood();
@@ -877,7 +907,10 @@ function foodEditRow(e) {
     saveFood();
     if (newKcal === null && (textChanged || kcalChanged)) estimateEntry(e); // calories cleared or new text without own calories: estimate again
     else if (textChanged && !kcalChanged) estimateEntry(e);
-    else renderFood();
+    else {
+      renderFood();
+      if (e.src === 'manual' && e.p == null) fillMacros(e).then(() => { saveFood(); renderFood(); }); // own calories: macros are estimated and scaled
+    }
   };
   for (const n of [text, time, kcal]) n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } if (ev.key === 'Escape') done(); });
   requestAnimationFrame(() => text.focus());
@@ -943,6 +976,7 @@ function initFood() {
   renderFood();
   setTimeout(() => loadTips(false), 1500); // once a day
   setTimeout(backfillSugar, 4000); // meals from before sugar existed
+  setTimeout(backfillMacros, 8000); // own-calorie meals without protein/carbs/fat
   setInterval(() => { if (!document.hidden) loadTips(false); }, 30 * 60000);
   let rt = null; // new size of the window: draw again, so the charts fill the cards
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderFood, 250); });
