@@ -106,23 +106,27 @@ async function aiEstimate(text) {
   return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat), s: n(json.sugar) };
 }
 
-// Own calories keep your number. Protein, carbs, fat and sugar are still estimated and scaled to it,
-// because the macro charts show a day only when every meal of that day has macros.
+// Fills the missing numbers of one meal, because the macro charts show a day only when EVERY meal of that day has
+// protein, carbs and fat. A meal with calories keeps them (the estimate is scaled to them); a meal without gets the estimate.
 async function fillMacros(e) {
-  if (!anthropicKey || e.src !== 'manual' || e.kcal == null || e.p != null) return;
+  if (!anthropicKey || e.busy || e.p != null) return;
   try {
-    const a = await aiEstimate(e.text.replace(KCAL_RE, '').trim() || e.text);
-    if (!a.kcal) return;
-    const k = e.kcal / a.kcal;
+    const own = manualKcal(e.text) !== null; // a number for the whole meal in the text: leave it out of the question
+    const a = await aiEstimate(own ? e.text.replace(KCAL_RE, '').trim() || e.text : e.text);
+    const t = food.find((x) => x.id === e.id) || e; // a sync may have replaced the list while we waited
+    if (t.p != null) return;
+    if (t.kcal == null) { Object.assign(t, { kcal: a.kcal, p: a.p, c: a.c, f: a.f, s: a.s, src: t.src || 'ai', err: null }); return; }
+    if (!a.kcal) { if (t.kcal === 0) Object.assign(t, { p: 0, c: 0, f: 0, s: 0 }); return; }
+    const k = t.kcal / a.kcal;
     const r = (v) => Math.round(v * k);
-    Object.assign(e, { p: r(a.p), c: r(a.c), f: r(a.f), s: Math.min(r(a.s), r(a.c)) });
-  } catch { /* macros stay unknown, tried again at the next start */ }
+    Object.assign(t, { p: r(a.p), c: r(a.c), f: r(a.f), s: Math.min(r(a.s), r(a.c)) });
+  } catch { /* stays unknown, tried again at the next start */ }
 }
 
-// Own-calorie meals from before this existed: fill their macros once (30 per start at most).
+// Every meal without protein/carbs/fat, whatever the reason: fill it (30 per start at most).
 let macroBusy = false;
 async function backfillMacros() {
-  const todo = food.filter((e) => e.src === 'manual' && e.kcal != null && e.p == null && !e.busy).slice(0, 30);
+  const todo = food.filter((e) => e.p == null && !e.busy).slice(0, 30);
   if (!todo.length || !anthropicKey || macroBusy) return;
   macroBusy = true;
   for (const e of todo) await fillMacros(e);
@@ -624,6 +628,13 @@ function svgEl(tag, attrs, text) {
   return n;
 }
 
+// For a day without a bar: which meals have no protein/carbs/fat (shown in the hover text).
+function missingNote(d) {
+  const miss = food.filter((e) => e.at.slice(0, 10) === d && e.p == null);
+  if (!miss.length) return '';
+  return ' \u00b7 no macros for: ' + miss.map((e) => e.text.slice(0, 40) + (e.kcal == null ? ' (no kcal)' : e.src === 'manual' ? ' (own kcal)' : '')).join('; ');
+}
+
 // Bars per day with a dashed target line and the average. get(dayTotals) returns the value or null.
 function barChart(days, { get, target, unit, h, cls, name, judge }) {
   const W = 600, H = h || 136, L = 56, B = 24, T = 8;
@@ -646,7 +657,7 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
     const over = judge && target && v > target; // judge: red above the target, green up to it
     const cheat = isCheatDay(d);
     const g = svgEl('g', { class: 'bar' + (cheat ? ' cheat' : '') + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data') + (cheat ? ' \u00b7 cheat day' : '')));
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data' + missingNote(d)) + (cheat ? ' \u00b7 cheat day' : '')));
     g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
     if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
     if (cheat && v) { // small diamond above the bar
