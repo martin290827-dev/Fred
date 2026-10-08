@@ -1230,3 +1230,10 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .wt-form input[aria-invalid="true"] { outline: 2px solid var(--down); }
 .wt-form button { flex: none; min-height: 36px; padding: 0 16px; }
 .food-weight { flex-wrap: wrap; }
+
+/* Weight & Goal: progress chart */
+.fchart .wgoal { stroke: var(--up); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.85; }
+.fchart .wgoal-l { fill: var(--up); font-weight: 600; }
+.fchart .wproj { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 5; stroke-linecap: round; opacity: 0.8; }
+.fchart .wproj-dot { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
+.pchart-cap { margin: 2px 0 10px; font-size: 0.72rem; }

@@ -465,6 +465,56 @@ function weekCheck() {
 }
 
 // Where you stand: progress to the goal and four key numbers, like the tiles in Apple Health.
+// Pace in kg lost per week: measured from your weights (4 to 6 weeks) if possible, else expected from calories.
+function goalPace() {
+  const mm = measuredMaintenance();
+  const maint = mm ? mm.kcal : formulaMaintenance();
+  const slope = weightTrendPerDay(trendWindow());
+  const measured = slope !== null ? -slope * 7 : null;
+  const expected = maint ? (((maint - (nutri.kcal || 2500)) * 7) / 7700) : null;
+  return { maint, measured, expected, pace: measured !== null ? measured : expected };
+}
+
+// Progress chart: weigh-ins, 7-day average, goal line and a dashed forecast to the goal date.
+function progressChart(g) {
+  const pts = [...weight].sort((a, b) => a.d.localeCompare(b.d));
+  const W = 600, H = 200, L = 56, R = 8, B = 24, T = 14;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart pchart', role: 'img', 'aria-label': 'Weight progress and forecast to the goal' });
+  const day = (d) => Math.round((new Date(d + 'T00:00') - new Date(pts[0].d + 'T00:00')) / 86400000);
+  const todayN = day(toDateStr(new Date()));
+  const { pace } = goalPace();
+  const left = g.cur - g.goal;
+  const wks = pace > 0.05 && left > 0 ? left / pace : null; // weeks to the goal
+  const endN = wks !== null && wks <= 104 ? todayN + Math.ceil(wks * 7) : todayN + 42;
+  const span = Math.max(endN, 14);
+  const lo = Math.min(g.goal, ...pts.map((p) => p.kg)) - 0.5, hi = Math.max(g.start, ...pts.map((p) => p.kg)) + 0.5;
+  const x = (n) => L + (W - L - R) * (n / span);
+  const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const gl = (v, cls) => svg.append(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: cls }));
+  gl(g.start, 'grid'); gl(g.goal, 'wgoal');
+  svg.append(svgEl('text', { x: L - 6, y: y(g.start) + 4, class: 'ax', 'text-anchor': 'end' }, fmtKg(g.start)), svgEl('text', { x: L - 6, y: y(g.goal) + 4, class: 'ax wgoal-l', 'text-anchor': 'end' }, fmtKg(g.goal)));
+  svg.append(svgEl('line', { x1: x(todayN), x2: x(todayN), y1: T, y2: H - B, class: 'grid' })); // today
+  if (pts.length > 1) svg.append(svgEl('polyline', { points: pts.map((p) => x(day(p.d)).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline raw' }));
+  // 7-day average (when weighed often) is the real trend without the daily water swings
+  const avg = pts.map((p) => { const w = pts.filter((q) => q.d <= p.d && q.d >= toDateStr(addDays(new Date(p.d + 'T00:00'), -6))); return [day(p.d), w.reduce((a, q) => a + q.kg, 0) / w.length]; });
+  const gap = pts.length > 1 ? (day(pts[pts.length - 1].d) / (pts.length - 1)) : 99;
+  if (gap <= 2.5 && avg.length > 1) svg.append(svgEl('polyline', { points: avg.map(([n, v]) => x(n).toFixed(1) + ',' + y(v).toFixed(1)).join(' '), class: 'wavg' }));
+  // forecast: from where you are now, at your pace, down to the goal
+  const now = gap <= 2.5 && avg.length ? avg[avg.length - 1][1] : g.cur;
+  if (pace > 0.05 && left > 0) {
+    const endY = Math.max(g.goal, now - (pace / 7) * (endN - todayN));
+    svg.append(svgEl('line', { x1: x(todayN), y1: y(now), x2: x(endN), y2: y(endY), class: 'wproj' }), svgEl('circle', { cx: x(endN), cy: y(endY), r: 4, class: 'wproj-dot' }));
+    if (wks !== null && wks <= 104) svg.append(svgEl('text', { x: x(endN), y: y(endY) - 9, class: 'ax', 'text-anchor': endN > span * 0.8 ? 'end' : 'middle' }, addDays(new Date(), wks * 7).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })));
+  }
+  pts.forEach((p, i) => {
+    const gr = svgEl('g', { class: 'wdot' });
+    gr.append(svgEl('title', {}, shortDay(p.d) + ': ' + fmtKg(p.kg) + ' kg'), svgEl('circle', { cx: x(day(p.d)), cy: y(p.kg), r: 9, class: 'hit' }), svgEl('circle', { cx: x(day(p.d)), cy: y(p.kg), r: i === pts.length - 1 ? 4 : 3 }));
+    svg.append(gr);
+  });
+  svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(pts[0].d)), svgEl('text', { x: x(todayN), y: H - 4, class: 'ax', 'text-anchor': todayN > span * 0.9 ? 'end' : 'middle' }, 'today'));
+  return svg;
+}
+
 function goalBlock() {
   const g = goalInfo();
   if (!g) return el('p', { class: 'muted small' }, 'Enter your weight above to see your goal and targets.');
@@ -473,13 +523,7 @@ function goalBlock() {
   const left = Math.max(0, g.cur - g.goal);
   const pct = need > 0 ? Math.min(100, (done / need) * 100) : 0;
   const kcal = nutri.kcal || 2500;
-  const mm = measuredMaintenance();
-  const maint = mm ? mm.kcal : formulaMaintenance();
-  // pace: measured from your weights (4 weeks) if possible, else expected from calories
-  const slope = weightTrendPerDay(trendWindow());
-  const measured = slope !== null ? -slope * 7 : null; // kg lost per week
-  const expected = maint ? ((maint - kcal) * 7) / 7700 : null;
-  const pace = measured !== null ? measured : expected;
+  const { maint, measured, expected, pace } = goalPace();
   let when = '–';
   if (left <= 0) when = 'Reached';
   else if (pace > 0.05) {
@@ -496,6 +540,8 @@ function goalBlock() {
   const data = el('div', { class: 'data-line', title: 'Food logged ' + ds.logged14 + ' of the last 14 days' + (maint ? ' \u00b7 maintenance \u2248 ' + fmtN(maint) + ' kcal' : '') },
     ds.ok ? '' : el('span', { class: 'dl-state' }, 'Estimated \u00b7 needs ' + missing));
   return el('div', { class: 'goal' },
+    weight.length ? progressChart(g) : '',
+    weight.length ? el('p', { class: 'muted small pchart-cap' }, 'Dots: weigh-ins \u00b7 line: 7-day average \u00b7 dashed: forecast to your goal') : '',
     el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
     el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start)), el('span', { class: 'lost' }, '\u2212' + fmtKg(done) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal))),
     kpis,
