@@ -1256,3 +1256,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .mchip.mc { color: var(--c-c); background: color-mix(in srgb, var(--c-c) 15%, transparent); }
 .mchip.mf { color: var(--c-f); background: color-mix(in srgb, var(--c-f) 17%, transparent); }
 .mchip.ms { color: var(--c-s); background: color-mix(in srgb, var(--c-s) 16%, transparent); }
+
+/* meal row: the estimate-again button sits next to edit and delete */
+.meal-act .tip-refresh { margin-left: 0; align-self: center; }
+@media (pointer: coarse) { .meal-act .tip-refresh { width: 36px; height: 36px; font-size: 1.1rem; } }

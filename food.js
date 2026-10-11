@@ -118,9 +118,16 @@ async function aiTips(system, text, maxTokens) {
 }
 
 async function aiEstimate(text) {
-  const json = await aiJSON(AI_SYSTEM, text, 700);
+  let json = await aiJSON(AI_SYSTEM, text, 700);
+  if (Array.isArray(json)) json = { items: json }; // the model sent only the item list
   const n = (v) => Math.max(0, Math.round(Number(v) || 0));
-  return { kcal: n(json.kcal), p: n(json.protein), c: n(json.carbs), f: n(json.fat), s: n(json.sugar) };
+  const items = Array.isArray(json.items) ? json.items : [];
+  const sum = (key) => items.reduce((a, it) => a + n(it && it[key]), 0);
+  // a missing or 0 total falls back to the sum of the items, so a good item list is never shown as 0 kcal
+  const pick = (total, key) => (n(total) > 0 ? n(total) : sum(key));
+  const out = { kcal: pick(json.kcal, 'kcal'), p: pick(json.protein, 'protein'), c: pick(json.carbs, 'carbs'), f: pick(json.fat, 'fat'), s: pick(json.sugar, 'sugar') };
+  if (!out.kcal && !items.length) throw new Error('No estimate received, tap ↻ to try again');
+  return out;
 }
 
 // Fills the missing numbers of one meal, because the macro charts show a day only when EVERY meal of that day has
@@ -913,6 +920,9 @@ function foodRow(e) {
     el('div', { class: 'meal-body' },
       el('div', { class: 'meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text),
       el('span', { class: 'meal-act' },
+        // estimate this meal again (clears the old numbers first, so a wrong value cannot stay)
+        el('button', { type: 'button', class: 'tip-refresh', title: 'Estimate again', 'aria-label': 'Estimate ' + e.text + ' again',
+          onclick: () => { Object.assign(e, { kcal: null, p: null, c: null, f: null, s: null, err: null }); estimateEntry(e); } }, '↻'),
         iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
         iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); })),
       el('div', { class: 'meal-m' }, el('span', { class: 'food-time muted' }, e.at.slice(11, 16)), kc, ...chips),
