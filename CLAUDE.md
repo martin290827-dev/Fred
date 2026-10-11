@@ -26,6 +26,10 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 
 - Hidden history (archive.js): one JSON file in Drive ("Fred Archiv Daten.json", scope drive.file) is the real archive; Sheets "Fred Archiv Zyklen / Schlaf / Training / Essen / Gewicht" are generated from it. All three Whoop CSVs (all columns, naps included) and every meal and weight are upserted by key; history only grows. Only an explicit delete of a meal removes it. Missing entries after a sync are never treated as deleted. Changes wait in a local queue (`arcQueue`, not synced, not in backup) until Google is connected. Status line in the Recovery card, Daten.
 
+- AI models (food.js): `AI_MODEL` = Haiku 5.5 for estimates, sugar, cook ideas, weekly text, tolerance and the event scan; `TIPS_MODEL` = Sonnet 5.5 for the health tips only. `aiJSON` gives the default model 3x the token budget (thinking counts against max_tokens) and falls back to Haiku 4.5 (`AI_FALLBACK`) on any error except the key. Estimate errors show in the meal row.
+- Macros: the Trends charts show a day only if EVERY meal of that day has protein, carbs and fat. `fillMacros` / `backfillMacros` fill missing ones at start (30 per start); meals with own kcal keep them and the estimate is scaled to it. The hover text of an empty bar names the meals without macros (`missingNote`).
+- Food meal row: text (up to 3 lines, field limit 1500 characters), buttons at its right, below it time, kcal and P/C/F/S chips. The meal list shows the last two meals, the rest scrolls.
+
 ## Ideas for later
 - Strategy signal panel (for example price versus 200-day average)
 - Edit for tasks and shopping list
