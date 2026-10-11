@@ -21,6 +21,12 @@ const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input i
   '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
   'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}],' +
   '"kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}. protein, carbs, fat and sugar in grams; sugar is the total sugar content (part of carbs), including sugar in fruit and milk. Whole numbers. ' +
+  'Method: list every item, estimate each from its stated weight (or a realistic portion), and make the totals the exact sum of the items. ' +
+  'A weight given for a dish as a whole ("1 piece, ca. 150 g total") already includes the parts named in brackets: never count those parts again. ' +
+  'Keep the dish type the text names; do not replace it with a heavier one (a light buttermilk cream is not cheesecake, no mascarpone unless named). ' +
+  'Weights marked "dry" or "Trockengewicht" are before cooking. Do not add extra calories for restaurants or unseen extras. ' +
+  'Be realistic, not generous: typical Austrian values, and kcal must match about 4 x protein + 4 x carbs + 9 x fat. ' +
+  'Every number must be one single whole number, never a range. ' +
   'If the text is not about food or drink, reply with kcal 0 and an empty items list. ' +
   'If a number with kcal is given for an item (for example "Frankfurter 240 kcal"), it belongs only to the item right before it: use exactly that value for this item, estimate every other item, and make the totals the sum of all items. A "#", "+" or comma separates items.';
 
