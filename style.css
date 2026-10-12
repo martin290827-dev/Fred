@@ -960,9 +960,14 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip-n { width: 20px; height: 20px; font-size: 0.7rem; }
 #health .fh { margin-bottom: 6px; }
 #health .fpanel { padding: 10px 12px; }
-/* Trends > Calories: green up to the target, red above it */
+/* Trends > Calories: green up to the target, yellow up to +10 %, red above; 7-day average line below the chart */
 .food .fchart.b-kcal .bar.under rect:not(.hit) { fill: var(--up); }
+.food .fchart.b-kcal .bar.warn rect:not(.hit) { fill: var(--warn); }
 .food .fchart.b-kcal .bar.over rect:not(.hit) { fill: var(--down); }
+.food .fchart .tgt.tol { stroke: var(--warn); stroke-dasharray: 2 4; opacity: 0.7; }
+.kcal-wk { margin: 6px 0 0; font-weight: 600; }
+.kcal-wk.ok { color: var(--up); }
+.kcal-wk.bad { color: var(--down); }
 .fh-teal { color: var(--c-c); } .fh-gold { color: var(--c-f); }
 .food .fchart.b-c .bar rect:not(.hit) { fill: var(--c-c); }
 .food .fchart.b-f .bar rect:not(.hit) { fill: var(--c-f); }

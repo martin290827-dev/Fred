@@ -246,9 +246,9 @@ function tipsInput() {
     return d + ': total ' + Math.round(t.kcal) + ' kcal, protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g' + (t.ms ? '' : ', sugar ' + Math.round(t.s) + ' g') + '\n  ' + meals.join('\n  ');
   });
   const kc = days.map((d) => dayTotals(d).kcal);
-  const over = kc.filter((v) => v > tg.kcal).length;
+  const over = kc.filter((v) => v > tg.kcal * KCAL_TOL).length; // up to +10 % counts as within tolerance
   const avg = kc.length ? Math.round(kc.reduce((x, y) => x + y, 0) / kc.length) : 0;
-  const week = 'Average ' + avg + ' kcal per logged day, ' + over + ' of ' + kc.length + ' days above the target.\n';
+  const week = 'Average ' + avg + ' kcal per logged day, ' + over + ' of ' + kc.length + ' days more than 10 % above the target (up to 10 % is tolerated, logging is not exact).\n';
   const seen = (tips.hist || []).length ? 'Tips already shown on earlier days (do not repeat them):\n' + tips.hist.join('\n') + '\n' : '';
   return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
     'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + ', sugar at most ' + tg.s + ' g' + '\n' +
@@ -411,6 +411,21 @@ function dataStatus() {
 /* In range = share of the target. Protein is a minimum (more is fine),
    calories, carbs and fat are upper limits with some room below. */
 const RANGES = { kcal: [0.9, 1.1], p: [0.9, 1.5], c: [0.7, 1.15], f: [0.75, 1.15], s: [0, 1] }; // sugar: only an upper limit
+
+// Calorie day colour: green up to the target, yellow up to +10 % (logging error is 10-20 %), red above.
+// The 7-day average is the real warning: above the target it is red, however the single days look.
+const KCAL_TOL = RANGES.kcal[1];
+function kcalDayState(v, target) { return v <= target ? 'under' : v <= target * KCAL_TOL ? 'warn' : 'over'; }
+function kcalWeekAvg() { // last 7 full days (today is not finished); days without entries are skipped
+  const v = lastDays(8).slice(0, 7).map((d) => getKcal(dayTotals(d))).filter((x) => x !== null);
+  return v.length ? { avg: v.reduce((a, b) => a + b, 0) / v.length, n: v.length } : null;
+}
+function kcalWeekLine() {
+  const target = nutri.kcal, w = kcalWeekAvg();
+  if (!target || !w) return '';
+  const ok = w.avg <= target;
+  return el('p', { class: 'small kcal-wk ' + (ok ? 'ok' : 'bad') }, '7-day average: ' + fmtN(w.avg) + ' kcal · ' + (ok ? fmtN(target - w.avg) + ' under target' : fmtN(w.avg - target) + ' over target'));
+}
 const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g'], ['s', 'Sugar', 'g']];
 
 function macroStatus(key, val, target) {
@@ -678,10 +693,12 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
     const v = vals[i];
     const w = Math.max(1.5, bw - (days.length > 40 ? 1.5 : 3));
     const x = L + i * bw + (bw - w) / 2;
-    const over = judge && target && v > target; // judge: red above the target, green up to it
+    // judge: green up to the target, yellow inside the tolerance, red above it
+    const st = judge && target && v ? kcalDayState(v, target) : '';
+    const why = { under: ' \u00b7 within target', warn: ' \u00b7 ' + fmtN(v - target) + ' over target, within tolerance', over: ' \u00b7 ' + fmtN(v - target) + ' over target' }[st] || '';
     const cheat = isCheatDay(d);
-    const g = svgEl('g', { class: 'bar' + (cheat ? ' cheat' : '') + (i === days.length - 1 ? ' today' : '') + (judge && v ? (over ? ' over' : ' under') : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + (judge && target ? (over ? ' \u00b7 ' + fmtN(v - target) + ' over target' : ' \u00b7 within target') : '') : 'no data' + missingNote(d)) + (cheat ? ' \u00b7 cheat day' : '')));
+    const g = svgEl('g', { class: 'bar' + (cheat ? ' cheat' : '') + (i === days.length - 1 ? ' today' : '') + (st ? ' ' + st : '') });
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + why : 'no data' + missingNote(d)) + (cheat ? ' \u00b7 cheat day' : '')));
     g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
     if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
     if (cheat && v) { // small diamond above the bar
@@ -696,6 +713,7 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
     }
   });
   if (target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target), y2: y(target), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(target) - 4, class: 'ax tgtlbl' }, 'target ' + fmtN(target)));
+  if (judge && target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target * KCAL_TOL), y2: y(target * KCAL_TOL), class: 'tgt tol' })); // upper edge of the tolerance
   return svg;
 }
 
@@ -874,7 +892,7 @@ function renderFood() {
   const wRange = weight.filter((p) => p.d >= daysN[0]).sort((a, b) => a.d.localeCompare(b.d));
   const wChange = wRange.length > 1 ? wRange[wRange.length - 1].kg - wRange[0].kg : null;
   const trendCards = [
-    hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120)),
+    hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120), kcalWeekLine()),
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
     tg.c !== null ? hcard('bars', 'teal', 'Carbs', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
     tg.f ? hcard('bars', 'gold', 'Fat', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
