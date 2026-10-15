@@ -1265,3 +1265,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 /* meal row: the estimate-again button sits next to edit and delete */
 .meal-act .tip-refresh { margin-left: 0; align-self: center; }
 @media (pointer: coarse) { .meal-act .tip-refresh { width: 36px; height: 36px; font-size: 1.1rem; } }
+
+/* Health & Nutrition Tips: the refresh button in the heading spins while the request runs */
+#tips-refresh.busy svg { animation: tips-spin 1s linear infinite; }
+@keyframes tips-spin { to { transform: rotate(360deg); } }
