@@ -20,10 +20,34 @@ let gEndTimer = null;
 // Was connected before, but the one-hour Google session is over.
 function gSessionEnded() { return !!googleClientId && !gHasToken() && store.get('gConnected', false); }
 
-function gReconnectRow() {
-  return el('li', { class: 'reconnect' },
-    el('span', { class: 'grow' }, el('b', null, 'Google session ended'), el('br'), el('span', { class: 'muted small' }, 'Google allows one hour at a time.')),
-    el('button', { type: 'button', class: 'small', onclick: gConnect }, 'Reconnect'));
+/* Floating "Reconnect" button: shows over any card, at the bottom of the screen, whenever Google needs a new sign-in
+   (the one-hour session is over) or a permission is missing. It disappears by itself once you are connected. */
+let gTrying = false;     // a silent renewal is running: do not show the button yet
+let gPopHidden = false;  // closed with the x; comes back with the next session
+function gPopNeed() {
+  if (!googleClientId || !store.get('gConnected', false)) return '';
+  if (!gHasToken()) return 'Google session ended';
+  if (!gScopes.includes('drive.appdata') || !gScopes.includes('drive.file')) return 'Google needs a permission';
+  return '';
+}
+function gPopUpdate() {
+  let pop = $('g-pop');
+  if (!pop) {
+    pop = el('div', { id: 'g-pop', class: 'g-pop', role: 'status' },
+      el('button', { type: 'button', class: 'g-pop-go' }),
+      el('button', { type: 'button', class: 'g-pop-x', 'aria-label': 'Hide', title: 'Hide' }, '\u00d7'));
+    pop.querySelector('.g-pop-go').addEventListener('click', () => gConnect());
+    pop.querySelector('.g-pop-x').addEventListener('click', () => { gPopHidden = true; gPopUpdate(); });
+    document.body.append(pop);
+  }
+  const need = gPopNeed();
+  pop.hidden = !need || gPopHidden || gTrying;
+  if (need) pop.querySelector('.g-pop-go').textContent = need + ' \u00b7 Reconnect';
+}
+// Renewal without a window (works while Google still remembers you); the button stays hidden meanwhile.
+function gSilentToken() {
+  gTrying = true; gPopUpdate();
+  return gRequestToken('none').finally(() => { gTrying = false; gPopUpdate(); });
 }
 
 function gStatus(text) {
@@ -57,6 +81,7 @@ async function gRequestToken(prompt) {
         gToken = r.access_token;
         gScopes = r.scope || '';
         gExpiry = Date.now() + (parseInt(r.expires_in, 10) || 3600) * 1000;
+        gPopHidden = false;
         store.set('gConnected', true);
         clearTimeout(gEndTimer); // show the Reconnect button the moment the hour is over
         gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); }, gExpiry - Date.now() - 25000);
@@ -156,7 +181,7 @@ function renderCalendar() {
     $('cal-add').hidden = true;
     $('cal-scan').hidden = true;
   } else {
-    btn.hidden = gSessionEnded(); // the Reconnect row below does the job then
+    btn.hidden = gSessionEnded(); // the floating Reconnect button does the job then
     $('cal-add').hidden = !gHasToken();
     $('cal-scan').hidden = !gHasToken();
     if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
@@ -164,11 +189,9 @@ function renderCalendar() {
   }
   const items = gAgendaItems();
   if (!googleClientId) ul.append(el('li', { class: 'muted empty' }, 'Add your Google Client ID in Settings to see your calendar.'));
-  else if (!gHasToken()) {
-    if (gSessionEnded()) ul.append(gReconnectRow()); // the older list stays visible below
-    else ul.append(el('li', { class: 'muted' }, 'Not connected.'));
-  }
+  else if (!gHasToken() && !gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Not connected.'));
   if (!items.length && gHasToken()) ul.append(el('li', { class: 'muted' }, 'Nothing coming up.'));
+  if (!items.length && gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Google session ended. Use the Reconnect button.'));
   // like the Up Next widget of Apple Calendar: a small header per day, then whole-day events, then the timed items
   const now = new Date();
   let day = '';
@@ -193,6 +216,7 @@ function renderCalendar() {
     if (head && head !== ul.firstElementChild) ul.scrollTop = head.offsetTop - ul.firstElementChild.offsetTop;
   }
   matchWeatherHeight();
+  gPopUpdate();
 }
 
 // Timed items and events in one list, sorted by day; on a day the events come first.
@@ -277,17 +301,17 @@ function gcalInit() {
   $('g-disconnect').addEventListener('click', gDisconnect);
   renderCalendar();
   if (googleClientId && store.get('gConnected', false)) {
-    gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
+    gSilentToken().then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
-  // Back in the app after the hour ran out: try a silent renewal once (no window). If Google refuses, the Reconnect button stays.
+  // Back in the app after the hour ran out: try a silent renewal once (no window). If Google refuses, the floating Reconnect button stays.
   let tryAt = 0;
   document.addEventListener('visibilitychange', () => {
     if (document.hidden || !googleClientId || !store.get('gConnected', false) || gHasToken() || Date.now() - tryAt < 120000) return;
     tryAt = Date.now();
-    gRequestToken('none').then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => {});
+    gSilentToken().then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => {});
   });
-  setInterval(() => { if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
+  setInterval(() => { gPopUpdate(); if (!gUiBusy()) renderCalendar(); }, 60000); // keeps now / soon current between refreshes
   $('cal-add').addEventListener('click', () => gOpenEditor('task', null)); // new items can be switched to Event inside the form
   $('cal-scan').addEventListener('click', () => $('cal-photo').click());
   $('cal-photo').addEventListener('change', (e) => { const file = e.target.files[0]; e.target.value = ''; if (file) gScanPhoto(file); });
