@@ -1269,3 +1269,10 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 /* Health & Nutrition Tips: the refresh button in the heading spins while the request runs */
 #tips-refresh.busy svg { animation: tips-spin 1s linear infinite; }
 @keyframes tips-spin { to { transform: rotate(360deg); } }
+
+/* Tasks & Events: swipe a row to the left to delete; red area with "Delete" appears on the right */
+#cal-list { overflow-x: clip; }
+#cal-list > li.swiping { position: relative; transition: none; z-index: 1; }
+#cal-list > li.swiping::after { content: 'Delete'; position: absolute; left: 100%; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 16px; box-sizing: border-box; background: color-mix(in srgb, var(--down) 55%, transparent); color: #fff; font-weight: 600; font-size: 0.9rem; }
+#cal-list > li.swiping.swipe-go::after { background: var(--down); }
+#cal-list > li:not(.swiping) { transition: transform 0.18s ease; }
