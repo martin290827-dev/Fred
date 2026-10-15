@@ -219,8 +219,8 @@ const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one
   'give fewer tips (3 to 5). A food or drink that appears only once or twice in the 14 days is NOT a pattern: never write a tip about it. ' +
   'Cluster similar unhealthy foods (fried food, fast food, sweets, alcohol, large portions) into ONE tip with the total count and the average cost per week; never one tip per dish. ' +
   'You also get the tips shown on earlier days. Do not repeat the same advice. Only repeat a topic if the numbers got clearly worse, and then say what changed. ' +
-  'If there is nothing new, return only one or two tips (a good one is fine) or an empty list. The diary leaves out his chosen cheat days on purpose; never mention it. Friendly and direct, no moralizing, no medical advice. ' +
-  'Reply with JSON only: {"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}]}';
+  'If there is nothing new, return only one or two tips (a good one is fine) or an empty list. The diary leaves out his chosen cheat days on purpose; never mention it. Friendly and direct, no moralizing, no medical advice.';
+// (the answer format for these tips is set in ALL_SYSTEM, tips.js: one request answers the 14-day tips and "missing today")
 
 // Cheat days: with the feature on (Settings), one day per week can be marked in Food. Marked days are left out of the tips.
 function isCheatDay(d) { return !!nutri.cheatOn && (nutri.cheatDays || []).includes(d); }
@@ -255,25 +255,8 @@ function tipsInput() {
     week + seen + 'Diary:\n' + lines.join('\n');
 }
 
-async function loadTips(force) {
-  const today = toDateStr(new Date());
-  if (tipsBusy || !anthropicKey) return;
-  if (!force && tips.day === today && tips.list.length) return;
-  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n).length;
-  if (logged < 2) return; // too little to say something useful
-  tipsBusy = true;
-  renderFood();
-  try {
-    tips.hist = tipsHist(today); // earlier tips go into the question, so they are not repeated
-    const j = await aiTips(TIPS_SYSTEM, tipsInput(), 900);
-    tips = { hist: tips.hist, day: today, list: (j.tips || []).filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
-  } catch (e) {
-    tips = Object.assign({}, tips, { err: e.message });
-  }
-  tipsBusy = false;
-  store.set('tips', tips);
-  renderFood();
-}
+// Tips and "missing today" share one request (loadAll in tips.js). This asks for the 14-day tips only.
+function loadTips(force) { return loadAll(force, false); }
 
 // Tips of earlier days (short, last 12) go back to Claude so it does not repeat itself.
 function tipsHist(today) {
@@ -1034,10 +1017,8 @@ async function foodMirror() {
 
 function initFood() {
   renderFood();
-  setTimeout(() => loadTips(false), 1500); // once a day
   setTimeout(backfillSugar, 4000); // meals from before sugar existed
   setTimeout(backfillMacros, 8000); // own-calorie meals without protein/carbs/fat
-  setInterval(() => { if (!document.hidden) loadTips(false); }, 30 * 60000);
   let rt = null; // new size of the window: draw again, so the charts fill the cards
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderFood, 250); });
   // new day at midnight, and keep "today" current

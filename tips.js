@@ -56,7 +56,7 @@ const late = () => dayPhase() === 'late evening' || leftToday().kcal < 250;
 /* what is missing today */
 const GAPS_SYSTEM = `Du bist ein evidenzbasierter Ernährungscoach für kontrolliertes Abnehmen (Kaloriendefizit, Muskelerhalt).
 
-Du bekommst am Ende einen DATENBLOCK. Nutze nur Zahlen aus diesem Block. Erfinde keine Werte und rechne nicht selbst, alle "verbleibend"-Werte sind schon berechnet.
+Du bekommst einen DATENBLOCK. Nutze nur Zahlen aus diesem Block. Erfinde keine Werte und rechne nicht selbst, alle "verbleibend"-Werte sind schon berechnet.
 
 Ziel: Sage, was heute noch fehlt oder verbessert werden kann, passend zu den Mahlzeiten, die noch kommen.
 
@@ -68,16 +68,13 @@ Regeln:
 5. Kalzium: Nur wenn es unter Ziel liegt. Nenne fettarme Quellen (Magerquark, Skyr, fettarmer Joghurt, Käse ≤ 20 % Fett).
 6. Jeder Tipp: 1–2 Sätze, nennt den aktuellen Stand mit Zahl, schlägt eine kleine konkrete Handlung vor und nennt den Kalorieneffekt mit "ca.".
 7. Maximal 1 GOOD und 3 ADD. Jeder ADD behandelt ein anderes Thema (Protein, Gemüse/Obst, Kohlenhydrate als Energie, Trinken); nie zwei Tipps zum selben Thema. Prüfe alle Themen, nicht nur Protein. Kohlenhydrate sind erlaubt, solange Kalorien übrig sind; schlage z. B. Haferflocken, Kartoffeln oder Vollkornbrot vor, wenn Kohlenhydrate stark unter dem Ziel liegen. Wenn nichts fehlt, gib nur GOOD aus. Weniger Tipps sind besser als schwache Tipps.
-8. Sprache: Deutsch, direkt, ohne Werbesprache.
+8. Sprache: wie unter "Language of the answer" angegeben (sonst Deutsch), direkt, ohne Werbesprache.
 9. Fehlen Daten, gib ein leeres Array aus.
 
 Referenzwerte (ca.): 25 g Nüsse 150 kcal; 1 EL Olivenöl 90 kcal; 150 g Magerquark 100 kcal; 150 g Skyr 95 kcal; 200 g Brokkoli 70 kcal; 100 g Hühnerbrust 110 kcal.
 
-Ausgabe: nur gültiges JSON, kein weiterer Text:
-[{"type":"GOOD"|"ADD","title":"max 4 Wörter","text":"1–2 Sätze"}]
-
 Beispiel (Daten: 13:00 Uhr, kcal verbleibend 1100, Protein 70/150 g, Kohlenhydrate 90/200 g, Gemüse/Obst erfasst: nein):
-[{"type":"GOOD","title":"Kalorien im Plan","text":"900 von 2000 kcal bis mittags passen gut zum Defizit."},
+"today": [{"type":"GOOD","title":"Kalorien im Plan","text":"900 von 2000 kcal bis mittags passen gut zum Defizit."},
  {"type":"ADD","title":"Gemüse einplanen","text":"Bisher kein Gemüse erfasst. Ergänze am Nachmittag 200 g Brokkoli oder einen Salat (ca. 70 kcal)."},
  {"type":"ADD","title":"Eiweiß abends","text":"Dir fehlen noch 80 g Protein. 150 g Skyr (ca. 95 kcal, ca. 16 g Protein) sind ein kleiner Anfang."}]
 
@@ -86,28 +83,56 @@ Schlechtes Beispiel (nie so): "Du brauchst noch 80 g Fett."
 10. Protein gegen Kalorien: Meldet der DATENBLOCK, dass die Protein-Lücke NICHT in die verbleibenden kcal passt, entscheide selbst und sage die Entscheidung klar. Ist die Überschreitung klein (bis ca. 100 kcal) und die Lücke größer als 30 g, empfiehl EINE kleine, sehr magere Portion (z. B. 150 g Magerquark, ca. 100 kcal) und nenne die Überschreitung offen. Sonst gilt Regel 1: Kalorien halten, das Protein morgen früher einplanen. Schreibe nie "unmöglich" ohne Lösung.
 11. Lebensmittel statt Lücken in Gramm: Nenne fehlende Gramm (z. B. Kohlenhydrate) höchstens nebenbei. Gib stattdessen ein oder zwei konkrete Beispiele, was gut passt. Der Vorschlag muss zur Uhrzeit und zur nächsten Mahlzeit passen (Frühstück, Mittag, Abendessen, Snack). Schlage nie etwas vor, das zu dieser Zeit unüblich ist, zum Beispiel Vollkornbrot als Mittagessen. Mittags: Reis, Kartoffeln, Vollkornnudeln, Hülsenfrüchte. Morgens: Haferflocken, Vollkornbrot, Obst. Abends: leicht, wenig Kohlenhydrate.
 
-DATENBLOCK steht in der Nachricht des Nutzers.`;
+TEIL 2 steht in der Nachricht des Nutzers als DATENBLOCK.`;
 
-async function loadGaps(force) {
-  if (gapsBusy || !anthropicKey) return;
+/* ONE request for both: the 14-day tips (part 1) and what is missing today (part 2).
+   Only the parts that are due are sent: tips once a day (or on refresh), today's check when meals or the time of day changed. */
+const ALL_SYSTEM = 'The message has one or two parts. Answer only the parts that are present. The two parts are independent: never mix their content.\n\n' +
+  '=== PART 1: "TAGEBUCH 14 TAGE" (answer key "tips") ===\n' + TIPS_SYSTEM + '\n\n' +
+  '=== TEIL 2: "DATENBLOCK HEUTE" (Antwortschlüssel "today") ===\n' + GAPS_SYSTEM + '\n\n' +
+  '=== ANSWER FORMAT ===\nReply with one JSON object only, no other text. Leave out the key of a part that is not in the message:\n' +
+  '{"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}],"today":[{"type":"GOOD"|"ADD","title":"max 4 Wörter","text":"1–2 Sätze"}]}';
+
+let allBusy = false, allQueued = false;
+async function loadAll(forceTips, forceToday) {
+  if (!anthropicKey) return;
+  if (allBusy) { allQueued = true; return; } // run again when this one is done, so no change is lost
   const today = toDateStr(new Date()), sig = todaySig();
-  if (!dayTotals(today).n) return;
-  if (!force && gaps.sig === sig && (gaps.list.length || gaps.empty)) return;
-  gapsBusy = true;
-  renderTips(true);
+  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n).length;
+  const needTips = logged >= 2 && (forceTips || tips.day !== today);
+  const needToday = dayTotals(today).n > 0 && (forceToday || !(gaps.sig === sig && (gaps.list.length || gaps.empty)));
+  if (!needTips && !needToday) return;
+  allBusy = true; tipsBusy = needTips; gapsBusy = needToday;
+  renderFood(); renderTips(true);
+  const parts = [];
+  if (needTips) { tips.hist = tipsHist(today); parts.push('TAGEBUCH 14 TAGE:\n' + tipsInput()); } // earlier tips go in, so they are not repeated
+  else parts.push('Language of the answer: ' + (navigator.language || 'de-AT'));
+  if (needToday) parts.push('DATENBLOCK HEUTE:\n' + dayContext());
   try {
-    const j = await aiTips(GAPS_SYSTEM, 'DATENBLOCK:\n' + dayContext(), 700);
-    if (!Array.isArray(j)) throw new Error('unexpected answer');
-    const arr = j;
-    const good = arr.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = arr.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
-    gaps = { day: today, sig, err: '', empty: !good.length && !add.length, list: good.concat(add).map((x) => ({ kind: x.type === 'GOOD' ? 'good' : 'add', title: String(x.title || ''), text: String(x.text) })) };
+    const j = await aiTips(ALL_SYSTEM, parts.join('\n\n'), (needTips ? 900 : 0) + (needToday ? 700 : 0));
+    if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('unexpected answer');
+    if (needTips) {
+      if (!Array.isArray(j.tips)) tips = Object.assign({}, tips, { err: 'unexpected answer' });
+      else tips = { hist: tips.hist, day: today, list: j.tips.filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
+    }
+    if (needToday) {
+      if (!Array.isArray(j.today)) gaps = Object.assign({}, gaps, { err: 'unexpected answer', empty: false });
+      else {
+        const good = j.today.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = j.today.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
+        gaps = { day: today, sig, err: '', empty: !good.length && !add.length, list: good.concat(add).map((x) => ({ kind: x.type === 'GOOD' ? 'good' : 'add', title: String(x.title || ''), text: String(x.text) })) };
+      }
+    }
   } catch (e) {
-    gaps = Object.assign({}, gaps, { err: e.message, empty: false });
+    if (needTips) tips = Object.assign({}, tips, { err: e.message });
+    if (needToday) gaps = Object.assign({}, gaps, { err: e.message, empty: false });
   }
-  gapsBusy = false;
-  store.set('gaps', gaps);
-  renderTips(true);
+  allBusy = false; tipsBusy = false; gapsBusy = false;
+  if (needTips) store.set('tips', tips);
+  if (needToday) store.set('gaps', gaps);
+  renderFood(); renderTips(true);
+  if (allQueued) { allQueued = false; loadAll(false, false); }
 }
+function loadGaps(force) { return loadAll(false, force); } // the ↻ of "Missing today" asks for today only
 
 const GAP_KINDS = { add: 'Add', good: 'Good' };
 const GAP_CLS = { add: 'add', good: 'good' };
@@ -196,7 +221,7 @@ function renderTips(force) {
 
 function initTips() {
   renderTips(true);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadGaps(false); }); // back in the app: refresh when meals or the time of day changed
-  setTimeout(() => loadGaps(false), 2500);
-  setInterval(() => { if (!document.hidden) loadGaps(false); }, 30 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(false, false); }); // back in the app: refresh what is due (new day, new meals, later time of day)
+  setTimeout(() => loadAll(false, false), 2000); // tips and today's check go out as one request
+  setInterval(() => { if (!document.hidden) loadAll(false, false); }, 30 * 60000);
 }
