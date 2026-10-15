@@ -344,7 +344,43 @@ function gRowActions(li, ev, kind) {
   li.append(
     iconButton('edit', 'Edit ' + ev.title, () => gOpenEditor(ev.multi ? 'titleonly' : kind, ev)),
     iconButton('trash', 'Delete ' + ev.title, () => gAskDelete(li, ev)));
+  gSwipeDelete(li, ev);
 }
+
+// Touch: swipe a row to the left to delete it. The row follows the finger; far enough, it asks "Delete?" in place
+// (the same question as the trash button, with "Only this / All" for repeating items). Not far enough: it springs back.
+function gSwipeDelete(li, ev) {
+  let x0 = 0, y0 = 0, dx = 0, pid = null, moving = false, swiped = false;
+  li.style.touchAction = 'pan-y'; // vertical scrolling stays with the browser
+  li.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || e.target.closest('button') || gUiBusy()) return;
+    x0 = e.clientX; y0 = e.clientY; dx = 0; pid = e.pointerId; moving = false;
+  });
+  li.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pid) return;
+    const mx = e.clientX - x0, my = e.clientY - y0;
+    if (!moving) {
+      if (Math.abs(mx) < 10 || Math.abs(mx) < Math.abs(my) * 1.5) return; // not a clear sideways move yet
+      moving = true; li.setPointerCapture(pid); li.classList.add('swiping');
+    }
+    dx = Math.max(-li.offsetWidth * 0.6, Math.min(0, mx)); // left only
+    li.style.transform = 'translateX(' + dx + 'px)';
+    li.classList.toggle('swipe-go', dx < -swipeLimit(li));
+  });
+  const end = () => {
+    if (pid === null) return;
+    pid = null;
+    if (!moving) return;
+    const go = dx < -swipeLimit(li);
+    moving = false; swiped = true;
+    li.classList.remove('swiping', 'swipe-go'); li.style.transform = '';
+    if (go) gAskDelete(li, ev);
+  };
+  li.addEventListener('pointerup', end);
+  li.addEventListener('pointercancel', end);
+  li.addEventListener('click', (e) => { if (swiped) { swiped = false; e.stopPropagation(); } }, true); // a swipe is not a tap (no edit/delete buttons)
+}
+const swipeLimit = (li) => Math.min(110, li.offsetWidth * 0.35);
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const hhmm = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
