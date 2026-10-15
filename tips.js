@@ -132,7 +132,6 @@ async function loadAll(forceTips, forceToday) {
   renderFood(); renderTips(true);
   if (allQueued) { allQueued = false; loadAll(false, false); }
 }
-function loadGaps(force) { return loadAll(false, force); } // the ↻ of "Missing today" asks for today only
 
 const GAP_KINDS = { add: 'Add', good: 'Good' };
 const GAP_CLS = { add: 'add', good: 'good' };
@@ -207,13 +206,11 @@ function renderTips(force) {
   const box = $('tips');
   if (!box) return;
   if (!force && box.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return; // typing: do not redraw
-  const tipRefresh = el('button', { type: 'button', class: 'tip-refresh', title: 'New tips', 'aria-label': 'New tips', onclick: () => loadTips(true) }, tipsBusy ? '…' : '↻');
-  const gapRefresh = el('button', { type: 'button', class: 'tip-refresh', title: 'Check today again', 'aria-label': 'Check today again', onclick: () => loadGaps(true) }, gapsBusy ? '…' : '↻');
   const p1 = hcard('bulb', 'yellow', 'Last 14 days', '', tipsBlock(true));
-  p1.querySelector('.fh').append(tipRefresh);
   const p2 = hcard('check', 'green', 'Missing today', '', gapsBlock());
-  p2.querySelector('.fh').append(gapRefresh);
   const p3 = hcard('meals', 'pink', 'What shall I cook?', '', cookBlock());
+  const btn = $('tips-refresh');
+  if (btn) { btn.disabled = allBusy; btn.classList.toggle('busy', allBusy); } // one button in the heading for both lists
   const keep = document.activeElement && document.activeElement.id === 'cook-text' ? [document.activeElement.selectionStart] : null;
   box.replaceChildren(el('div', { class: 'food-col' }, p2, p1, p3)); // missing today, last 14 days, cook
   if (keep) { const i = $('cook-text'); i.focus(); i.setSelectionRange(keep[0], keep[0]); }
@@ -221,6 +218,8 @@ function renderTips(force) {
 
 function initTips() {
   renderTips(true);
+  const btn = $('tips-refresh');
+  if (btn) btn.addEventListener('click', () => loadAll(true, true)); // refresh both lists in one request
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(false, false); }); // back in the app: refresh what is due (new day, new meals, later time of day)
   setTimeout(() => loadAll(false, false), 2000); // tips and today's check go out as one request
   setInterval(() => { if (!document.hidden) loadAll(false, false); }, 30 * 60000);
