@@ -1317,3 +1317,16 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
   .tabbar button.on .cicon { opacity: 1; }
   body.tabs .g-pop { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
+
+/* Now and Patterns cards */
+.now-row { display: block; width: 100%; text-align: left; padding: 12px 14px; margin: 0 0 8px; border-radius: 14px; background: var(--card-2); color: var(--text); box-shadow: none; min-height: 0; font-weight: 400; }
+.now-row:last-child { margin-bottom: 0; }
+.now-l { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+.now-v { font-size: 1.3rem; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+.now-v.up { color: var(--up); } .now-v.down { color: var(--down); }
+.now-t { font-size: 0.88rem; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+.pt-row { cursor: default; }
+@keyframes tabin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+main.grid.tab-in > .card { animation: tabin 0.22s ease-out; }
+@media (prefers-reduced-motion: reduce) { main.grid.tab-in > .card { animation: none; } }
+#card-now, #card-patterns { height: auto; max-height: none; } /* as many rows as there are, no inner scroll */
