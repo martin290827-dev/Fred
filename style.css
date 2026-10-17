@@ -362,7 +362,8 @@ button.danger { background: var(--down); color: #fff; }
 .list li.earn .grow::before { content: "\25C6"; color: var(--accent); font-size: 0.7rem; margin-right: 6px; vertical-align: 1px; }
 
 /* ---------- market news: full width, one column per ticker ---------- */
-.card-wide { height: auto; } /* Market News */
+.card-wide { height: var(--card-h); } /* wide cards are as high as the others; longer content scrolls inside */
+@media (max-width: 700px) { #card-heat { height: auto; } } /* many tiles in 3 columns: no inner scroll on the phone */
 /* column plan: phone 1 column; tablet 2; desktop 6 thin columns, normal cards take 2, the two wide cards take 3 each (half) */
 @media (min-width: 700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1000px) {
@@ -717,7 +718,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 @media (max-width: 700px) {
   header {
     grid-template-columns: 1fr auto;
-    grid-template-areas: "title btn" "date date" "jump jump";
+    grid-template-areas: "title btn" "date date";
     row-gap: 6px;
     padding: 10px 16px;
     padding-top: max(10px, env(safe-area-inset-top));
@@ -762,25 +763,8 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 @keyframes micpulse { 50% { opacity: 0.6; } }
 @media (prefers-reduced-motion: reduce) { #notes-mic.rec { animation: none; } }
 
-/* shortcut bar under the header: one chip per visible card, tap = jump there */
-.jumpbar { grid-area: jump; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 0; padding: 2px 4px; }
-.jumpbar::-webkit-scrollbar { display: none; }
-.jumpbar button { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border-radius: 999px;
-  background: var(--fill); color: var(--text); font-size: 0.8rem; font-weight: 500; min-height: 0; box-shadow: none; }
-.jumpbar button:hover { background: var(--accent-soft); }
-.jumpbar .cicon { width: 20px; height: 20px; border-radius: 6px; }
-.jumpbar .cicon svg { width: 13px; height: 13px; }
 .grid > .card { scroll-margin-top: calc(var(--head-h, 110px) + 12px); }
 .card.flash { box-shadow: 0 0 0 3px var(--accent), var(--shadow); transition: box-shadow 0.3s; }
-@media (max-width: 700px) { .jumpbar button { padding: 4px 6px 4px 5px; } .jumpbar button span.jl { display: none; } }
-/* phone: all chips in exactly two rows, bigger icons (the number of columns is set from the script: half the visible cards, rounded up) */
-@media (max-width: 700px) {
-  .jumpbar { display: grid; grid-template-columns: repeat(var(--jb-cols, 9), minmax(0, 1fr)); gap: 10px 4px; overflow: visible; margin: 6px 0 0; padding: 0; }
-  .jumpbar > :first-child, .jumpbar > :last-child { margin: 0; }
-  .jumpbar button { width: 100%; padding: 0; background: none; justify-content: center; border-radius: 12px; }
-  .jumpbar .cicon { width: min(38px, 100%); height: auto; aspect-ratio: 1; border-radius: 10px; }
-  .jumpbar .cicon svg { width: 58%; height: 58%; }
-}
 .notes-hint { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); font-size: 0.85rem; line-height: 1.35; }
 .notes-hint[hidden] { display: none; }
 
@@ -886,7 +870,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .ev-t, .ag-t { overflow-wrap: normal; word-break: normal; hyphens: auto; }
 #cal-list > li.ag, #cal-list > li.evr { cursor: default; }
 /* Market News: as tall as its content (up to a limit), no empty space */
-#card-news { height: auto; max-height: 640px; }
+#card-news { height: var(--card-h); } /* like the others: the headlines scroll inside */
 .news { align-items: stretch; } /* all ticker boxes the same height */
 
 /* ---------- Health: key numbers ---------- */
@@ -1039,9 +1023,6 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .rc-key { flex: none; margin-right: 5px; }
 .rc-legend { gap: 4px 14px; }
 
-/* Jump chips: one row that scrolls sideways; centred while it fits, starts at the left when it does not */
-.jumpbar > :first-child { margin-left: auto; }
-.jumpbar > :last-child { margin-right: auto; }
 
 /* finished tasks stay for 72 hours, shown quietly */
 .list li.ag.past .ag-t { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
@@ -1305,28 +1286,32 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .heat-grid.move .heat-tile { flex-basis: 96px; }
 
 /* Phone: group tabs at the bottom, one group of cards at a time */
-.tabbar { display: none; }
+.tabbar { grid-area: jump; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.tabbar button { display: inline-flex; align-items: center; gap: 8px; min-height: 0; padding: 5px 14px 5px 6px; border-radius: 999px; background: var(--fill); color: var(--muted); font-size: 0.9rem; font-weight: 600; box-shadow: none; }
+.tabbar button:hover { background: var(--accent-soft); }
+.tabbar button.on { background: var(--text); color: var(--bg); }
+.tabbar .cicon { width: 24px; height: 24px; border-radius: 7px; }
+.tabbar .cicon svg { width: 15px; height: 15px; }
 @media (max-width: 700px) {
-  body.tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
-  body.tabs .jumpbar { display: none; }
-  .tabbar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line-2); }
-  .tabbar button { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; background: none; color: var(--muted, #8e8e93); font-size: 0.68rem; font-weight: 600; box-shadow: none; border-radius: 10px; }
-  .tabbar button.on { color: var(--text); }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .tabbar { grid-area: auto; flex-wrap: nowrap; gap: 0; margin: 0; justify-content: stretch; position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line-2); }
+  .tabbar button { flex: 1; min-width: 0; flex-direction: column; justify-content: flex-start; gap: 3px; padding: 4px 2px; background: none; color: var(--muted, #8e8e93); font-size: 0.68rem; font-weight: 600; box-shadow: none; border-radius: 10px; }
+  .tabbar button.on { background: none; color: var(--text); }
   .tabbar .cicon { width: 26px; height: 26px; border-radius: 8px; opacity: 0.55; }
   .tabbar .cicon svg { width: 16px; height: 16px; }
   .tabbar button.on .cicon { opacity: 1; }
-  body.tabs .g-pop { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  body .g-pop { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
 
 /* Now and Patterns cards */
-.now-row { display: block; width: 100%; text-align: left; padding: 12px 14px; margin: 0 0 8px; border-radius: 14px; background: var(--card-2); color: var(--text); box-shadow: none; min-height: 0; font-weight: 400; }
+.now-row { display: grid; grid-template-columns: 70px 1fr; column-gap: 10px; align-items: baseline; width: 100%; text-align: left; padding: 8px 12px; margin: 0 0 6px; border-radius: 14px; background: var(--card-2); color: var(--text); box-shadow: none; min-height: 0; font-weight: 400; }
 .now-row:last-child { margin-bottom: 0; }
-.now-l { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
-.now-v { font-size: 1.3rem; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+.now-l { grid-row: 1 / span 2; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+.now-v { grid-column: 2; font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
 .now-v.up { color: var(--up); } .now-v.down { color: var(--down); }
-.now-t { font-size: 0.88rem; color: var(--muted); margin-top: 3px; line-height: 1.35; }
-.pt-row { cursor: default; }
+.now-t { grid-column: 2; font-size: 0.82rem; color: var(--muted); margin-top: 1px; line-height: 1.3; }
+.pt-row { display: block; cursor: default; }
+.pt-row .now-t { font-size: 0.88rem; margin-top: 3px; }
 @keyframes tabin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 main.grid.tab-in > .card { animation: tabin 0.22s ease-out; }
 @media (prefers-reduced-motion: reduce) { main.grid.tab-in > .card { animation: none; } }
-#card-now, #card-patterns { height: auto; max-height: none; } /* as many rows as there are, no inner scroll */

@@ -54,7 +54,7 @@ function nowMarkets() {
 }
 
 function nowGo(id) {
-  if (tabsMQ.matches && tabOf(id) !== activeTab) setTab(tabOf(id));
+  if (tabOf(id) !== activeTab) setTab(tabOf(id));
   requestAnimationFrame(() => jumpTo($(id)));
 }
 

@@ -1232,7 +1232,7 @@ function currentOrder() {
   return known.concat(ids.filter((id) => !known.includes(id)));
 }
 
-/* Phone: cards are grouped into tabs (bottom bar); only the active group shows. Desktop shows all cards. */
+/* Cards are grouped into tabs (phone: bottom bar, desktop: row in the header); only the active group shows. */
 const TAB_GROUPS = [
   { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
   { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news', 'card-clock'] },
@@ -1240,12 +1240,11 @@ const TAB_GROUPS = [
   { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits', 'card-patterns'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
-const tabsMQ = window.matchMedia('(max-width: 700px)');
 let activeTab = store.get('tab', 'today'); // per device, not synced
 if (!TAB_GROUPS.some((g) => g.id === activeTab)) activeTab = 'today';
 
 function tabOf(id) { const g = TAB_GROUPS.find((x) => x.cards.includes(id)); return g ? g.id : 'tools'; } // new cards land in Tools
-function inActiveTab(id) { return !tabsMQ.matches || tabOf(id) === activeTab; }
+function inActiveTab(id) { return tabOf(id) === activeTab; }
 
 function setTab(id) {
   activeTab = id;
@@ -1259,7 +1258,6 @@ function setTab(id) {
 function renderTabbar() {
   const bar = $('tabbar');
   if (!bar) return;
-  document.body.classList.toggle('tabs', tabsMQ.matches);
   bar.replaceChildren(...TAB_GROUPS.map((g) => {
     const first = g.cards.map((id) => cardIcon(id)).find(Boolean);
     return el('button', { type: 'button', class: g.id === activeTab ? 'on' : '', 'aria-current': g.id === activeTab ? 'page' : 'false', onclick: () => setTab(g.id) },
@@ -1284,41 +1282,14 @@ function applyLayout() {
     c.classList.toggle('half', !!((next && next.classList.contains('card-wide')) || (prev && prev.classList.contains('card-wide'))));
   });
   renderLayoutBar();
-  renderJumpbar(visible);
   renderTabbar();
+  setHeadHeight();
 }
 
-// Shortcut chips in the header: jump straight to a card.
-function renderJumpbar(visible) {
-  const bar = $('jumpbar');
-  if (!bar) return;
-  initJumpbarWheel();
-  bar.replaceChildren(...visible.map((id) => {
-    const c = $(id);
-    const title = cardTitle(c);
-    return el('button', { type: 'button', title, 'aria-label': 'Go to ' + title, onclick: () => jumpTo(c) },
-      cardIcon(id) || '', el('span', { class: 'jl' }, shortTitle(title)));
-  }));
-  bar.style.setProperty('--jb-cols', Math.max(1, Math.ceil(visible.length / 2))); // phone: two rows
-  document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px');
-}
-
-// Mouse wheel scrolls the chip row sideways (no trackpad needed). Set up once.
-function initJumpbarWheel() {
-  const bar = $('jumpbar');
-  if (!bar || bar.dataset.wheel) return;
-  bar.dataset.wheel = '1';
-  bar.addEventListener('wheel', (e) => {
-    if (bar.scrollWidth <= bar.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-    bar.scrollLeft += e.deltaY;
-    e.preventDefault();
-  }, { passive: false });
-}
-
-function shortTitle(t) { return t.split(/\s*&\s*/)[0]; } // "Calculator & Currency" -> "Calculator"
+function setHeadHeight() { document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px'); }
 
 function jumpTo(card) {
-  document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px');
+  setHeadHeight();
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   card.classList.add('flash');
   setTimeout(() => card.classList.remove('flash'), 1200);
@@ -1576,7 +1547,6 @@ function init() {
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();
-  tabsMQ.addEventListener('change', () => { applyLayout(); matchWeatherHeight(); });
   window.addEventListener('resize', matchWeatherHeight);
   gcalInit();
   syncInit();
