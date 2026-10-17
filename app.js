@@ -1464,7 +1464,7 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'whoop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'whoop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
 const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'food', 'weight', 'poker'];
 

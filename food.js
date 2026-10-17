@@ -95,11 +95,69 @@ async function aiCall(system, text, maxTokens, image, model, timeoutMs) {
   });
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
+  aiTrack(j.model || model || AI_MODEL, j.usage); // billed even if the answer cannot be read
   const out = (j.content || []).map((x) => x.text || '').join('');
   try { return parseAiJson(out); } catch (e) {
     // say why: cut off by the token limit, or what the start of the answer looked like
     throw new Error(j.stop_reason === 'max_tokens' ? 'answer cut off (token limit)' : 'not valid JSON, starts with: ' + out.replace(/\s+/g, ' ').slice(0, 60));
   }
+}
+
+/* ---------- AI cost: tokens of every answer, summed per month and model; cost in USD ----------
+   Prices per million tokens: [input, output, input over 100k prompt tokens, output over 100k]
+   (platform.claude.com/docs/en/about-claude/pricing, checked 17 Oct 2026). Thinking tokens count as output.
+   Only tokens are stored, so a price change here corrects the numbers for all months.
+   aiUse = this device, aiUseOther = the other kind of device (phone / desktop), read from the Google Sheet. */
+const AI_PRICES = { 'claude-haiku-5-5': [0.10, 0.50, 0.50, 2.50], 'claude-sonnet-5-5': [2, 10, 2, 10], 'claude-haiku-4-5': [1, 5, 1, 5] };
+let aiUse = store.get('aiUse', { since: '', m: {} });
+let aiUseOther = store.get('aiUseOther', null);
+
+function aiTrack(model, usage) {
+  if (!usage) return;
+  const i = Number(usage.input_tokens) || 0, o = Number(usage.output_tokens) || 0;
+  const id = String(model).replace(/-\d{8}$/, '') + (i > 100000 ? ':long' : ''); // long prompts have their own price
+  const mon = toDateStr(new Date()).slice(0, 7);
+  const cur = Object.assign({}, (aiUse.m || {})[mon]);
+  const v = (cur[id] || [0, 0, 0]).slice();
+  cur[id] = [v[0] + i, v[1] + o, v[2] + 1];
+  aiUse = { since: aiUse.since || toDateStr(new Date()), m: Object.assign({}, aiUse.m, { [mon]: cur }) };
+  store.set('aiUse', aiUse);
+  renderAiUse();
+}
+
+// rows: { model: [input, output, calls] } -> { usd, calls, unknown }
+function aiCostOf(rows) {
+  let usd = 0, calls = 0, unknown = false;
+  for (const id in rows) {
+    const [i, o, c] = rows[id];
+    calls += c;
+    const p = AI_PRICES[id.replace(':long', '')], L = id.endsWith(':long') ? 2 : 0;
+    if (!p) { unknown = true; continue; }
+    usd += (i * p[L] + o * p[L + 1]) / 1e6;
+  }
+  return { usd, calls, unknown };
+}
+
+// Both kinds of device together; month = 'YYYY-MM' or '' for everything.
+function aiSum(month) {
+  const rows = {};
+  for (const u of [aiUse, aiUseOther]) for (const [m, r] of Object.entries((u && u.m) || {})) {
+    if (month && m !== month) continue;
+    for (const [id, v] of Object.entries(r)) { const a = rows[id] || (rows[id] = [0, 0, 0]); a[0] += v[0]; a[1] += v[1]; a[2] += v[2]; }
+  }
+  return aiCostOf(rows);
+}
+
+function renderAiUse() {
+  const box = $('ai-use');
+  if (!box) return;
+  const line = (c) => '~$' + c.usd.toFixed(2) + ' \u00b7 ' + c.calls + ' requests' + (c.unknown ? ' (a model without price is not counted)' : '');
+  const since = [aiUse.since, aiUseOther && aiUseOther.since].filter(Boolean).sort()[0];
+  const sinceTxt = since ? ' since ' + new Date(since + 'T00:00').toLocaleDateString(navigator.language || 'de-AT') : '';
+  box.replaceChildren(
+    el('div', {}, 'AI cost this month: ' + line(aiSum(toDateStr(new Date()).slice(0, 7)))),
+    el('div', {}, 'AI cost in total' + sinceTxt + ': ' + line(aiSum(''))),
+    el('div', {}, 'Counted from the answers of Anthropic (phone and desktop together), at list prices. Your Anthropic console shows the exact bill.'));
 }
 
 // Tips use the stronger model; if it is not available for this key, fall back to the default one.
@@ -407,7 +465,8 @@ function kcalWeekLine() {
   const target = nutri.kcal, w = kcalWeekAvg();
   if (!target || !w) return '';
   const ok = w.avg <= target;
-  return el('p', { class: 'small kcal-wk ' + (ok ? 'ok' : 'bad') }, '7-day average: ' + fmtN(w.avg) + ' kcal · ' + (ok ? fmtN(target - w.avg) + ' under target' : fmtN(w.avg - target) + ' over target'));
+  return el('p', { class: 'small kcal-wk ' + (ok ? 'ok' : 'bad') }, '7-day average: ' + fmtN(w.avg) + ' kcal · ' + (ok ? fmtN(target - w.avg) + ' under target' : fmtN(w.avg - target) + ' over target') +
+    ' · ' + w.n + ' of 7 days logged' + (w.n < 7 ? ' (days without entries are skipped)' : ''));
 }
 const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g'], ['s', 'Sugar', 'g']];
 
@@ -1017,6 +1076,7 @@ async function foodMirror() {
 
 function initFood() {
   renderFood();
+  renderAiUse();
   setTimeout(backfillSugar, 4000); // meals from before sugar existed
   setTimeout(backfillMacros, 8000); // own-calorie meals without protein/carbs/fat
   let rt = null; // new size of the window: draw again, so the charts fill the cards
