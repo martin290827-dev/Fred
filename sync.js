@@ -130,7 +130,6 @@ async function syncNow() {
 function syncApply(keys) {
   const has = (k) => keys.includes(k);
   if (has('place') || has('place2')) { place = store.get('place', null); place2 = store.get('place2', null); loadWeather(); }
-  if (has('zones')) { zones = store.get('zones', zones); renderClocks(); }
   if (has('shop')) { shop = store.get('shop', []); renderShop(); }
   if (has('notes')) {
     const box = $('notes');
