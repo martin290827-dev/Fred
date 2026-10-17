@@ -153,7 +153,7 @@ function renderAiUse() {
   if (!box) return;
   const line = (c) => '~$' + c.usd.toFixed(2) + ' \u00b7 ' + c.calls + ' requests' + (c.unknown ? ' (a model without price is not counted)' : '');
   const since = [aiUse.since, aiUseOther && aiUseOther.since].filter(Boolean).sort()[0];
-  const sinceTxt = since ? ' since ' + new Date(since + 'T00:00').toLocaleDateString(navigator.language || 'de-AT') : '';
+  const sinceTxt = since ? ' since ' + new Date(since + 'T00:00').toLocaleDateString('en-GB') : '';
   box.replaceChildren(
     el('div', {}, 'AI cost this month: ' + line(aiSum(toDateStr(new Date()).slice(0, 7)))),
     el('div', {}, 'AI cost in total' + sinceTxt + ': ' + line(aiSum(''))),

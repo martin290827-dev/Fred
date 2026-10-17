@@ -501,6 +501,7 @@ async function geocode(name) {
 
 /* ---------- 4) Tickers (Binance public data for crypto, Finnhub for stocks) ---------- */
 let lastQuotes = {};
+let lastQuotesAt = 0; // when the quotes were last loaded (Heatmap snapshot time)
 
 // Indices: the free data sources have no index levels, so an index is followed through its ETF (same direction, price in USD, not index points).
 const INDEX_ETF = { SPY: 'S&P 500', QQQ: 'Nasdaq 100', DIA: 'Dow Jones', IWM: 'Russell 2000' };
@@ -627,7 +628,9 @@ async function loadQuotes() {
       el('span', { class: 'pct ' + cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%')));
   }
   $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' \u00b7 stocks may be delayed';
+  lastQuotesAt = Date.now();
   paintSparks();
+  if (typeof renderHeat === 'function') renderHeat(true); // the Heatmap card uses the same quotes
   if (news.t) renderNews(); // keeps the movers order current
 }
 
@@ -1676,6 +1679,13 @@ function initLayout() {
     if (n >= 0) { o.splice(n + 1, 0, 'card-habits'); layout.order = o; store.set('layout', layout); }
     store.set('mig.habits', true);
   }
+  // one-time: the Heatmap card goes right after Tickers
+  if (!store.get('mig.heat', false)) {
+    const o = layout.order.filter((id) => id !== 'card-heat');
+    const n = o.indexOf('card-tickers');
+    if (n >= 0) { o.splice(n + 1, 0, 'card-heat'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.heat', true);
+  }
   // one-time: the Poker card goes right after Sleep Habits
   if (!store.get('mig.poker', false)) {
     const o = layout.order.filter((id) => id !== 'card-poker');
@@ -1708,6 +1718,7 @@ const CARD_ICONS = {
   'card-cal': ['#007aff', 'M9 6h11M9 12h11M9 18h11M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17'],
   'card-weather': ['#32ade6', 'M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.1 3.5 3.5 0 0 0 7 18z'],
   'card-tickers': ['#34c759', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
+  'card-heat': ['#ff3b30', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
   'card-clock': ['#5856d6', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'],
   'card-shop': ['#ff2d55', 'M3 4h2l2.5 11h11L21 7H6.2M9 20h.01M18 20h.01'],
   'card-timer': ['#ff9500', 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4'],
@@ -1824,6 +1835,7 @@ function init() {
   });
   initFood();
   initTips();
+  initHeat();
   initArchive();
   initRecovery();
   initPoker();

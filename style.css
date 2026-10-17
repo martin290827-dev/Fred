@@ -1286,3 +1286,21 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 /* Settings: AI cost lines */
 .ai-use { display: flex; flex-direction: column; gap: 3px; margin: -4px 0 4px; }
 .ai-use div:nth-child(-n+2) { color: var(--text); font-weight: 600; }
+
+/* Heatmap card: dark tiles like a market heatmap, colour = size of the move (heatmap.js) */
+#card-heat { container-type: inline-size; }
+#heat { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.heat-title { font-size: 1.15rem; font-weight: 700; text-align: center; }
+.heat-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.heat-btn { min-height: 0; padding: 6px 16px; border-radius: 8px; background: var(--fill); color: var(--text); font-size: 0.85rem; font-weight: 600; box-shadow: none; }
+.heat-btn.on { background: var(--text); color: var(--bg); }
+.heat-snap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; color: var(--muted); }
+.heat-badge { padding: 1px 8px; border-radius: 6px; background: #e3b341; color: #1c1c1e; font-weight: 700; font-size: 0.75rem; }
+.heat-grid { --gap: 8px; display: flex; flex-wrap: wrap; gap: var(--gap); width: 100%; margin-top: 4px; }
+.heat-tile { flex: var(--w, 1) 1 calc((100% - 2 * var(--gap)) / 3 - 0.5px); min-width: 0; min-height: 92px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 4px; border-radius: 6px; background: #2b2b2e; color: #fff; text-align: center; }
+.heat-tile.none { color: rgba(255, 255, 255, 0.55); }
+.ht-s { font-size: 1.1rem; font-weight: 700; }
+.ht-p { font-size: 1rem; font-weight: 600; }
+.ht-v { font-size: 0.65rem; opacity: 0.85; font-variant-numeric: tabular-nums; }
+@container (min-width: 560px) { .heat-tile { flex-basis: calc((100% - 5 * var(--gap)) / 6 - 0.5px); } }
+.heat-grid.move .heat-tile { flex-basis: 96px; }
