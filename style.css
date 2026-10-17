@@ -322,9 +322,9 @@ button.icon:hover { background: var(--fill); color: var(--text); opacity: 1; }
 .clock:first-child .t { font-size: 2.3rem; }
 
 /* ---------- stock exchange hours (bottom of the Time card) ---------- */
-.markets { margin-top: auto; padding-top: 10px; display: grid; gap: 4px; }
+.markets { padding-top: 6px; display: grid; gap: 10px; }
 .markets:empty { display: none; }
-.mkt { display: grid; grid-template-columns: 8px auto 1fr; align-items: center; gap: 8px; font-size: 0.8rem; }
+.mkt { display: grid; grid-template-columns: 8px auto 1fr; align-items: center; gap: 8px; font-size: 0.95rem; }
 .mkt .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); }
 .mkt.open .dot { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 20%, transparent); }
 .mkt-name { font-weight: 600; }
@@ -1270,14 +1270,14 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 /* Heatmap card: dark tiles like a market heatmap, colour = size of the move (heatmap.js) */
 #card-heat { container-type: inline-size; }
 #heat { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.heat-title { font-size: 1.15rem; font-weight: 700; text-align: center; }
+.heat-seg { display: flex; gap: 6px; }
 .heat-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .heat-btn { min-height: 0; padding: 6px 16px; border-radius: 8px; background: var(--fill); color: var(--text); font-size: 0.85rem; font-weight: 600; box-shadow: none; }
 .heat-btn.on { background: var(--text); color: var(--bg); }
 .heat-snap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; color: var(--muted); }
 .heat-badge { padding: 1px 8px; border-radius: 6px; background: #e3b341; color: #1c1c1e; font-weight: 700; font-size: 0.75rem; }
 .heat-grid { --gap: 8px; display: flex; flex-wrap: wrap; gap: var(--gap); width: 100%; margin-top: 4px; }
-.heat-tile { flex: var(--w, 1) 1 calc((100% - 2 * var(--gap)) / 3 - 0.5px); min-width: 0; min-height: 92px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 4px; border-radius: 6px; background: #5b6170; color: #fff; text-align: center; }
+.heat-tile { flex: var(--w, 1) 1 calc((100% - 2 * var(--gap)) / 3 - 0.5px); min-width: 0; min-height: 72px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; border-radius: 6px; background: #5b6170; color: #fff; text-align: center; }
 .heat-tile.none { color: rgba(255, 255, 255, 0.55); }
 .ht-s { font-size: 1.1rem; font-weight: 700; }
 .ht-p { font-size: 1rem; font-weight: 600; }
@@ -1315,3 +1315,11 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 @keyframes tabin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 main.grid.tab-in > .card { animation: tabin 0.22s ease-out; }
 @media (prefers-reduced-motion: reduce) { main.grid.tab-in > .card { animation: none; } }
+
+/* Card height per group (the data-heavy groups get more room), desktop column plan per card */
+body[data-tab="nutrition"], body[data-tab="body"] { --card-h: 700px; }
+@media (min-width: 1000px) {
+  .grid > #card-heat.card-wide, .grid > #card-news.card-wide { grid-column: span 4; }
+  .grid > #card-notes { grid-column: span 4; }
+  .grid > #card-poker { grid-column: span 4; }
+}
