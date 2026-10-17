@@ -1174,7 +1174,7 @@ function currentOrder() {
 
 /* Cards are grouped into tabs (phone: bottom bar, desktop: row in the header); only the active group shows. */
 const TAB_GROUPS = [
-  { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-notes', 'card-shop'] },
+  { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
   { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
   { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-tips', 'card-health', 'card-trends', 'card-weekly', 'card-patterns'] },
   { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits'] },
@@ -1353,11 +1353,11 @@ function initLayout() {
     store.set('mig.swapCalcShop', true);
   }
   // one-time: every card in the order of its group (new tab layout)
-  if (!store.get('mig.tabOrder', false)) {
+  if (!store.get('mig.tabOrder2', false)) {
     const flat = TAB_GROUPS.flatMap((g) => g.cards);
     layout.order = flat.concat(layout.order.filter((id) => !flat.includes(id)));
     store.set('layout', layout);
-    store.set('mig.tabOrder', true);
+    store.set('mig.tabOrder2', true);
   }
   applyLayout();
 }

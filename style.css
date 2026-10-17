@@ -1289,15 +1289,14 @@ body[data-tab="nutrition"] { --card-h: 520px; }
 body[data-tab="body"] { --card-h: 700px; }
 @media (min-width: 1000px) {
   .grid > #card-heat.card-wide, .grid > #card-news.card-wide { grid-column: span 4; }
-  .grid > #card-notes { grid-column: span 4; }
+  .grid > #card-notes { grid-column: span 6; }
   .grid > #card-poker { grid-column: span 4; }
 }
 
 .now-x { display: none; } /* extra lines: desktop only */
-/* Desktop: Now is a full row with details; Weather and Tasks share the next row */
+/* Desktop: Now is a full row with details; Weather, Tasks and Shopping share the next row, Notes take the last */
 @media (min-width: 1000px) {
   .grid > #card-now { grid-column: span 6; height: auto; }
-  .grid > #card-weather, .grid > #card-cal { grid-column: span 3; }
   #now { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   #now .now-row { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; align-self: stretch; margin: 0; padding: 12px 14px; }
   #now .now-v { font-size: 1.35rem; margin-top: 2px; }
