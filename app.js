@@ -1234,10 +1234,10 @@ function currentOrder() {
 
 /* Cards are grouped into tabs (phone: bottom bar, desktop: row in the header); only the active group shows. */
 const TAB_GROUPS = [
-  { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
-  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news', 'card-clock'] },
-  { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-health', 'card-tips', 'card-trends', 'card-weekly'] },
-  { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits', 'card-patterns'] },
+  { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-notes', 'card-shop'] },
+  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-clock', 'card-news'] },
+  { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-tips', 'card-health', 'card-trends', 'card-weekly', 'card-patterns'] },
+  { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
 let activeTab = store.get('tab', 'today'); // per device, not synced
@@ -1266,6 +1266,7 @@ function renderTabbar() {
 }
 
 function applyLayout() {
+  document.body.dataset.tab = activeTab; // card height depends on the group (CSS)
   const order = currentOrder();
   layout.order = order;
   order.forEach((id, i) => {
@@ -1410,6 +1411,13 @@ function initLayout() {
     const j = o.indexOf('card-shop');
     if (i >= 0 && j >= 0) { o[i] = 'card-shop'; o[j] = 'card-calc'; store.set('layout', layout); }
     store.set('mig.swapCalcShop', true);
+  }
+  // one-time: every card in the order of its group (new tab layout)
+  if (!store.get('mig.tabOrder', false)) {
+    const flat = TAB_GROUPS.flatMap((g) => g.cards);
+    layout.order = flat.concat(layout.order.filter((id) => !flat.includes(id)));
+    store.set('layout', layout);
+    store.set('mig.tabOrder', true);
   }
   applyLayout();
 }
