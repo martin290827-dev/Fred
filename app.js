@@ -1234,10 +1234,10 @@ function currentOrder() {
 
 /* Phone: cards are grouped into tabs (bottom bar); only the active group shows. Desktop shows all cards. */
 const TAB_GROUPS = [
-  { id: 'today', label: 'Today', cards: ['card-weather', 'card-cal', 'card-shop', 'card-notes'] },
+  { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
   { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news', 'card-clock'] },
   { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-health', 'card-tips', 'card-trends', 'card-weekly'] },
-  { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits'] },
+  { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits', 'card-patterns'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
 const tabsMQ = window.matchMedia('(max-width: 700px)');
@@ -1252,6 +1252,8 @@ function setTab(id) {
   store.set('tab', id);
   applyLayout();
   window.scrollTo(0, 0);
+  const grid = document.querySelector('main.grid'); // small fade-in of the new group
+  grid.classList.remove('tab-in'); void grid.offsetWidth; grid.classList.add('tab-in');
 }
 
 function renderTabbar() {
@@ -1400,6 +1402,15 @@ function initLayout() {
     if (n >= 0) { o.splice(n + 1, 0, 'card-habits'); layout.order = o; store.set('layout', layout); }
     store.set('mig.habits', true);
   }
+  // one-time: Now goes first, Patterns after Sleep Habits
+  if (!store.get('mig.now', false)) {
+    const o = layout.order.filter((id) => id !== 'card-now' && id !== 'card-patterns');
+    o.unshift('card-now');
+    const n = o.indexOf('card-habits');
+    if (n >= 0) o.splice(n + 1, 0, 'card-patterns');
+    layout.order = o; store.set('layout', layout);
+    store.set('mig.now', true);
+  }
   // one-time: the Heatmap card goes right after Tickers
   if (!store.get('mig.heat', false)) {
     const o = layout.order.filter((id) => id !== 'card-heat');
@@ -1450,6 +1461,8 @@ const CARD_ICONS = {
   'card-trends': ['#ff9500', 'M5 20V10M10 20V4M15 20v-7M20 20V8'],
   'card-recovery': ['#5e5ce6', 'M3 12h4l2-6 4 12 2-6h6'],
   'card-poker': ['#ff9f0a', 'M12 3c3 4 7 6 7 10a4 4 0 0 1-7 2.6A4 4 0 0 1 5 13c0-4 4-6 7-10zM12 15v5M9.5 20h5'],
+  'card-now': ['#0a84ff', 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5'],
+  'card-patterns': ['#5e5ce6', 'M4 18l5-6 4 3 7-9M4 21h16'],
   'card-weekly': ['#5e5ce6', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h4'],
   'card-habits': ['#30b0c7', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2'],
   'card-sleep': ['#7d5fff', 'M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z'],
@@ -1554,6 +1567,7 @@ function init() {
   initFood();
   initTips();
   initHeat();
+  initNow();
   initArchive();
   initRecovery();
   initPoker();

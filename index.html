@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Fred">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="theme.js?v=193"></script>
-  <link rel="stylesheet" href="style.css?v=193">
+  <script src="theme.js?v=195"></script>
+  <link rel="stylesheet" href="style.css?v=195">
 </head>
 <body>
   <header>
@@ -36,6 +36,11 @@
   <div id="banners"></div>
 
   <main class="grid">
+
+    <section class="card" id="card-now">
+      <h2>Now</h2>
+      <div id="now"></div>
+    </section>
 
     <section class="card" id="card-weather">
       <h2>Weather <span id="weather-place" class="muted"></span> <span class="hacts"><button id="wx-add" class="hicon" type="button" aria-label="Set weather places" title="Places"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></svg></button></span></h2>
@@ -138,6 +143,11 @@
       <div id="habits" class="food"></div>
     </section>
 
+    <section class="card" id="card-patterns">
+      <h2>Patterns</h2>
+      <div id="patterns"></div>
+    </section>
+
     <section class="card" id="card-poker">
       <h2>Poker Piggy Bank <span class="hacts"><button id="pk-add" class="hicon" type="button" aria-label="New session" title="New session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
       <div id="poker" class="food"></div>
@@ -229,16 +239,17 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=193"></script>
-  <script src="gcal.js?v=193"></script>
-  <script src="sync.js?v=193"></script>
-  <script src="food.js?v=193"></script>
-  <script src="tips.js?v=193"></script>
-  <script src="archive.js?v=193"></script>
-  <script src="recovery.js?v=193"></script>
-  <script src="poker.js?v=193"></script>
-  <script src="weekly.js?v=193"></script>
-  <script src="heatmap.js?v=193"></script>
-  <script src="sheets.js?v=193"></script>
+  <script src="app.js?v=195"></script>
+  <script src="gcal.js?v=195"></script>
+  <script src="sync.js?v=195"></script>
+  <script src="food.js?v=195"></script>
+  <script src="tips.js?v=195"></script>
+  <script src="archive.js?v=195"></script>
+  <script src="recovery.js?v=195"></script>
+  <script src="poker.js?v=195"></script>
+  <script src="weekly.js?v=195"></script>
+  <script src="heatmap.js?v=195"></script>
+  <script src="now.js?v=195"></script>
+  <script src="sheets.js?v=195"></script>
 </body>
 </html>
