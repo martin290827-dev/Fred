@@ -94,7 +94,7 @@ const SH_SETS = {
   // and the card layout (one row per kind of device, so Mac and iPhone can differ)
   settings: {
     tab: 'Einstellungen', cols: ['name', 'json'], key: 'name',
-    get: () => Object.entries(SH_VALUES).map(([name, v]) => ({ name, json: JSON.stringify(v.get()) })),
+    get: () => Object.entries(SH_VALUES).filter(([, v]) => v.get() != null).map(([name, v]) => ({ name, json: JSON.stringify(v.get()) })), // the other device's usage is not written before we have read it
     set: (rows) => {
       shChanged = [];
       for (const r of rows) {
@@ -115,12 +115,15 @@ const SH_SETS = {
       if (has('zones')) { renderClocks(); if (typeof tzEditor === 'function') tzEditor(); }
       if (has('fxDefault')) { $('fx-from').value = fxDefault.from; $('fx-to').value = fxDefault.to; convert(); }
       if (has(SH_LAYOUT)) applyLayout();
+      if (has('aiuse-' + SH_KIND) || has('aiuse-' + SH_OTHER)) renderAiUse();
     },
-    keys: ['nutri', 'tips', 'tolerance', 'place', 'place2', 'fxDefault', 'zones', 'layout'], // local storage keys that belong to this set
+    keys: ['nutri', 'tips', 'tolerance', 'place', 'place2', 'fxDefault', 'zones', 'layout', 'aiUse', 'aiUseOther'], // local storage keys that belong to this set
   },
 };
 // The settings rows. The layout row is named after the kind of device: touch screen = phone, otherwise desktop.
-const SH_LAYOUT = 'layout-' + (matchMedia('(pointer: coarse)').matches ? 'phone' : 'desktop');
+const SH_KIND = matchMedia('(pointer: coarse)').matches ? 'phone' : 'desktop';
+const SH_OTHER = SH_KIND === 'phone' ? 'desktop' : 'phone';
+const SH_LAYOUT = 'layout-' + SH_KIND;
 let shChanged = [];
 const SH_VALUES = {
   nutri: { key: 'nutri', get: () => nutri, put: (v) => { nutri = v; } },
@@ -131,6 +134,9 @@ const SH_VALUES = {
   fxDefault: { key: 'fxDefault', get: () => fxDefault, put: (v) => { fxDefault = v; } },
   zones: { key: 'zones', get: () => zones, put: (v) => { zones = v; } },
   [SH_LAYOUT]: { key: 'layout', get: () => layout, put: (v) => { layout = v; } },
+  // AI usage: each kind of device writes only its own row and reads the other one (see aiTrack in food.js)
+  ['aiuse-' + SH_KIND]: { key: 'aiUse', get: () => aiUse, put: (v) => { aiUse = v; } },
+  ['aiuse-' + SH_OTHER]: { key: 'aiUseOther', get: () => aiUseOther, put: (v) => { aiUseOther = v; } },
 };
 const SH_KEYS = Object.keys(SH_SETS);
 // the raw Whoop exports (every column of the CSV files), kept as history only

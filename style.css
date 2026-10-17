@@ -1282,3 +1282,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .g-pop button { min-height: 0; background: transparent; color: inherit; box-shadow: none; border-radius: 0; font-weight: 600; font-size: 0.9rem; }
 .g-pop-go { padding: 11px 6px 11px 18px; white-space: nowrap; }
 .g-pop-x { padding: 11px 14px 11px 8px; font-size: 1.2rem; line-height: 1; opacity: 0.8; }
+
+/* Settings: AI cost lines */
+.ai-use { display: flex; flex-direction: column; gap: 3px; margin: -4px 0 4px; }
+.ai-use div:nth-child(-n+2) { color: var(--text); font-weight: 600; }
