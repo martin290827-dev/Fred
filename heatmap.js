@@ -3,17 +3,20 @@
    Prices come from loadQuotes (app.js). The base prices (7 and 30 days ago, end of last year) come from daily closes:
    Binance for crypto, Twelve Data for stocks (needs the key; 1D works without it). Only these bases are kept, not the series. */
 
-// scale = the change (in %) that gets the full colour; smaller moves stay darker, like in a market heatmap
+// scale = the change (in %) that gets the full colour; smaller moves stay closer to grey, like in a market heatmap
 const HEAT_INFO = {
-  '1D': { title: 'Last 24 Hours', scale: 4 },
-  '1W': { title: 'Last 7 Days', scale: 15 },
-  '1M': { title: 'Last 30 Days', scale: 30 },
-  YTD: { title: 'Year to Date', scale: 60 },
+  '1D': { title: 'Last 24 Hours', scale: 3 },
+  '1W': { title: 'Last 7 Days', scale: 10 },
+  '1M': { title: 'Last 30 Days', scale: 20 },
+  YTD: { title: 'Year to Date', scale: 40 },
 };
 const HEAT_TTL = 6 * 3600 * 1000;
 const HEAT_PER_MIN = 6; // Twelve Data free plan: 8 per minute (a clash with the sparklines is retried after a minute)
 const heatStamps = []; // times of the stock downloads in the last minute
-const HEAT_RED = '#c0392b', HEAT_GREEN = '#2f9e5b', HEAT_DARK = '#2b2b2e';
+const HEAT_RED = '#e0383e', HEAT_GREEN = '#1fa85a', HEAT_NEUTRAL = '#5b6170'; // neutral is a mid grey: small moves stay readable on light and dark cards
+
+// Strength 0..1: square root spreads small moves, and even a tiny move gets a visible tint.
+const heatStrength = (pct, scale) => (pct === 0 ? 0 : 0.2 + 0.8 * Math.sqrt(Math.min(Math.abs(pct) / scale, 1)));
 let heat = store.get('heat', { period: '1W', size: 'equal' }); // this device only
 let heatBase = store.get('heatBase', {});                      // sym -> { day, t, prev, w1, m1, ytd, last }
 const heatFail = {};                                           // sym -> { msg, retryAt }
@@ -97,13 +100,13 @@ function heatTile(sym, period) {
   const q = lastQuotes[sym], b = heatBase[sym];
   const price = q ? q.price : b && b.last;
   const pct = heatPct(sym, period);
-  const t = pct === null ? 0 : Math.min(Math.abs(pct) / info.scale, 1);
+  const t = pct === null ? 0 : heatStrength(pct, info.scale);
   const why = pct !== null ? '' : q || b ? 'Not enough history for this period' : heatFail[sym] ? heatFail[sym].msg : !sym.startsWith('c:') && !twelveKey && period !== '1D' ? 'Add a Twelve Data key in Settings for this period' : 'Loading...';
   const tile = el('div', { class: 'heat-tile' + (pct === null ? ' none' : ''), title: tickerLabel(sym) + (pct === null ? ': ' + why : ': ' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '% · ' + info.title.toLowerCase()) },
     el('b', { class: 'ht-s' }, tickerLabel(sym)),
     el('span', { class: 'ht-p' }, pct === null ? (why === 'Loading...' ? '…' : '–') : (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'),
     el('span', { class: 'ht-v' }, price ? '$' + heatPrice(price) : ''));
-  if (pct !== null) tile.style.background = 'color-mix(in srgb, ' + (pct >= 0 ? HEAT_GREEN : HEAT_RED) + ' ' + Math.round(t * 100) + '%, ' + HEAT_DARK + ')';
+  if (pct !== null) tile.style.background = 'color-mix(in srgb, ' + (pct >= 0 ? HEAT_GREEN : HEAT_RED) + ' ' + Math.round(t * 100) + '%, ' + HEAT_NEUTRAL + ')';
   tile.style.setProperty('--w', heat.size === 'move' ? (1 + 3 * t).toFixed(2) : '1'); // "Size: Move": bigger movers get wider tiles
   return tile;
 }
