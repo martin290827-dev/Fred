@@ -1293,15 +1293,16 @@ body[data-tab="body"] { --card-h: 700px; }
   .grid > #card-poker { grid-column: span 4; }
 }
 
-.now-x { display: none; } /* extra lines: desktop only */
+.now-x { grid-column: 2; display: block; margin: 6px 0 0; padding: 6px 0 0; list-style: none; border-top: 1px solid var(--line); }
+#card-now { height: auto; }
 /* Desktop: Now is a full row with details; Weather, Tasks and Shopping share the next row, Notes take the last */
 @media (min-width: 1000px) {
-  .grid > #card-now { grid-column: span 6; height: auto; }
+  .grid > #card-now { grid-column: span 6; }
   #now { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   #now .now-row { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; align-self: stretch; margin: 0; padding: 12px 14px; }
   #now .now-v { font-size: 1.35rem; margin-top: 2px; }
   #now .now-t { margin-top: 3px; }
-  .now-x { display: block; margin: 8px 0 0; padding: 8px 0 0; list-style: none; border-top: 1px solid var(--line); }
+  .now-x { margin-top: 8px; padding-top: 8px; }
 }
 .now-x li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.82rem; padding: 2px 0; color: var(--muted); }
 .now-x li b { font-weight: 600; color: var(--text); white-space: nowrap; }
