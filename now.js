@@ -53,6 +53,47 @@ function nowMarkets() {
   return { value: tickerLabel(big.s) + ' ' + sign(big.p, 1) + '%', cls: big.p >= 0 ? 'up' : 'down', text: 'Biggest move today. ' + up + ' up, ' + down + ' down of ' + list.length + '.' };
 }
 
+/* Extra lines (shown on the desktop only): [label, value, class] */
+const nowLine = (l, v, cls) => ({ l, v, cls: cls || '' });
+
+function nowNextMore() {
+  const now = new Date(), out = [];
+  for (const it of gAgendaItems()) {
+    const e = it.task;
+    if (e && (e.end || e.start) <= now) continue;
+    if (!e && it.day < toDateStr(now)) continue;
+    out.push(e ? nowLine(e.title, agendaDay(it.day) + ' ' + hhmm(e.start)) : nowLine(it.event.label, agendaDay(it.day)));
+    if (out.length === 4) break;
+  }
+  return out.slice(1); // the first one is the headline
+}
+
+function nowFoodMore() {
+  const t = dayTotals(toDateStr(new Date())), g = targets(), out = [];
+  const add = (name, v, goal, unit) => { if (goal) out.push(nowLine(name, Math.round(v) + ' / ' + goal + ' ' + unit, v > goal ? 'over' : '')); };
+  add('Protein', t.p, g.p, 'g'); add('Carbs', t.c, g.c, 'g'); add('Fat', t.f, g.f, 'g'); add('Sugar', t.s, g.s, 'g');
+  const gi = goalInfo();
+  if (gi) out.push(nowLine('Weight', fmtKg(gi.cur) + ' kg', ''), nowLine('Goal', fmtKg(gi.goal) + ' kg', ''));
+  return out;
+}
+
+function nowBodyMore() {
+  const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d)));
+  const r = [...rows].reverse().find((x) => x.score != null), out = [];
+  if (!r) return out;
+  if (r.hrv != null) out.push(nowLine('HRV', r.hrv + ' ms' + (r.baseHrv ? ' (usual ' + r.baseHrv + ')' : '')));
+  if (r.rhr != null) out.push(nowLine('Resting HR', r.rhr + ' bpm' + (r.baseRhr ? ' (usual ' + r.baseRhr + ')' : '')));
+  if (r.sleepMin != null) out.push(nowLine('Sleep', rcHmShort(r.sleepMin)));
+  out.push(nowLine('Data from', rcShort(r.d)));
+  return out;
+}
+
+function nowMarketsMore() {
+  const list = tickers.map((s) => ({ s, p: lastQuotes[s] && lastQuotes[s].pct })).filter((x) => typeof x.p === 'number');
+  list.sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
+  return list.slice(1, 5).map((x) => nowLine(tickerLabel(x.s), sign(x.p, 1) + '%', x.p >= 0 ? 'up' : 'down'));
+}
+
 function nowGo(id) {
   if (tabOf(id) !== activeTab) setTab(tabOf(id));
   requestAnimationFrame(() => jumpTo($(id)));
@@ -61,10 +102,11 @@ function nowGo(id) {
 function renderNow() {
   const box = $('now');
   if (!box) return;
-  const rows = [['Next', nowNext(), 'card-cal'], ['Food', nowFood(), 'card-food'], ['Recovery', nowBody(), 'card-recovery'], ['Markets', nowMarkets(), 'card-tickers']];
-  box.replaceChildren(...rows.map(([label, r, id]) =>
+  const rows = [['Next', nowNext(), nowNextMore(), 'card-cal'], ['Food', nowFood(), nowFoodMore(), 'card-food'], ['Recovery', nowBody(), nowBodyMore(), 'card-recovery'], ['Markets', nowMarkets(), nowMarketsMore(), 'card-tickers']];
+  box.replaceChildren(...rows.map(([label, r, more, id]) =>
     el('button', { type: 'button', class: 'now-row', onclick: () => nowGo(id) },
-      el('div', { class: 'now-l' }, label), el('div', { class: 'now-v ' + (r.cls || '') }, r.value), el('div', { class: 'now-t' }, r.text))));
+      el('div', { class: 'now-l' }, label), el('div', { class: 'now-v ' + (r.cls || '') }, r.value), el('div', { class: 'now-t' }, r.text),
+      more.length ? el('ul', { class: 'now-x' }, ...more.map((m) => el('li', { class: m.cls === 'over' ? 'over' : '' }, el('span', {}, m.l), el('b', { class: m.cls === 'up' || m.cls === 'down' ? m.cls : '' }, m.v)))) : '')));
 }
 
 /* ---------- Patterns ---------- */
