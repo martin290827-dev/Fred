@@ -101,7 +101,7 @@ function heatTile(sym, period) {
   const why = pct !== null ? '' : q || b ? 'Not enough history for this period' : heatFail[sym] ? heatFail[sym].msg : !sym.startsWith('c:') && !twelveKey && period !== '1D' ? 'Add a Twelve Data key in Settings for this period' : 'Loading...';
   const tile = el('div', { class: 'heat-tile' + (pct === null ? ' none' : ''), title: tickerLabel(sym) + (pct === null ? ': ' + why : ': ' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '% · ' + info.title.toLowerCase()) },
     el('b', { class: 'ht-s' }, tickerLabel(sym)),
-    el('span', { class: 'ht-p' }, pct === null ? '–' : (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'),
+    el('span', { class: 'ht-p' }, pct === null ? (why === 'Loading...' ? '…' : '–') : (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'),
     el('span', { class: 'ht-v' }, price ? '$' + heatPrice(price) : ''));
   if (pct !== null) tile.style.background = 'color-mix(in srgb, ' + (pct >= 0 ? HEAT_GREEN : HEAT_RED) + ' ' + Math.round(t * 100) + '%, ' + HEAT_DARK + ')';
   tile.style.setProperty('--w', heat.size === 'move' ? (1 + 3 * t).toFixed(2) : '1'); // "Size: Move": bigger movers get wider tiles
