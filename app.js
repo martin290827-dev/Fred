@@ -1545,16 +1545,49 @@ function currentOrder() {
   return known.concat(ids.filter((id) => !known.includes(id)));
 }
 
+/* Phone: cards are grouped into tabs (bottom bar); only the active group shows. Desktop shows all cards. */
+const TAB_GROUPS = [
+  { id: 'today', label: 'Today', cards: ['card-weather', 'card-cal', 'card-shop', 'card-notes'] },
+  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
+  { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-health', 'card-tips', 'card-trends', 'card-weekly'] },
+  { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits'] },
+  { id: 'tools', label: 'Tools', cards: ['card-clock', 'card-timer', 'card-calc', 'card-poker'] },
+];
+const tabsMQ = window.matchMedia('(max-width: 700px)');
+let activeTab = store.get('tab', 'today'); // per device, not synced
+if (!TAB_GROUPS.some((g) => g.id === activeTab)) activeTab = 'today';
+
+function tabOf(id) { const g = TAB_GROUPS.find((x) => x.cards.includes(id)); return g ? g.id : 'tools'; } // new cards land in Tools
+function inActiveTab(id) { return !tabsMQ.matches || tabOf(id) === activeTab; }
+
+function setTab(id) {
+  activeTab = id;
+  store.set('tab', id);
+  applyLayout();
+  window.scrollTo(0, 0);
+}
+
+function renderTabbar() {
+  const bar = $('tabbar');
+  if (!bar) return;
+  document.body.classList.toggle('tabs', tabsMQ.matches);
+  bar.replaceChildren(...TAB_GROUPS.map((g) => {
+    const first = g.cards.map((id) => cardIcon(id)).find(Boolean);
+    return el('button', { type: 'button', class: g.id === activeTab ? 'on' : '', 'aria-current': g.id === activeTab ? 'page' : 'false', onclick: () => setTab(g.id) },
+      first || '', el('span', {}, g.label));
+  }));
+}
+
 function applyLayout() {
   const order = currentOrder();
   layout.order = order;
   order.forEach((id, i) => {
     const c = $(id);
     c.style.order = i;
-    c.hidden = layout.hidden.includes(id);
+    c.hidden = layout.hidden.includes(id) || !inActiveTab(id);
   });
   // wide cards: next to each other they share a row (half each), alone they take the full row
-  const visible = order.filter((id) => !layout.hidden.includes(id));
+  const visible = order.filter((id) => !layout.hidden.includes(id) && inActiveTab(id));
   visible.forEach((id, i) => {
     const c = $(id);
     if (!c.classList.contains('card-wide')) return;
@@ -1563,6 +1596,7 @@ function applyLayout() {
   });
   renderLayoutBar();
   renderJumpbar(visible);
+  renderTabbar();
 }
 
 // Shortcut chips in the header: jump straight to a card.
@@ -1605,7 +1639,7 @@ function saveLayout() { store.set('layout', layout); applyLayout(); }
 
 function moveCard(id, dir) {
   const order = currentOrder();
-  const visible = order.filter((x) => !layout.hidden.includes(x));
+  const visible = order.filter((x) => !layout.hidden.includes(x) && inActiveTab(x));
   const i = visible.indexOf(id);
   const j = i + dir;
   if (i < 0 || j < 0 || j >= visible.length) return;
@@ -1844,6 +1878,7 @@ function init() {
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();
+  tabsMQ.addEventListener('change', () => { applyLayout(); matchWeatherHeight(); });
   window.addEventListener('resize', matchWeatherHeight);
   gcalInit();
   syncInit();

@@ -1304,3 +1304,17 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 .ht-v { font-size: 0.65rem; opacity: 0.85; font-variant-numeric: tabular-nums; }
 @container (min-width: 560px) { .heat-tile { flex-basis: calc((100% - 5 * var(--gap)) / 6 - 0.5px); } }
 .heat-grid.move .heat-tile { flex-basis: 96px; }
+
+/* Phone: group tabs at the bottom, one group of cards at a time */
+.tabbar { display: none; }
+@media (max-width: 700px) {
+  body.tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  body.tabs .jumpbar { display: none; }
+  .tabbar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line-2); }
+  .tabbar button { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; background: none; color: var(--muted, #8e8e93); font-size: 0.68rem; font-weight: 600; box-shadow: none; border-radius: 10px; }
+  .tabbar button.on { color: var(--text); }
+  .tabbar .cicon { width: 26px; height: 26px; border-radius: 8px; opacity: 0.55; }
+  .tabbar .cicon svg { width: 16px; height: 16px; }
+  .tabbar button.on .cicon { opacity: 1; }
+  body.tabs .g-pop { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
