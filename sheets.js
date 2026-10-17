@@ -112,12 +112,11 @@ const SH_SETS = {
       const has = (n) => shChanged.includes(n);
       if (has('nutri') || has('tips') || has('tolerance')) { renderFood(); if (typeof renderWeekly === 'function') renderWeekly(); }
       if (has('place') || has('place2')) { loadWeather(); if (typeof wxEditor === 'function') wxEditor(); }
-      if (has('zones')) { renderClocks(); if (typeof tzEditor === 'function') tzEditor(); }
       if (has('fxDefault')) { $('fx-from').value = fxDefault.from; $('fx-to').value = fxDefault.to; convert(); }
       if (has(SH_LAYOUT)) applyLayout();
       if (has('aiuse-' + SH_KIND) || has('aiuse-' + SH_OTHER)) renderAiUse();
     },
-    keys: ['nutri', 'tips', 'tolerance', 'place', 'place2', 'fxDefault', 'zones', 'layout', 'aiUse', 'aiUseOther'], // local storage keys that belong to this set
+    keys: ['nutri', 'tips', 'tolerance', 'place', 'place2', 'fxDefault', 'layout', 'aiUse', 'aiUseOther'], // local storage keys that belong to this set
   },
 };
 // The settings rows. The layout row is named after the kind of device: touch screen = phone, otherwise desktop.
@@ -132,7 +131,6 @@ const SH_VALUES = {
   place: { key: 'place', get: () => place, put: (v) => { place = v; } },
   place2: { key: 'place2', get: () => place2, put: (v) => { place2 = v; } },
   fxDefault: { key: 'fxDefault', get: () => fxDefault, put: (v) => { fxDefault = v; } },
-  zones: { key: 'zones', get: () => zones, put: (v) => { zones = v; } },
   [SH_LAYOUT]: { key: 'layout', get: () => layout, put: (v) => { layout = v; } },
   // AI usage: each kind of device writes only its own row and reads the other one (see aiTrack in food.js)
   ['aiuse-' + SH_KIND]: { key: 'aiUse', get: () => aiUse, put: (v) => { aiUse = v; } },

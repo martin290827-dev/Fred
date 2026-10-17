@@ -34,13 +34,11 @@ const store = {
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 /* ---------- Defaults ----------
-   Nothing personal in the code: this repo is public. Enter place, tickers, time zones and
+   Nothing personal in the code: this repo is public. Enter place, tickers and
    countdowns in the app (Settings). They are stored only in your own browser. */
-const DEFAULT_ZONES = [{ label: 'UTC', tz: 'UTC' }];
 
 let place = store.get('place', null);
 let tickers = store.get('tickers', []);
-let zones = store.get('zones', DEFAULT_ZONES);
 let finnhubKey = store.get('finnhubKey', '');
 let twelveKey = store.get('twelveKey', '');
 let place2 = store.get('place2', null);
@@ -101,37 +99,6 @@ function zoneParts(tz, now) {
   return p;
 }
 
-// "Today · +6 h" relative to this computer's own time.
-function zoneRelative(p, now) {
-  const zoneAsUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute);
-  const localAsUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
-  const mins = Math.round((zoneAsUTC - localAsUTC) / 60000);
-  const dd = Math.round((Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
-  const day = dd === 0 ? 'Today' : dd === 1 ? 'Tomorrow' : dd === -1 ? 'Yesterday' : (dd > 0 ? '+' : '') + dd + ' days';
-  if (mins === 0) return day + ' · local time';
-  const h = Math.trunc(Math.abs(mins) / 60);
-  const m = Math.abs(mins) % 60;
-  return day + ' · ' + (mins > 0 ? '+' : '−') + h + (m ? ':' + String(m).padStart(2, '0') : '') + ' h';
-}
-
-// Small analog face: light by day (06-18), dark by night, orange second hand.
-function clockFace() {
-  const NS = 'http://www.w3.org/2000/svg';
-  const mk = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
-  const svg = mk('svg', { viewBox: '0 0 40 40', class: 'face', 'aria-hidden': 'true' });
-  svg.append(mk('circle', { cx: 20, cy: 20, r: 19, class: 'dial' }));
-  for (let i = 0; i < 12; i++) {
-    const a = (i * Math.PI) / 6;
-    const r1 = i % 3 ? 16 : 14.5;
-    svg.append(mk('line', { x1: 20 + Math.sin(a) * r1, y1: 20 - Math.cos(a) * r1, x2: 20 + Math.sin(a) * 17.5, y2: 20 - Math.cos(a) * 17.5, class: 'mark' }));
-  }
-  const hh = mk('line', { x1: 20, y1: 20, x2: 20, y2: 10.5, class: 'hand hh' });
-  const mm = mk('line', { x1: 20, y1: 20, x2: 20, y2: 6, class: 'hand mm' });
-  const ss = mk('line', { x1: 20, y1: 23, x2: 20, y2: 5, class: 'hand ss' });
-  svg.append(hh, mm, ss, mk('circle', { cx: 20, cy: 20, r: 1.6, class: 'pin' }));
-  return { svg, hh, mm, ss };
-}
-
 // Stock exchanges: regular trading hours in local exchange time (minutes after midnight).
 // Public holidays are not known here, so a holiday shows as "open".
 const MARKETS = [
@@ -180,44 +147,12 @@ function renderMarkets(now) {
   }));
 }
 
-let clockNodes = [];
-function renderClocks() {
-  const box = $('clocks');
-  box.replaceChildren();
-  clockNodes = [];
-  marketsKey = '';
-  for (const z of zones) {
-    const face = clockFace();
-    const hm = el('span', { class: 'hm' });
-    const sec = el('span', { class: 'sec' });
-    const rel = el('span', { class: 'rel' });
-    box.append(el('div', { class: 'clock' },
-      face.svg,
-      el('span', { class: 'cname' }, el('span', { class: 'city' }, z.label), rel),
-      el('span', { class: 't' }, hm, sec)));
-    clockNodes.push({ tz: z.tz, face, hm, sec, rel });
-  }
-  tickClocks();
-}
+// Once a second: the date in the header and the stock exchange hours.
 function tickClocks() {
   const now = new Date();
   const today = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   if ($('today').textContent !== today) $('today').textContent = today;
   renderMarkets(now);
-  const pad = (n) => String(n).padStart(2, '0');
-  for (const c of clockNodes) {
-    try {
-      const p = zoneParts(c.tz, now);
-      const hm = pad(p.hour) + ':' + pad(p.minute);
-      if (c.hm.textContent !== hm) { c.hm.textContent = hm; c.rel.textContent = zoneRelative(p, now); }
-      c.sec.textContent = ':' + pad(p.second);
-      const rot = (n, deg) => n.setAttribute('transform', 'rotate(' + deg.toFixed(1) + ' 20 20)');
-      rot(c.face.hh, (p.hour % 12) * 30 + p.minute * 0.5);
-      rot(c.face.mm, p.minute * 6 + p.second * 0.1);
-      rot(c.face.ss, p.second * 6);
-      c.face.svg.classList.toggle('night', p.hour < 6 || p.hour >= 18);
-    } catch { c.hm.textContent = 'bad zone'; c.sec.textContent = ''; }
-  }
 }
 
 /* ---------- 3) Weather (Open-Meteo, no key) ---------- */
@@ -429,35 +364,6 @@ function wxEditor() {
   };
   box.replaceChildren(el('div', { class: 'gform' }, row('Main', place, 1), row('Second', place2, 2), msg,
     el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { wxOpen = false; wxEditor(); } }, 'Done'))));
-  box.hidden = false;
-}
-
-let tzOpen = false;
-
-function tzEditor() {
-  const box = $('tz-edit');
-  if (!tzOpen) { box.replaceChildren(); box.hidden = true; return; }
-  const save = () => { store.set('zones', zones); renderClocks(); tzEditor(); };
-  const label = el('input', { type: 'text', placeholder: 'Label, e.g. Berlin', maxlength: '20', 'aria-label': 'Label' });
-  const tz = el('input', { type: 'text', placeholder: 'Europe/Berlin', list: 'tz-list', autocomplete: 'off', 'aria-label': 'Time zone' });
-  const list = el('datalist', { id: 'tz-list' }, ...(Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []).map((z) => el('option', { value: z })));
-  const msg = el('p', { class: 'muted small gform-msg' });
-  const rows = el('div', { class: 'tk-order' }, ...zones.map((z, i) => el('div', { class: 'tk-o' },
-    el('span', { class: 'tk-name' }, z.label, el('span', { class: 'muted small' }, '  ' + z.tz)),
-    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + z.label + ' up', title: 'Up', onclick: () => { if (i > 0) { [zones[i - 1], zones[i]] = [zones[i], zones[i - 1]]; save(); } } }, '\u25b2'),
-    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + z.label + ' down', title: 'Down', onclick: () => { if (i < zones.length - 1) { [zones[i + 1], zones[i]] = [zones[i], zones[i + 1]]; save(); } } }, '\u25bc'),
-    el('button', { type: 'button', class: 'tk-mv tk-rm', 'aria-label': 'Remove ' + z.label, title: 'Remove', onclick: () => { zones = zones.filter((x) => x !== z); save(); } }, '\u00d7'))));
-  const f = el('form', { class: 'gform', autocomplete: 'off' }, rows, el('div', { class: 'row' }, label, tz), list, msg,
-    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { tzOpen = false; tzEditor(); } }, 'Done'), el('button', { type: 'submit' }, 'Add')));
-  f.addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const l = label.value.trim(), z = tz.value.trim();
-    try { new Intl.DateTimeFormat('en-GB', { timeZone: z }); } catch { msg.textContent = 'Unknown time zone. Use a name like Europe/Berlin.'; return; }
-    if (!l) { msg.textContent = 'Give the clock a label.'; return; }
-    zones.push({ label: l, tz: z });
-    save();
-  });
-  box.replaceChildren(f);
   box.hidden = false;
 }
 
@@ -846,116 +752,6 @@ async function paintSparks() {
   }
 }
 
-/* ---------- 1) Timer (stores the end time, so it stays correct in background tabs) ---------- */
-let timerEnd = store.get('timerEnd', null);
-if (timerEnd && timerEnd <= Date.now()) { timerEnd = null; store.set('timerEnd', null); }
-
-function fmtDuration(ms) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  const pad = (n) => String(n).padStart(2, '0');
-  return (h ? h + ':' : '') + pad(m) + ':' + pad(sec);
-}
-
-function tickTimer() {
-  const disp = $('timer-display');
-  if (!timerEnd) { $('timer-start').textContent = 'Start'; return; }
-  const left = timerEnd - Date.now();
-  if (left <= 0) {
-    timerEnd = null;
-    store.set('timerEnd', null);
-    disp.textContent = '00:00';
-    $('timer-start').textContent = 'Start';
-    beep();
-    banner('Timer finished');
-    return;
-  }
-  disp.textContent = fmtDuration(left);
-  $('timer-start').textContent = 'Running';
-}
-
-function startTimer() {
-  const min = parseFloat($('timer-min').value);
-  if (!(min > 0)) return;
-  timerEnd = Date.now() + min * 60000;
-  store.set('timerEnd', timerEnd);
-  askNotificationPermission();
-  tickTimer();
-}
-
-function resetTimer() {
-  timerEnd = null;
-  store.set('timerEnd', null);
-  $('timer-display').textContent = '00:00';
-  $('timer-start').textContent = 'Start';
-}
-
-/* ---------- Stopwatch (keeps running across reloads: stores start time and the time before it) ---------- */
-let sw = store.get('sw', { acc: 0, start: null });
-
-function swElapsed() { return sw.acc + (sw.start ? Date.now() - sw.start : 0); }
-
-function fmtStopwatch(ms) {
-  const t = Math.floor(ms / 100); // tenths
-  const pad = (n) => String(n).padStart(2, '0');
-  const h = Math.floor(t / 36000);
-  return (h ? h + ':' : '') + pad(Math.floor((t % 36000) / 600)) + ':' + pad(Math.floor((t % 600) / 10)) + '.' + (t % 10);
-}
-
-function tickStopwatch() {
-  $('sw-display').textContent = fmtStopwatch(swElapsed());
-  $('sw-start').textContent = sw.start ? 'Stop' : (sw.acc ? 'Resume' : 'Start');
-}
-
-function toggleStopwatch() {
-  if (sw.start) { sw = { acc: swElapsed(), start: null }; } else { sw = { acc: sw.acc, start: Date.now() }; }
-  store.set('sw', sw);
-  tickStopwatch();
-}
-
-function resetStopwatch() {
-  sw = { acc: 0, start: null };
-  store.set('sw', sw);
-  tickStopwatch();
-}
-
-/* ---------- Timer / stopwatch switch: the one in use sits on top, the other waits below ---------- */
-const TM_ICON = {
-  timer: 'M7 3h10M7 21h10M8 3c0 5 4 6 4 9s-4 4-4 9M16 3c0 5-4 6-4 9s4 4 4 9', // hourglass
-  sw: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4M12 2v3', // stopwatch
-};
-let tmMode = store.get('tmMode', 'timer');
-
-function applyTimerMode() {
-  const t = tmMode === 'timer';
-  $('tm-timer').hidden = !t;
-  $('tm-sw').hidden = t;
-  $('card-timer').querySelector('.ctitle').textContent = t ? 'Timer' : 'Stopwatch';
-  $('tm-alt-path').setAttribute('d', t ? TM_ICON.sw : TM_ICON.timer);
-  $('tm-alt-name').textContent = t ? 'Stopwatch' : 'Timer';
-  updateTimerAlt();
-}
-
-// Status line of the waiting one, so a running stopwatch or timer is never forgotten.
-function updateTimerAlt() {
-  if (tmMode === 'timer') {
-    $('tm-alt-desc').textContent = sw.start ? 'Running' : (sw.acc ? 'Paused' : 'Ready');
-    $('tm-alt-val').textContent = fmtStopwatch(swElapsed()).replace(/\.\d$/, '');
-  } else {
-    $('tm-alt-desc').textContent = timerEnd ? 'Running' : 'Ready \u00b7 ' + ($('timer-min').value || 25) + ' min';
-    $('tm-alt-val').textContent = timerEnd ? fmtDuration(timerEnd - Date.now()) : '00:00';
-  }
-  $('tm-alt').classList.toggle('live', tmMode === 'timer' ? !!sw.start : !!timerEnd);
-}
-
-function switchTimerMode() {
-  tmMode = tmMode === 'timer' ? 'sw' : 'timer';
-  store.set('tmMode', tmMode);
-  applyTimerMode();
-}
-
 /* ---------- Events (date only, from Google Calendar) ---------- */
 function fmtRemaining(ms) {
   if (ms <= 0) return 'passed';
@@ -1338,96 +1134,6 @@ async function shareNote() {
   catch { st.textContent = 'Sharing not supported here'; }
 }
 
-/* ---------- 10) Calculator (own parser, no eval) ---------- */
-function calcEval(src) {
-  const s = src.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/,/g, '.').replace(/\s+/g, '');
-  let i = 0;
-  let pctFlag = false; // true when the last operand ended with %
-
-  function number() {
-    const start = i;
-    while (i < s.length && /[0-9.]/.test(s[i])) i++;
-    const n = parseFloat(s.slice(start, i));
-    if (start === i || Number.isNaN(n)) throw new Error('syntax');
-    return n;
-  }
-  function factor() {
-    if (s[i] === '-') { i++; return -factor(); }
-    if (s[i] === '+') { i++; return factor(); }
-    let v;
-    if (s[i] === '(') {
-      i++;
-      v = expr();
-      if (s[i] !== ')') throw new Error('syntax');
-      i++;
-    } else {
-      v = number();
-    }
-    let pct = false;
-    while (s[i] === '%') { i++; v /= 100; pct = true; }
-    pctFlag = pct;
-    return v;
-  }
-  function term() {
-    let v = factor();
-    let single = true;
-    while (s[i] === '*' || s[i] === '/') {
-      const op = s[i++];
-      const r = factor();
-      v = op === '*' ? v * r : v / r;
-      single = false;
-    }
-    pctFlag = pctFlag && single;
-    return v;
-  }
-  function expr() {
-    let v = term();
-    while (s[i] === '+' || s[i] === '-') {
-      const op = s[i++];
-      let r = term();
-      if (pctFlag) r = v * r; // 200+10% = 220
-      v = op === '+' ? v + r : v - r;
-    }
-    return v;
-  }
-
-  const v = expr();
-  if (i !== s.length || !Number.isFinite(v)) throw new Error('syntax');
-  return v;
-}
-
-function fmtCalc(v) {
-  return parseFloat(v.toPrecision(12)).toLocaleString('en-US', { maximumFractionDigits: 10 });
-}
-
-function calcUpdate() {
-  const src = $('calc-expr').value;
-  const out = $('calc-result');
-  if (!src.trim()) { out.textContent = '0'; return; }
-  try { out.textContent = fmtCalc(calcEval(src)); } catch { out.textContent = '...'; }
-}
-
-function calcEnter() {
-  const inp = $('calc-expr');
-  try { inp.value = String(parseFloat(calcEval(inp.value).toPrecision(12))); } catch { $('calc-result').textContent = 'Error'; return; }
-  calcUpdate();
-}
-
-function calcReset() {
-  $('calc-expr').value = '';
-  calcUpdate();
-  $('calc-expr').focus();
-}
-
-function initCalc() {
-  $('calc-expr').addEventListener('input', calcUpdate);
-  $('calc-expr').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); calcEnter(); }
-    if (e.key === 'Escape') calcReset();
-  });
-  $('calc-reset').addEventListener('click', calcReset);
-}
-
 /* ---------- Settings ---------- */
 
 function openSettings() {
@@ -1461,15 +1167,14 @@ function saveSettings() {
   loadEarnings();
   loadNews(true);
 
-  renderClocks();
   loadWeather();
   loadQuotes();
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'zones', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'whoop', 'theme', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'whoop', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
-const ARRAY_KEYS = ['tickers', 'zones', 'shop', 'food', 'weight', 'poker'];
+const ARRAY_KEYS = ['tickers', 'shop', 'food', 'weight', 'poker'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -1508,29 +1213,11 @@ async function importSettings(file) {
   }
 }
 
-/* ---------- Day / night mode ---------- */
-// Saved choice wins; without a choice the device setting decides.
-function effectiveTheme() {
-  const saved = store.get('theme', null);
-  if (saved) return saved;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-}
-
+/* ---------- Day / night mode: follows the device, no button ---------- */
 function applyTheme() {
-  const saved = store.get('theme', null);
-  if (saved) document.documentElement.setAttribute('data-theme', saved);
-  else document.documentElement.removeAttribute('data-theme');
-  const now = effectiveTheme();
-  const btn = $('btn-theme');
-  btn.dataset.to = now === 'dark' ? 'light' : 'dark'; // the mode you switch to (CSS shows sun or moon)
-  btn.querySelector('span').textContent = now === 'dark' ? 'Day' : 'Night';
+  const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', now === 'dark' ? '#000000' : '#f2f2f7');
-}
-
-function toggleTheme() {
-  store.set('theme', effectiveTheme() === 'dark' ? 'light' : 'dark');
-  applyTheme();
+  if (meta) meta.setAttribute('content', light ? '#f2f2f7' : '#000000');
 }
 
 /* ---------- Layout: order and hide cards ---------- */
@@ -1548,10 +1235,10 @@ function currentOrder() {
 /* Phone: cards are grouped into tabs (bottom bar); only the active group shows. Desktop shows all cards. */
 const TAB_GROUPS = [
   { id: 'today', label: 'Today', cards: ['card-weather', 'card-cal', 'card-shop', 'card-notes'] },
-  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
+  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news', 'card-clock'] },
   { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-health', 'card-tips', 'card-trends', 'card-weekly'] },
   { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits'] },
-  { id: 'tools', label: 'Tools', cards: ['card-clock', 'card-timer', 'card-calc', 'card-poker'] },
+  { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
 const tabsMQ = window.matchMedia('(max-width: 700px)');
 let activeTab = store.get('tab', 'today'); // per device, not synced
@@ -1755,7 +1442,6 @@ const CARD_ICONS = {
   'card-heat': ['#ff3b30', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
   'card-clock': ['#5856d6', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'],
   'card-shop': ['#ff2d55', 'M3 4h2l2.5 11h11L21 7H6.2M9 20h.01M18 20h.01'],
-  'card-timer': ['#ff9500', 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2.5M10 2h4'],
   'card-calc': ['#8e8e93', 'M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01'],
   'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
   'card-food': ['#30b0c7', 'M7 3v8a3 3 0 0 0 3 3v7M10 3v8M13 3v8a3 3 0 0 1-3 3M17 21V3c2 1.5 3 4 3 8h-3'],
@@ -1853,10 +1539,8 @@ function initChartTips() {
 function init() {
   initChartTips();
   initCards();
-  renderClocks();
   renderEvents();
   initFx();
-  initCalc();
   renderShop();
   initNotes();
   // touch: tap a Tasks or Events row to show its edit and delete buttons (tap again to hide)
@@ -1882,18 +1566,6 @@ function init() {
   window.addEventListener('resize', matchWeatherHeight);
   gcalInit();
   syncInit();
-  tickTimer();
-
-  $('timer-start').addEventListener('click', startTimer);
-  $('timer-reset').addEventListener('click', resetTimer);
-  $('sw-start').addEventListener('click', toggleStopwatch);
-  $('sw-reset').addEventListener('click', resetStopwatch);
-  tickStopwatch();
-  $('tm-alt').addEventListener('click', switchTimerMode);
-  applyTimerMode();
-  document.querySelectorAll('.presets button').forEach((b) =>
-    b.addEventListener('click', () => { $('timer-min').value = b.dataset.min; }));
-
 
   $('shop-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1904,13 +1576,12 @@ function init() {
   });
   $('shop-clear').addEventListener('click', () => { shop = shop.filter((x) => !x.done); store.set('shop', shop); renderShop(); });
 
-  $('btn-theme').addEventListener('click', toggleTheme);
+  try { localStorage.removeItem('fred.theme'); } catch (e) { /* an old saved choice is dropped */ }
   applyTheme();
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
   $('btn-refresh').addEventListener('click', loadQuotes);
   $('tk-add').addEventListener('click', () => { tkOpen = !tkOpen; tickerEditor(); });
   $('wx-add').addEventListener('click', () => { wxOpen = !wxOpen; wxEditor(); });
-  $('tz-add').addEventListener('click', () => { tzOpen = !tzOpen; tzEditor(); });
   $('btn-layout').addEventListener('click', toggleLayoutMode);
   $('btn-settings').addEventListener('click', openSettings);
   $('set-cancel').addEventListener('click', () => $('dlg-settings').close());
@@ -1923,8 +1594,8 @@ function init() {
     $('dlg-settings').returnValue = '';
   });
 
-  setInterval(() => { tickClocks(); tickTimer(); updateTimerAlt(); }, 250);
-  setInterval(() => { if (sw.start) tickStopwatch(); }, 100);
+  tickClocks();
+  setInterval(tickClocks, 1000);
   setInterval(tickEvents, 30000);
   poll(loadQuotes, 60000);
   poll(loadWeather, 15 * 60000);
