@@ -1294,10 +1294,9 @@ body[data-tab="body"] { --card-h: 700px; }
 }
 
 .now-x { grid-column: 2; display: block; margin: 6px 0 0; padding: 6px 0 0; list-style: none; border-top: 1px solid var(--line); }
-#card-now { height: auto; }
 /* Desktop: Now is a full row with details; Weather, Tasks and Shopping share the next row, Notes take the last */
 @media (min-width: 1000px) {
-  .grid > #card-now { grid-column: span 6; }
+  .grid > #card-now { grid-column: span 6; height: auto; }
   #now { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   #now .now-row { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; align-self: stretch; margin: 0; padding: 12px 14px; }
   #now .now-v { font-size: 1.35rem; margin-top: 2px; }
