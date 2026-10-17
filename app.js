@@ -88,71 +88,11 @@ async function getJSON(url) {
   return res.json();
 }
 
-/* ---------- 2) Clocks (multi time zone) ---------- */
-
-// Clock parts of one time zone: y, m, d, h, min, s as numbers.
-function zoneParts(tz, now) {
-  const p = {};
-  for (const x of new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric',
-    day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(now)) p[x.type] = +x.value;
-  p.hour %= 24;
-  return p;
-}
-
-// Stock exchanges: regular trading hours in local exchange time (minutes after midnight).
-// Public holidays are not known here, so a holiday shows as "open".
-const MARKETS = [
-  { name: 'NYSE / Nasdaq', tz: 'America/New_York', open: 9 * 60 + 30, close: 16 * 60 },
-  { name: 'Xetra', tz: 'Europe/Berlin', open: 9 * 60, close: 17 * 60 + 30 },
-  { name: 'Wiener B\u00f6rse', tz: 'Europe/Vienna', open: 9 * 60, close: 17 * 60 + 30 },
-];
-const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-function marketState(m, now) {
-  const p = zoneParts(m.tz, now);
-  const wd = WD[new Intl.DateTimeFormat('en-US', { timeZone: m.tz, weekday: 'short' }).format(now)];
-  const mins = p.hour * 60 + p.minute;
-  const workday = (d) => d >= 1 && d <= 5;
-  if (workday(wd) && mins >= m.open && mins < m.close) return { open: true, left: m.close - mins };
-  for (let d = 0; d <= 7; d++) {
-    if (workday((wd + d) % 7) && (d > 0 || mins < m.open)) return { open: false, wait: d * 1440 + m.open - mins };
-  }
-  return { open: false, wait: 0 };
-}
-
-function fmtSpan(mins) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h ? h + ' h' + (m ? ' ' + m + ' min' : '') : m + ' min';
-}
-
-let marketsKey = '';
-function renderMarkets(now) {
-  const key = now.getHours() + ':' + now.getMinutes();
-  if (key === marketsKey) return; // once per minute is enough
-  marketsKey = key;
-  const box = $('markets');
-  box.replaceChildren(...MARKETS.map((m) => {
-    const s = marketState(m, now);
-    let text;
-    if (s.open) text = 'Open \u00b7 closes in ' + fmtSpan(s.left);
-    else if (s.wait < 12 * 60) text = 'Closed \u00b7 opens in ' + fmtSpan(s.wait);
-    else {
-      const at = new Date(now.getTime() + s.wait * 60000);
-      text = 'Closed \u00b7 opens ' + at.toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' +
-        at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    }
-    return el('div', { class: 'mkt' + (s.open ? ' open' : '') },
-      el('span', { class: 'dot', 'aria-hidden': 'true' }), el('span', { class: 'mkt-name' }, m.name), el('span', { class: 'mkt-state' }, text));
-  }));
-}
-
-// Once a second: the date in the header and the stock exchange hours.
+// Once a second: the date in the header.
 function tickClocks() {
   const now = new Date();
   const today = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   if ($('today').textContent !== today) $('today').textContent = today;
-  renderMarkets(now);
 }
 
 /* ---------- 3) Weather (Open-Meteo, no key) ---------- */
@@ -1235,7 +1175,7 @@ function currentOrder() {
 /* Cards are grouped into tabs (phone: bottom bar, desktop: row in the header); only the active group shows. */
 const TAB_GROUPS = [
   { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-notes', 'card-shop'] },
-  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-clock', 'card-news'] },
+  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
   { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-tips', 'card-health', 'card-trends', 'card-weekly', 'card-patterns'] },
   { id: 'body', label: 'Body', cards: ['card-recovery', 'card-sleep', 'card-habits'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
@@ -1430,7 +1370,6 @@ const CARD_ICONS = {
   'card-weather': ['#32ade6', 'M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.1 3.5 3.5 0 0 0 7 18z'],
   'card-tickers': ['#34c759', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
   'card-heat': ['#ff3b30', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
-  'card-clock': ['#5856d6', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'],
   'card-shop': ['#ff2d55', 'M3 4h2l2.5 11h11L21 7H6.2M9 20h.01M18 20h.01'],
   'card-calc': ['#8e8e93', 'M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01'],
   'card-notes': ['#ffcc00', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h5'],
