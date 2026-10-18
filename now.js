@@ -102,11 +102,16 @@ function nowGo(id) {
 // What is still open today (only shown when there is something)
 function nowOpen() {
   const now = new Date(), today = toDateStr(now), list = [];
-  if (weight.length && !weight.some((w) => w.d === today)) list.push('weight not entered');
+  let go = 'card-food'; // the card the row opens (the last open item wins)
+  // once a week is enough for both
+  const lastW = weight.map((w) => w.d).sort().pop();
+  if (lastW && -dayDiff(lastW) >= 7) list.push('weight not entered for a week'), go = 'card-health';
+  const lastC = whoop.map((r) => r.d).sort().pop();
+  if (lastC && -dayDiff(lastC) >= 7) list.push('Whoop data older than a week, import a new CSV'), go = 'card-recovery';
   if (now.getHours() >= 14 && !dayTotals(today).n) list.push('no meal logged');
   const a = syncAge();
-  if (a.stale) list.push(a.text.toLowerCase());
-  return list.length ? { value: list.length === 1 ? '1 thing open' : list.length + ' things open', text: list.join(' \u00b7 ') } : null;
+  if (a.stale) list.push(a.text.toLowerCase()), go = 'card-food';
+  return list.length ? { value: list.length === 1 ? '1 thing open' : list.length + ' things open', text: list.join(' \u00b7 '), go } : null;
 }
 
 function renderNow() {
@@ -114,7 +119,7 @@ function renderNow() {
   if (!box) return;
   const rows = [['Next', nowNext(), nowNextMore(), 'card-cal'], ['Food', nowFood(), nowFoodMore(), 'card-food'], ['Recovery', nowBody(), nowBodyMore(), 'card-recovery'], ['Markets', nowMarkets(), nowMarketsMore(), 'card-tickers']];
   const open = nowOpen();
-  if (open) rows.push(['Open', open, [], 'card-food']);
+  if (open) rows.push(['Open', open, [], open.go]);
   box.replaceChildren(...rows.map(([label, r, more, id]) =>
     el('button', { type: 'button', class: 'now-row', onclick: () => nowGo(id) },
       el('div', { class: 'now-l' }, label), el('div', { class: 'now-v ' + (r.cls || '') }, r.value), el('div', { class: 'now-t' }, r.text),
