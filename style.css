@@ -1317,3 +1317,10 @@ body[data-tab="body"] { --card-h: 700px; }
 .sync-age:empty { display: none; }
 .sync-age.stale { color: #ff9f0a; font-weight: 600; }
 @media (min-width: 1000px) { #now .now-row:nth-child(5) { grid-column: 1 / -1; } }
+
+/* quick add dialog */
+.quick { width: min(420px, calc(100vw - 32px)); border: 0; border-radius: 20px; padding: 16px; background: var(--card); color: var(--text); }
+.quick::backdrop { background: rgba(0, 0, 0, 0.4); }
+.quick-recent { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
+.quick-recent .chip { padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; background: var(--fill); color: var(--text); box-shadow: none; min-height: 0; }
+.quick #quick-close { width: 100%; margin-top: 6px; }

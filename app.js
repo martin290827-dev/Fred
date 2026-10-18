@@ -1491,6 +1491,7 @@ function init() {
   initPoker();
   initWeekly();
   if (typeof shInit === 'function') shInit();
+  if (typeof initQuick === 'function') initQuick();
   renderNews();
   $('news-refresh').addEventListener('click', () => loadNews(true));
   initLayout();

@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Fred">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="theme.js?v=209"></script>
-  <link rel="stylesheet" href="style.css?v=209">
+  <script src="theme.js?v=210"></script>
+  <link rel="stylesheet" href="style.css?v=210">
 </head>
 <body>
   <header>
@@ -21,6 +21,9 @@
     <div id="today" class="today"></div>
     <div class="hright">
       <div class="hbtns">
+        <button id="btn-quick" class="ghost hbtn" type="button" aria-label="Add a meal" title="Add a meal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Meal</span></button>
         <button id="btn-layout" class="ghost hbtn" type="button" aria-label="Rearrange or hide cards" title="Layout">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span>Layout</span></button>
@@ -162,6 +165,16 @@
   </main>
 
 
+  <dialog id="dlg-quick" class="quick">
+    <form id="quick-form" class="row">
+      <input id="quick-text" type="text" list="food-hist" maxlength="1500" autocomplete="off" placeholder="What did you eat?" aria-label="What did you eat">
+      <button type="submit">Add</button>
+    </form>
+    <div id="quick-recent" class="quick-recent"></div>
+    <p id="quick-note" class="muted small" aria-live="polite"></p>
+    <button id="quick-close" type="button" class="ghost">Close</button>
+  </dialog>
+
   <dialog id="dlg-settings">
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>
@@ -234,17 +247,17 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=209"></script>
-  <script src="gcal.js?v=209"></script>
-  <script src="sync.js?v=209"></script>
-  <script src="food.js?v=209"></script>
-  <script src="tips.js?v=209"></script>
-  <script src="archive.js?v=209"></script>
-  <script src="recovery.js?v=209"></script>
-  <script src="poker.js?v=209"></script>
-  <script src="weekly.js?v=209"></script>
-  <script src="heatmap.js?v=209"></script>
-  <script src="now.js?v=209"></script>
-  <script src="sheets.js?v=209"></script>
+  <script src="app.js?v=210"></script>
+  <script src="gcal.js?v=210"></script>
+  <script src="sync.js?v=210"></script>
+  <script src="food.js?v=210"></script>
+  <script src="tips.js?v=210"></script>
+  <script src="archive.js?v=210"></script>
+  <script src="recovery.js?v=210"></script>
+  <script src="poker.js?v=210"></script>
+  <script src="weekly.js?v=210"></script>
+  <script src="heatmap.js?v=210"></script>
+  <script src="now.js?v=210"></script>
+  <script src="sheets.js?v=210"></script>
 </body>
 </html>
