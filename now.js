@@ -99,10 +99,22 @@ function nowGo(id) {
   requestAnimationFrame(() => jumpTo($(id)));
 }
 
+// What is still open today (only shown when there is something)
+function nowOpen() {
+  const now = new Date(), today = toDateStr(now), list = [];
+  if (weight.length && !weight.some((w) => w.d === today)) list.push('weight not entered');
+  if (now.getHours() >= 14 && !dayTotals(today).n) list.push('no meal logged');
+  const a = syncAge();
+  if (a.stale) list.push(a.text.toLowerCase());
+  return list.length ? { value: list.length === 1 ? '1 thing open' : list.length + ' things open', text: list.join(' \u00b7 ') } : null;
+}
+
 function renderNow() {
   const box = $('now');
   if (!box) return;
   const rows = [['Next', nowNext(), nowNextMore(), 'card-cal'], ['Food', nowFood(), nowFoodMore(), 'card-food'], ['Recovery', nowBody(), nowBodyMore(), 'card-recovery'], ['Markets', nowMarkets(), nowMarketsMore(), 'card-tickers']];
+  const open = nowOpen();
+  if (open) rows.push(['Open', open, [], 'card-food']);
   box.replaceChildren(...rows.map(([label, r, more, id]) =>
     el('button', { type: 'button', class: 'now-row', onclick: () => nowGo(id) },
       el('div', { class: 'now-l' }, label), el('div', { class: 'now-v ' + (r.cls || '') }, r.value), el('div', { class: 'now-t' }, r.text),
