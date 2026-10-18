@@ -1333,7 +1333,7 @@ body[data-tab="body"] { --card-h: 700px; }
 .bs-l { color: var(--muted); font-size: 0.82rem; padding-top: 2px; }
 .bs-tip { margin: 0 0 8px; padding: 9px 12px; border-radius: 12px; background: var(--card-2); font-size: 0.95rem; line-height: 1.35; }
 @media (min-width: 1000px) {
-  .grid > :is(#card-bodysum, #card-nutsum) { grid-column: span 6; height: auto; }
+  .grid > :is(#card-bodysum, #card-nutsum) { grid-column: span 6; height: 340px; } /* content scrolls inside */
   .bs { grid-template-columns: 1fr 1fr; gap: 28px; }
 }
 
