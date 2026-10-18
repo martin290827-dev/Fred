@@ -1176,7 +1176,7 @@ function currentOrder() {
 const TAB_GROUPS = [
   { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
   { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
-  { id: 'nutrition', label: 'Nutrition', cards: ['card-food', 'card-tips', 'card-health', 'card-trends', 'card-weekly', 'card-patterns'] },
+  { id: 'nutrition', label: 'Nutrition', cards: ['card-nutsum', 'card-food', 'card-tips', 'card-health', 'card-trends', 'card-weekly', 'card-patterns'] },
   { id: 'body', label: 'Body', cards: ['card-bodysum', 'card-recovery', 'card-sleep', 'card-habits'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
@@ -1330,6 +1330,13 @@ function initLayout() {
     if (n >= 0) { o.splice(n, 0, 'card-bodysum'); layout.order = o; store.set('layout', layout); }
     store.set('mig.bodysum', true);
   }
+  // one-time: the Nutrition Summary goes first in the Nutrition group
+  if (!store.get('mig.nutsum', false)) {
+    const o = layout.order.filter((id) => id !== 'card-nutsum');
+    const n = o.indexOf('card-food');
+    if (n >= 0) { o.splice(n, 0, 'card-nutsum'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.nutsum', true);
+  }
   // one-time: the Heatmap card goes right after Tickers
   if (!store.get('mig.heat', false)) {
     const o = layout.order.filter((id) => id !== 'card-heat');
@@ -1389,6 +1396,7 @@ const CARD_ICONS = {
   'card-now': ['#0a84ff', 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5'],
   'card-patterns': ['#5e5ce6', 'M4 18l5-6 4 3 7-9M4 21h16'],
   'card-bodysum': ['#5e5ce6', 'M4 12h4l2-6 4 12 2-6h4'],
+  'card-nutsum': ['#30b0c7', 'M5 4v7a3 3 0 0 0 6 0V4M8 4v16M17 4c-2 2-2 6 0 8v8'],
   'card-weekly': ['#5e5ce6', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h4'],
   'card-habits': ['#30b0c7', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2'],
   'card-sleep': ['#7d5fff', 'M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z'],
@@ -1494,6 +1502,7 @@ function init() {
   initTips();
   initHeat();
   initNow();
+  if (typeof initNutSum === 'function') initNutSum();
   initArchive();
   initRecovery();
   initPoker();
