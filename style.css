@@ -1350,6 +1350,8 @@ body[data-tab="body"] { --card-h: 700px; }
 
 .bs h3.bs-wh { margin-top: 14px; }
 .bs-sum { margin: 0; font-size: 1.02rem; line-height: 1.4; }
+.bs-seg { max-width: 260px; }
+@media (min-width: 1000px) { .bs-seg { grid-column: 1 / -1; } }
 .bs-tip b { font-weight: 650; }
 @media (min-width: 1000px) { .bs-sum { grid-column: 1 / -1; } }
 
