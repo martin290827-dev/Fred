@@ -1,7 +1,9 @@
-// Nutrition Summary card: the last 7 full days against the 7 days before, plus an AI summary and tips.
+// Nutrition Summary card: the last n full days (7 / 15 / 30) against the n days before, plus an AI summary and tips.
 // Needs food.js (food data, targets, dayTotals, aiTips, weight). Loaded after now.js; initNutSum() runs from app.js init.
 
 /* ---------- numbers ---------- */
+let nsRange = store.get('nsRange', 7); // days per period, per device
+if (![7, 15, 30].includes(nsRange)) nsRange = 7;
 const nsAvg = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 
 // Averages of a list of days. Macros only count days where every meal has them.
@@ -21,10 +23,11 @@ function nsWeek(days) {
 const addDaysStr = (d, n) => toDateStr(addDays(new Date(d + 'T00:00'), n));
 
 function nsFacts() {
-  const days = lastDays(15).slice(0, 14); // today is not finished, so it does not count
-  const week = nsWeek(days.slice(7)), prev = nsWeek(days.slice(0, 7));
-  if (week.logged < 2) return null;
-  return { week, prev: prev.logged >= 3 ? prev : null, days, tg: targets(), g: goalInfo() };
+  const n = nsRange;
+  const days = lastDays(2 * n + 1).slice(0, 2 * n); // today is not finished, so it does not count
+  const week = nsWeek(days.slice(n)), prev = nsWeek(days.slice(0, n));
+  if (week.logged < Math.ceil(n * 2 / 7)) return null; // 2 of 7, 5 of 15, 9 of 30
+  return { n, week, prev: prev.logged >= Math.ceil(n * 3 / 7) ? prev : null, days, tg: targets(), g: goalInfo() };
 }
 
 // How far a value is from what is wanted: lower is better. null = no target to judge by.
@@ -38,7 +41,7 @@ function nsBad(key, v, f) {
 }
 
 const NS_ROWS = [
-  ['Days logged', 'logged', (v) => Math.round(v) + ' of 7', 1],
+  ['Days logged', 'logged', (v) => Math.round(v) + ' of ' + nsRange, 1],
   ['Calories per day', 'kcal', (v) => Math.round(v) + ' kcal', 50],
   ['Protein per day', 'p', (v) => Math.round(v) + ' g', 5],
   ['Carbs per day', 'c', (v) => Math.round(v) + ' g', 8],
@@ -72,8 +75,8 @@ function nsSummary(f) {
 
 // Fixed rules, used when there is no AI answer
 function nsTips(f) {
-  const w = f.week, tg = f.tg, t = [];
-  if (w.logged < 5) t.push('Only ' + w.logged + ' of 7 days are logged. Log every day, otherwise the averages say little.');
+  const w = f.week, tg = f.tg, t = [], per = f.n === 7 ? 'this week' : 'in the last ' + f.n + ' days';
+  if (w.logged < f.n * 0.7) t.push('Only ' + w.logged + ' of ' + f.n + ' days are logged. Log every day, otherwise the averages say little.');
   if (w.kcal != null && tg.kcal) {
     const d = Math.round(w.kcal - tg.kcal);
     if (d > 150) t.push('You averaged ' + d + ' kcal over your target. Smaller portions of the biggest meal are the easiest fix.');
@@ -84,20 +87,22 @@ function nsTips(f) {
   if (w.s != null && tg.s && w.s > tg.s) t.push('Sugar averaged ' + Math.round(w.s) + ' g, limit ' + tg.s + ' g. Drinks and sweets are the usual source.');
   if (f.prev && w.kg != null && f.prev.kg != null && f.g) {
     const d = w.kg - f.prev.kg, lose = f.g.goal < f.g.start;
-    if (Math.abs(d) < 0.2) t.push('Your weight did not move this week.');
-    else if (lose !== d < 0) t.push('Your weight moved away from your goal this week (' + (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1) + ' kg).');
+    if (Math.abs(d) < 0.2) t.push('Your weight did not move (' + per + ').');
+    else if (lose !== d < 0) t.push('Your weight moved away from your goal (' + per + ', ' + (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1) + ' kg).');
   }
   return t.slice(0, 5);
 }
 
 /* ---------- AI part: one request per day (or on the refresh button). Kept in this browser only. ---------- */
-let nutAi = store.get('nutAi', { key: '', summary: '', tips: [], prev: [], err: '' });
+const NS_EMPTY = { key: '', summary: '', tips: [], prev: [], err: '' };
+let nutAiAll = store.get('nutAi2', {}); // one answer per range (7 / 15 / 30), this browser only
 let nutAiBusy = false;
-const nsKey = (f) => 'week:' + f.week.to;
+const nutAiOf = (n) => nutAiAll[n] || NS_EMPTY;
+const nsKey = (f) => 'n' + f.n + ':' + f.week.to;
 
 const NS_SYSTEM = 'You are a careful nutrition coach. The user logs meals daily; calories and macros are estimates. ' +
-  'Write about the WEEK: the 7 newest full days ("THIS WEEK") against the 7 days before ("LAST WEEK"). ' +
-  'The summary (2 to 3 sentences) says how the week went against the targets and what got better or worse against last week, with the real numbers. ' +
+  'The message gives a period of N days: the N newest full days ("THIS PERIOD") against the N days before ("PREVIOUS PERIOD"). ' +
+  'The summary (2 to 3 sentences) says how the period went against the targets and what got better or worse against the previous one, with the real numbers. ' +
   'A cheat day is a planned day off: do not criticise it, but note how it moved the average. ' +
   'The tips are for the coming days: concrete, based on what changed and on the foods in the diary, no generic filler, no medical claims. ' +
   'Do not repeat the earlier tips (their titles are given). Language of the answer: the language given in the message. ' +
@@ -112,26 +117,28 @@ function nsInput(f) {
   const avg = (w) => NS_ROWS.filter(([, k]) => w[k] != null).map(([label, k, fmt]) => label + ' ' + fmt(w[k])).join(', ');
   return 'Language of the answer: ' + (navigator.language || 'de-AT') +
     '\nTargets per day: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + ', sugar max ' + tg.s + ' g.' + (f.g ? ' Goal: ' + (f.g.goal < f.g.start ? 'lose weight' : 'gain weight') + '.' : '') +
-    '\n\nTHIS WEEK averages: ' + avg(f.week) + '\n' + f.days.slice(7).map(line).join('\n') +
-    '\n\nLAST WEEK' + (f.prev ? ' averages: ' + avg(f.prev) + '\n' + f.days.slice(0, 7).map(line).join('\n') : ': not enough data') +
-    '\n\nEarlier tip titles: ' + ((nutAi.prev || []).join('; ') || 'none');
+    '\n\nPeriod length N = ' + f.n + ' days.' +
+    '\n\nTHIS PERIOD averages: ' + avg(f.week) + '\n' + f.days.slice(f.n).map(line).join('\n') +
+    // the earlier period: day lines only for the short range, otherwise the averages are enough
+    '\n\nPREVIOUS PERIOD' + (f.prev ? ' averages: ' + avg(f.prev) + (f.n <= 7 ? '\n' + f.days.slice(0, f.n).map(line).join('\n') : '') : ': not enough data') +
+    '\n\nEarlier tip titles: ' + ((nutAiOf(f.n).prev || []).join('; ') || 'none');
 }
 
 async function nsLoadAi(force) {
   const f = nsFacts();
   if (!f || !anthropicKey || nutAiBusy) return;
-  if (!force && nutAi.key === nsKey(f)) return; // this week is done (also after an error: retry only with the button)
+  if (!force && nutAiOf(f.n).key === nsKey(f)) return; // this range and day is done (also after an error: retry only with the button)
   nutAiBusy = true; renderNutSum();
   try {
     const j = await aiTips(NS_SYSTEM, nsInput(f), 700);
     if (!j || typeof j.summary !== 'string' || !Array.isArray(j.tips)) throw new Error('unexpected answer');
     const list = j.tips.filter((t) => t && t.text).slice(0, 5).map((t) => ({ title: String(t.title || ''), text: String(t.text) }));
-    nutAi = { key: nsKey(f), summary: j.summary, tips: list, prev: list.map((t) => t.title).filter(Boolean).slice(0, 8), err: '' };
+    nutAiAll[f.n] = { key: nsKey(f), summary: j.summary, tips: list, prev: list.map((t) => t.title).filter(Boolean).slice(0, 8), err: '' };
   } catch (e) {
-    nutAi = Object.assign({}, nutAi, { key: nsKey(f), err: e.message });
+    nutAiAll[f.n] = Object.assign({}, nutAiOf(f.n), { key: nsKey(f), err: e.message });
   }
   nutAiBusy = false;
-  store.set('nutAi', nutAi);
+  store.set('nutAi2', nutAiAll);
   renderNutSum();
 }
 
@@ -140,18 +147,20 @@ function renderNutSum() {
   if (!box) return;
   const btn = $('ns-refresh');
   if (btn) { btn.hidden = !anthropicKey; btn.disabled = nutAiBusy; btn.classList.toggle('busy', nutAiBusy); }
+  const seg = rangeSeg(nsRange, (n) => { nsRange = n; store.set('nsRange', n); renderNutSum(); });
   const f = nsFacts();
-  if (!f) { box.replaceChildren(el('p', { class: 'muted' }, 'Log meals on at least 2 days to see a weekly summary and tips.')); return; }
-  const ai = anthropicKey && nutAi.key === nsKey(f) && !nutAi.err && nutAi.tips.length ? nutAi : null;
+  if (!f) { box.replaceChildren(seg, el('p', { class: 'muted' }, 'Log meals on at least ' + Math.ceil(nsRange * 2 / 7) + ' days (last ' + nsRange + ' days) to see a summary and tips.')); return; }
+  const cur = nutAiOf(f.n), ai = anthropicKey && cur.key === nsKey(f) && !cur.err && cur.tips.length ? cur : null;
   let note = '';
   if (!anthropicKey) note = 'Add an Anthropic key in Settings for AI tips. These are fixed rules.';
   else if (nutAiBusy) note = 'Writing tips …';
-  else if (nutAi.err && nutAi.key === nsKey(f)) note = 'AI tips failed (' + nutAi.err + '). Fixed rules shown, press ↻ to try again.';
+  else if (cur.err && cur.key === nsKey(f)) note = 'AI tips failed (' + cur.err + '). Fixed rules shown, press ↻ to try again.';
   const tips = ai ? ai.tips.map((t) => el('p', { class: 'bs-tip' }, t.title ? el('b', {}, t.title + ': ') : '', t.text)) : nsTips(f).map((x) => el('p', { class: 'bs-tip' }, x));
   box.replaceChildren(
+    seg,
     ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
-    el('div', { class: 'bs-col' }, el('h3', {}, 'Last 7 days · ' + rcShort(f.week.from) + '–' + rcShort(f.week.to) + (f.week.cheat ? ' · ' + f.week.cheat + ' cheat day' + (f.week.cheat > 1 ? 's' : '') : '')),
-      f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'This week'), el('span', {}, 'Last week'), el('span', {}, 'Change')) : '',
+    el('div', { class: 'bs-col' }, el('h3', {}, 'Last ' + f.n + ' days · ' + rcShort(f.week.from) + '–' + rcShort(f.week.to) + (f.week.cheat ? ' · ' + f.week.cheat + ' cheat day' + (f.week.cheat > 1 ? 's' : '') : '')),
+      f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'Last ' + f.n), el('span', {}, 'Before'), el('span', {}, 'Change')) : '',
       ...nsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text)))),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
       note ? el('p', { class: 'muted small' }, note) : '',
