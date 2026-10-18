@@ -218,7 +218,7 @@ function bsFacts() {
   if (!last) return null;
   const weekRows = rows.filter((x) => x.d <= last.d).slice(-n);
   const prevRows = rows.filter((x) => x.d < weekRows[0].d).slice(-n);
-  const week = bsWeek(weekRows), prev = prevRows.length >= Math.ceil(n / 2) ? bsWeek(prevRows) : null; // the earlier period needs at least half its nights
+  const week = bsWeek(weekRows), prev = prevRows.length >= 4 ? bsWeek(prevRows) : null; // the earlier period needs at least 4 nights
   // no workouts in either week: probably no workouts file imported, so do not show zeros
   if (!(week.sessions > 0 || (prev && prev.sessions > 0))) for (const w of [week, prev]) if (w) w.sessions = w.trMin = w.trKcal = null;
   return { n, last, age: -dayDiff(last.d), week, prev, weekRows, prevRows };
@@ -358,6 +358,7 @@ function renderBodySum() {
       ...bsWorkoutList(f)),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
       note ? el('p', { class: 'muted small' }, note) : '',
+      f.prev ? '' : el('p', { class: 'muted small' }, 'No comparison: only ' + f.prevRows.length + ' night' + (f.prevRows.length === 1 ? '' : 's') + ' before these ' + f.n + ' nights, 4 are needed.'),
       el('p', { class: 'muted small' }, 'Not medical advice. Wrist-band data is an estimate.')));
   bsLoadAi(false);
 }
