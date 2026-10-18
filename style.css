@@ -1249,7 +1249,8 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 /* Heatmap card: dark tiles like a market heatmap, colour = size of the move (heatmap.js) */
 #card-heat { container-type: inline-size; }
 #heat { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.heat-seg { display: flex; gap: 6px; }
+.heat-seg { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.heat-seg .heat-btn { padding: 6px 11px; }
 .heat-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .heat-btn { min-height: 0; padding: 6px 16px; border-radius: 8px; background: var(--fill); color: var(--text); font-size: 0.85rem; font-weight: 600; box-shadow: none; }
 .heat-btn.on { background: var(--text); color: var(--bg); }

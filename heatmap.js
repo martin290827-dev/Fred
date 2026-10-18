@@ -1,6 +1,6 @@
 'use strict';
-/* Heatmap card: one tile per ticker, coloured by its change over 1D / 1W / 1M / YTD.
-   Prices come from loadQuotes (app.js). The base prices (7 and 30 days ago, end of last year) come from daily closes:
+/* Heatmap card: one tile per ticker, coloured by its change over 1D / 1W / 1M / 3M / 6M / YTD / 1Y.
+   Prices come from loadQuotes (app.js). The base prices (7, 30, 91, 182 and 365 days ago, end of last year) come from daily closes:
    Binance for crypto, Twelve Data for stocks (needs the key; 1D works without it). Only these bases are kept, not the series. */
 
 // scale = the change (in %) that gets the full colour; smaller moves stay closer to grey, like in a market heatmap
@@ -8,7 +8,10 @@ const HEAT_INFO = {
   '1D': { title: 'Last 24 Hours', scale: 3 },
   '1W': { title: 'Last 7 Days', scale: 10 },
   '1M': { title: 'Last 30 Days', scale: 20 },
+  '3M': { title: 'Last 3 Months', scale: 30 },
+  '6M': { title: 'Last 6 Months', scale: 40 },
   YTD: { title: 'Year to Date', scale: 40 },
+  '1Y': { title: 'Last 12 Months', scale: 50 },
 };
 const HEAT_TTL = 6 * 3600 * 1000;
 const HEAT_PER_MIN = 6; // Twelve Data free plan: 8 per minute (a clash with the sparklines is retried after a minute)
@@ -18,7 +21,7 @@ const HEAT_RED = '#e0383e', HEAT_GREEN = '#1fa85a', HEAT_NEUTRAL = '#5b6170'; //
 // Strength 0..1: square root spreads small moves, and even a tiny move gets a visible tint.
 const heatStrength = (pct, scale) => (pct === 0 ? 0 : 0.2 + 0.8 * Math.sqrt(Math.min(Math.abs(pct) / scale, 1)));
 let heat = store.get('heat', { period: '1W', size: 'equal' }); // this device only
-let heatBase = store.get('heatBase', {});                      // sym -> { day, t, prev, w1, m1, ytd, last }
+let heatBase = store.get('heatBase', {});                      // sym -> { day, t, prev, w1, m1, m3, m6, y1, ytd, last }
 const heatFail = {};                                           // sym -> { msg, retryAt }
 let heatBusy = false, heatAgain = false;
 
@@ -44,7 +47,7 @@ function heatCloseOn(rows, d) {
 function heatBases(rows) {
   const now = new Date();
   const ago = (n) => heatCloseOn(rows, toDateStr(addDays(now, -n)));
-  return { day: toDateStr(now), t: Date.now(), prev: ago(1), w1: ago(7), m1: ago(30), ytd: heatCloseOn(rows, (now.getFullYear() - 1) + '-12-31'), last: rows.length ? rows[rows.length - 1][1] : null };
+  return { day: toDateStr(now), t: Date.now(), prev: ago(1), w1: ago(7), m1: ago(30), m3: ago(91), m6: ago(182), y1: ago(365), ytd: heatCloseOn(rows, (now.getFullYear() - 1) + '-12-31'), last: rows.length ? rows[rows.length - 1][1] : null };
 }
 
 // Download the bases that are missing or old. Stocks: a few per minute, the rest follows.
@@ -55,7 +58,7 @@ async function heatLoad() {
     let limited = false;
     for (const sym of [...new Set(tickers)]) {
       const b = heatBase[sym], f = heatFail[sym];
-      if (b && b.day === toDateStr(new Date()) && Date.now() - b.t < HEAT_TTL) continue;
+      if (b && 'y1' in b && b.day === toDateStr(new Date()) && Date.now() - b.t < HEAT_TTL) continue; // bases saved before 3M / 6M / 1Y existed are loaded again
       if (f && Date.now() < f.retryAt) continue;
       if (!sym.startsWith('c:')) {
         if (!twelveKey) continue; // 1D still works from the live quote
@@ -89,7 +92,7 @@ function heatPct(sym, period) {
     if (q && q.pct != null) return q.pct;
     return b && b.prev && price ? (price / b.prev - 1) * 100 : null;
   }
-  const base = b && { '1W': b.w1, '1M': b.m1, YTD: b.ytd }[period];
+  const base = b && { '1W': b.w1, '1M': b.m1, '3M': b.m3, '6M': b.m6, '1Y': b.y1, YTD: b.ytd }[period];
   return base && price ? (price / base - 1) * 100 : null;
 }
 
