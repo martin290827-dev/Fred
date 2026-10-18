@@ -1213,8 +1213,11 @@ const TOL_SYSTEM = 'You help one adult find which foods may not agree with them.
   'with a reaction (mild/medium/strong, with symptoms); all unflagged meals count as tolerated. Break each meal into likely ingredients and food groups ' +
   '(e.g. milk, wheat, onion, fried food, alcohol, coffee). For each candidate compare how often it appears in flagged meals versus in tolerated meals. ' +
   'Be honest about weak evidence: with few flagged meals say so, never name a certain culprit, never diagnose. Reactions can come up to 24 hours later. ' +
-  'Reply with JSON only: {"note":"one or two sentences on how reliable this is","suspects":[{"item":"short name","flagged":"n of N flagged meals contain it","other":"n of M tolerated meals contain it","text":"one short sentence"}]} ' +
-  'with at most 5 suspects, most suspicious first. If nothing stands out, return an empty list and say so in note.';
+  'Also name foods that seem well tolerated: only foods or groups that appear in at least 5 tolerated meals and never or rarely in flagged ones. ' +
+  'A food only counts as tolerated if the user flags reactions reliably: say this once in note. ' +
+  'Reply with JSON only: {"note":"one or two sentences on how reliable this is","suspects":[{"item":"short name","flagged":"n of N flagged meals contain it","other":"n of M tolerated meals contain it","text":"one short sentence"}],' +
+  '"tolerated":[{"item":"short name","text":"one short sentence, for example in how many meals it appeared without a reaction"}]} ' +
+  'with at most 5 suspects, most suspicious first, and at most 5 tolerated foods. If nothing stands out, return empty lists and say so in note.';
 
 function tolInput() {
   const from = toDateStr(addDays(new Date(), -90));
@@ -1229,14 +1232,35 @@ async function loadTolerance() {
   tolBusy = true;
   renderFood();
   try {
-    const j = await aiJSON(TOL_SYSTEM, tolInput(), 900);
-    tol = { day: toDateStr(new Date()), note: String(j.note || ''), err: '', list: (j.suspects || []).filter((s) => s && s.item).slice(0, 5).map((s) => ({ item: String(s.item), flagged: String(s.flagged || ''), other: String(s.other || ''), text: String(s.text || '') })) };
+    const from = toDateStr(addDays(new Date(), -90));
+    const n = food.filter((e) => e.bad && e.at.slice(0, 10) >= from).length; // reactions this analysis is based on
+    const j = await aiJSON(TOL_SYSTEM, tolInput(), 1200);
+    tol = {
+      day: toDateStr(new Date()), n, note: String(j.note || ''), err: '',
+      list: (j.suspects || []).filter((s) => s && s.item).slice(0, 5).map((s) => ({ item: String(s.item), flagged: String(s.flagged || ''), other: String(s.other || ''), text: String(s.text || '') })),
+      safe: (j.tolerated || []).filter((s) => s && s.item).slice(0, 5).map((s) => ({ item: String(s.item), text: String(s.text || '') })),
+    };
   } catch (e) {
     tol = Object.assign({}, tol, { err: e.message });
   }
   tolBusy = false;
   store.set('tolerance', tol);
   renderFood();
+}
+
+// All meals with a reaction of the last 90 days, newest first, with a count per symptom. No AI, no cost.
+function tolHistory() {
+  const from = toDateStr(addDays(new Date(), -90));
+  const rows = food.filter((e) => e.bad && e.at.slice(0, 10) >= from).sort((a, b) => b.at.localeCompare(a.at));
+  if (!rows.length) return '';
+  const count = {};
+  for (const e of rows) for (const s of e.bad.sym) count[s] = (count[s] || 0) + 1;
+  const sum = Object.entries(count).sort((a, b) => b[1] - a[1]).map(([s, n]) => s + ' ' + n).join(' · ');
+  const ul = el('ul', { class: 'tol-hl' }, ...rows.map((e) => el('li', { class: 'tol-hrow' },
+    el('span', { class: 'tol-lvl lv' + e.bad.lvl }, TOL_LEVELS[e.bad.lvl]),
+    el('span', { class: 'muted small' }, shortDay(e.at.slice(0, 10)) + ' · '), e.text,
+    e.bad.sym.length ? el('span', { class: 'muted small' }, ' · ' + e.bad.sym.join(', ')) : '')));
+  return el('div', { class: 'tol-hist' }, el('p', { class: 'muted small tol-h' }, 'All reactions, last 90 days (' + rows.length + ')' + (sum ? ' · ' + sum : '')), ul);
 }
 
 function tolCard() {
@@ -1247,13 +1271,18 @@ function tolCard() {
   if (!recent.length) ul.append(el('li', { class: 'muted small' }, 'No meals in the last 3 days.'));
   for (const e of recent) ul.append(tolRow(e));
   const can = flagged >= TOL_MIN && anthropicKey;
-  const btn = el('button', { type: 'button', class: 'ghost small', onclick: loadTolerance }, tolBusy ? 'Analysing\u2026' : 'Find patterns');
+  const btn = el('button', { type: 'button', class: 'ghost small', onclick: loadTolerance }, tolBusy ? 'Analysing\u2026' : 'What do I not tolerate?');
   btn.disabled = !can || tolBusy;
   const hint = flagged < TOL_MIN ? 'Flag at least ' + TOL_MIN + ' meals to look for patterns (' + flagged + ' so far). Everything not flagged counts as tolerated.'
     : !anthropicKey ? 'Add an Anthropic key in Settings to analyse.' : flagged + ' flagged meals in 90 days. Few reactions give only weak hints.';
-  const res = tol.err ? el('p', { class: 'food-err small' }, tol.err) : tol.day && (tol.list.length || tol.note) ? el('div', { class: 'tol-res' },
+  const safe = tol.safe || [];
+  const stale = tol.day && tol.n !== undefined && tol.n !== flagged ? el('p', { class: 'muted small' }, 'Reactions changed since this analysis (' + shortDay(tol.day) + '). Run it again.') : '';
+  const res = tol.err ? el('p', { class: 'food-err small' }, tol.err) : tol.day && (tol.list.length || safe.length || tol.note) ? el('div', { class: 'tol-res' },
+    tol.list.length ? el('p', { class: 'muted small tol-h' }, 'May not agree with you') : '',
     ...tol.list.map((s) => el('div', { class: 'tol-s' }, el('b', {}, s.item), el('span', { class: 'muted small' }, ' \u00b7 flagged ' + s.flagged + ' \u00b7 other ' + s.other), el('div', { class: 'small' }, s.text))),
-    el('p', { class: 'muted small' }, tol.note)) : '';
-  const card = hcard('flag', 'orange', 'Tolerance', flagged ? flagged + ' flagged' : '', el('p', { class: 'muted small' }, 'Did a meal upset you? Set the level. Reactions can come hours later, so you can mark meals of the last 3 days.'), ul, el('div', { class: 'row tol-act' }, btn), el('p', { class: 'muted small' }, hint), res);
+    safe.length ? el('p', { class: 'muted small tol-h' }, 'Seems well tolerated') : '',
+    ...safe.map((s) => el('div', { class: 'tol-s' }, el('b', {}, s.item), el('div', { class: 'small' }, s.text))),
+    el('p', { class: 'muted small' }, tol.note), stale) : '';
+  const card = hcard('flag', 'orange', 'Tolerance', flagged ? flagged + ' flagged' : '', el('p', { class: 'muted small' }, 'Did a meal upset you? Set the level. Reactions can come hours later, so you can mark meals of the last 3 days.'), ul, el('div', { class: 'row tol-act' }, btn), el('p', { class: 'muted small' }, hint), res, tolHistory());
   return card;
 }
