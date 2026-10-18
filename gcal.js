@@ -43,6 +43,7 @@ function gPopUpdate() {
   const need = gPopNeed();
   pop.hidden = !need || gPopHidden || gTrying;
   if (need) pop.querySelector('.g-pop-go').textContent = need + ' \u00b7 Reconnect';
+  if (typeof syncLineUpdate === 'function') syncLineUpdate();
 }
 // Renewal without a window (works while Google still remembers you); the button stays hidden meanwhile.
 function gSilentToken() {

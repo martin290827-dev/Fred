@@ -1311,3 +1311,9 @@ body[data-tab="body"] { --card-h: 700px; }
 .now-x li b { font-weight: 600; color: var(--text); white-space: nowrap; }
 .now-x li .up { color: var(--up); } .now-x li .down { color: var(--down); }
 .now-x li.over b { color: var(--down); }
+
+/* freshness of the Google copy */
+.sync-age { margin: -6px 0 8px; font-size: 0.78rem; color: var(--muted); }
+.sync-age:empty { display: none; }
+.sync-age.stale { color: #ff9f0a; font-weight: 600; }
+@media (min-width: 1000px) { #now .now-row:nth-child(5) { grid-column: 1 / -1; } }

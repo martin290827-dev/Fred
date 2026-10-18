@@ -245,6 +245,7 @@ async function shSync() {
   try {
     await shOpen();
     for (const set of SH_KEYS) await shSyncSet(set);
+    store.set('shOkAt', Date.now());
     shMsg = 'Saved to Google Sheet ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     shMsg = /has not been used|disabled|SERVICE_DISABLED/i.test(e.message)
@@ -258,7 +259,22 @@ async function shSync() {
   }
 }
 
-function shStatus() { const n = $('sheet-status'); if (n) n.textContent = shMsg; }
+function shStatus() { const n = $('sheet-status'); if (n) n.textContent = shMsg; syncLineUpdate(); }
+
+// How fresh is this device's copy? { text, stale }. Stale = older than 10 minutes or no Google session.
+function syncAge() {
+  const at = store.get('shOkAt', 0), min = Math.round((Date.now() - at) / 60000);
+  if (!store.get('gConnected', false)) return { text: '', stale: false };
+  if (!at) return { text: 'Not synced yet', stale: true };
+  const hm = new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (!gHasToken()) return { text: 'Not connected, saved copy from ' + hm, stale: true };
+  if (min > 10) return { text: 'Not synced since ' + hm, stale: true };
+  return { text: min < 1 ? 'Synced just now' : 'Synced ' + min + ' min ago', stale: false };
+}
+function syncLineUpdate() {
+  const a = syncAge(), n = $('sync-age');
+  if (n) { n.textContent = a.text; n.classList.toggle('stale', a.stale); }
+}
 
 // Called by store.set: a data set changed here, send it a few seconds later.
 function shTouch(key) {
@@ -268,7 +284,7 @@ function shTouch(key) {
 }
 
 function shInit() {
-  setInterval(() => { if (!document.hidden) shSync(); }, 60000);
+  setInterval(() => { if (!document.hidden) shSync(); syncLineUpdate(); }, 60000);
   document.addEventListener('visibilitychange', shSync);
   setTimeout(shSync, 2500);
 }
