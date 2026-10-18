@@ -1112,9 +1112,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'waist', 'nutri', 'whoop', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'waist', 'nutri', 'whoop', 'workouts', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
-const ARRAY_KEYS = ['tickers', 'shop', 'food', 'weight', 'waist', 'poker'];
+const ARRAY_KEYS = ['tickers', 'shop', 'food', 'weight', 'waist', 'workouts', 'poker'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;

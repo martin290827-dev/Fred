@@ -82,6 +82,17 @@ const SH_SETS = {
     save: () => store.set('whoop', whoop),
     show: () => { if (typeof renderRecovery === 'function') renderRecovery(); if (typeof renderWeekly === 'function') renderWeekly(); },
   },
+  // workouts from the Whoop workouts CSV, in neutral columns (the raw file is kept in "Whoop Training")
+  workouts: {
+    tab: 'Workouts', cols: ['start', 'name', 'min', 'kcal', 'avg_hr', 'max_hr', 'strain'], key: 'start',
+    get: () => workouts.map((w) => ({ start: w.id, name: w.name, min: w.min, kcal: w.kcal, avg_hr: w.avgHr, max_hr: w.maxHr, strain: w.strain })),
+    set: (rows) => {
+      workouts = rows.map((r) => ({ id: String(r.start), d: String(r.start).slice(0, 10), t: String(r.start).slice(11, 16), name: String(r.name || 'Workout'), min: nn(r.min), kcal: nn(r.kcal), avgHr: nn(r.avg_hr), maxHr: nn(r.max_hr), strain: nn(r.strain) }));
+    },
+    order: (a, b) => String(a.start).localeCompare(String(b.start)),
+    save: () => store.set('workouts', workouts),
+    show: () => { if (typeof renderBodySum === 'function') renderBodySum(); },
+  },
   // the written weekly summaries, one readable row per week
   review: {
     tab: 'Weekly Review', cols: ['week_start', 'week_end', 'summary', 'went_well', 'next_week'], key: 'week_start',
