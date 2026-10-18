@@ -233,15 +233,64 @@ function bsTips(f) {
   return t.slice(0, 5);
 }
 
+/* AI part: one short request per new night (or on the refresh button). Kept in this browser only. Without a key or on an error the fixed rules show instead. */
+let bodyAi = store.get('bodyAi', { key: '', summary: '', tips: [], prev: [], err: '' });
+let bodyAiBusy = false;
+
+const BS_SYSTEM = 'You are a careful sleep and recovery coach. The data comes from a wrist band: sleep stages and scores are estimates. ' +
+  'The user gets a short summary and tips for TODAY, based on the newest night and the trend of the nights before. ' +
+  'Be concrete: use the real numbers, name what changed, say what to do today and tonight. No generic filler, no diagnoses, no medical claims; ' +
+  'only if values are strongly off for many days, say once that a doctor can check it. Do not repeat the earlier tips (their titles are given). ' +
+  'Language of the answer: the language given in the message. Reply with one JSON object only, no other text: ' +
+  '{"summary":"2 to 3 sentences","tips":[{"title":"max 4 words","text":"max 25 words"}]} with 3 to 5 tips.';
+
+function bsInput(f) {
+  const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d))).filter((x) => x.d <= f.last.d).slice(-14);
+  const line = (r) => [r.d, 'score ' + (r.score ?? '?'), 'HRV ' + (r.hrv ?? '?') + ' (usual ' + (r.baseHrv ?? '?') + ')', 'RHR ' + (r.rhr ?? '?') + ' (usual ' + (r.baseRhr ?? '?') + ')',
+    'sleep ' + (r.sleepMin ?? '?') + ' min', 'debt ' + (r.sleepDebtMin ?? '?') + ' min', 'eff ' + (r.sleepEff ?? '?') + ' %',
+    'deep ' + (r.deepMin ?? '?') + ' min', 'REM ' + (r.remMin ?? '?') + ' min', 'bed ' + (r.bed || '?'), 'wake ' + (r.wake || '?')].join(' | ');
+  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\nNights (oldest first, the last line is the newest night):\n' + rows.map(line).join('\n') +
+    '\nEarlier tip titles: ' + ((bodyAi.prev || []).join('; ') || 'none');
+}
+
+async function bsLoadAi(force) {
+  const f = bsFacts();
+  if (!f || !anthropicKey || bodyAiBusy) return;
+  if (!force && bodyAi.key === f.last.d) return; // this night is done (also after an error: retry only with the button)
+  bodyAiBusy = true; renderBodySum();
+  try {
+    const j = await aiTips(BS_SYSTEM, bsInput(f), 700);
+    if (!j || typeof j.summary !== 'string' || !Array.isArray(j.tips)) throw new Error('unexpected answer');
+    const list = j.tips.filter((t) => t && t.text).slice(0, 5).map((t) => ({ title: String(t.title || ''), text: String(t.text) }));
+    bodyAi = { key: f.last.d, summary: j.summary, tips: list, prev: list.map((t) => t.title).filter(Boolean).slice(0, 8), err: '' };
+  } catch (e) {
+    bodyAi = Object.assign({}, bodyAi, { key: f.last.d, err: e.message });
+  }
+  bodyAiBusy = false;
+  store.set('bodyAi', bodyAi);
+  renderBodySum();
+}
+
 function renderBodySum() {
   const box = $('bodysum');
   if (!box) return;
+  const btn = $('bs-refresh');
+  if (btn) { btn.hidden = !anthropicKey; btn.disabled = bodyAiBusy; btn.classList.toggle('busy', bodyAiBusy); }
   const f = bsFacts();
   if (!f) { box.replaceChildren(el('p', { class: 'muted' }, whoop.length ? 'Not enough nights for a baseline yet (about 14 are needed).' : 'Import a Whoop CSV in the Recovery card to see a summary and tips.')); return; }
+  const ai = anthropicKey && bodyAi.key === f.last.d && !bodyAi.err && bodyAi.tips.length ? bodyAi : null;
+  let note = '';
+  if (!anthropicKey) note = 'Add an Anthropic key in Settings for AI tips. These are fixed rules.';
+  else if (bodyAiBusy) note = 'Writing tips …';
+  else if (bodyAi.err && bodyAi.key === f.last.d) note = 'AI tips failed (' + bodyAi.err + '). Fixed rules shown, press ↻ to try again.';
+  const tips = ai ? ai.tips.map((t) => el('p', { class: 'bs-tip' }, t.title ? el('b', {}, t.title + ': ') : '', t.text)) : bsTips(f).map((x) => el('p', { class: 'bs-tip' }, x));
   box.replaceChildren(
-    el('div', { class: 'bs-col' }, el('h3', {}, 'Summary · ' + rcShort(f.last.d)), ...bsSummary(f).map(([l, v]) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, l), el('span', {}, v)))),
-    el('div', { class: 'bs-col' }, el('h3', {}, 'Tips'), ...bsTips(f).map((x) => el('p', { class: 'bs-tip' }, x)),
-      el('p', { class: 'muted small' }, 'Rules of thumb from your own data, not medical advice.')));
+    ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
+    el('div', { class: 'bs-col' }, el('h3', {}, 'Numbers · ' + rcShort(f.last.d)), ...bsSummary(f).map(([l, v]) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, l), el('span', {}, v)))),
+    el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
+      note ? el('p', { class: 'muted small' }, note) : '',
+      el('p', { class: 'muted small' }, 'Not medical advice. Wrist-band data is an estimate.')));
+  bsLoadAi(false);
 }
 
 function renderNowCards() { renderNow(); renderPatterns(); renderBodySum(); }
@@ -251,4 +300,6 @@ function initNow() {
   setInterval(() => { if (!document.hidden) renderNowCards(); }, 20000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) renderNowCards(); });
   setTimeout(renderNowCards, 2500); // after the first data has arrived
+  const rb = $('bs-refresh');
+  if (rb) rb.addEventListener('click', () => bsLoadAi(true));
 }
