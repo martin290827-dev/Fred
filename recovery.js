@@ -174,7 +174,7 @@ function computeScores(rows) {
 }
 
 function scoreBand(s) { return s < 34 ? 'low' : s < 67 ? 'mid' : 'high'; }
-const BAND_LABEL = { low: 'niedrig', mid: 'mittel', high: 'gut' };
+const BAND_LABEL = { low: 'low', mid: 'medium', high: 'good' };
 
 /* ---------- traffic-light rules (g = good, o = watch, r = poor) ----------
    Orientation values, not medical advice. Sleep duration: 7 h or more is the usual adult recommendation.

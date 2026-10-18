@@ -30,10 +30,16 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
   const rows = (n) => Array.from({ length: n }, (_, i) => ({ id: 'a' + i, text: 'item ' + i, done: false }));
   const baseOf = (list) => { run('shBase = {}'); ctx.shop = list; return list; };
 
-  await test('write first, then clear only the rows below', async () => {
-    calls.length = 0;
-    await ctx.shWriteRows('shop', [{ id: 'a', item: 'x', done: 0, position: 0 }]);
-    assert.ok(calls[0].startsWith('PUT') && calls[1].startsWith('POST') && /!A3:ZZ:clear/.test(calls[1]), calls.join(' | '));
+  await test('a tab is written in ONE request, old rows overwritten with empty cells', async () => {
+    calls.length = 0; let body = null;
+    const api = ctx.shApi;
+    ctx.shApi = async (path, opts) => { body = JSON.parse(opts.body); return api(path, opts); };
+    await ctx.shWriteRows('shop', [{ id: 'a', item: 'x', done: 0, position: 0 }], { n: 4, w: 5 });
+    ctx.shApi = api;
+    assert.strictEqual(calls.length, 1, calls.join(' | '));
+    assert.ok(calls[0].startsWith('PUT'));
+    assert.strictEqual(body.values.length, 4); // header + 1 row + 2 empty rows over the old ones
+    assert.ok(body.values.every((r) => r.length === 5) && body.values[3].every((c) => c === ''));
   });
 
   await test('a blank tab (failed write) does not delete local rows', async () => {
@@ -72,6 +78,8 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
   await test('meal ideas fit the calories left, most protein per kcal first', () => {
     const ideas = ctx.mealIdeas(700, 3).map((e) => e.text);
     assert.strictEqual(JSON.stringify(ideas), '["Skyr"]'); // the pizza and the bread are too big
+    ctx.food.push({ id: '4', at: day(0) + 'T07:00', text: 'skyr', kcal: 200, p: 25 });
+    assert.strictEqual(ctx.mealIdeas(700, 3).length, 0); // eaten today already: not suggested again
   });
 
   /* ---- Nutrition Summary periods ---- */
