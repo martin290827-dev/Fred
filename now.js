@@ -188,7 +188,11 @@ function bsWeek(rows) {
   const av = (f) => { const v = rows.map(f).filter((x) => x != null && !Number.isNaN(x)); return v.length ? bsAvg(v) : null; };
   const bed = rows.map((r) => rcMin(r.bed, true)).filter((v) => v != null);
   const mBed = bed.length ? bsAvg(bed) : null;
+  // workouts on the days of these nights (from the Whoop workouts CSV)
+  const tr = rows.length ? workouts.filter((w) => w.d >= rows[0].d && w.d <= rows[rows.length - 1].d) : [];
+  const trSum = (f) => tr.reduce((s, w) => s + (w[f] || 0), 0);
   return {
+    sessions: tr.length, trMin: trSum('min'), trKcal: trSum('kcal'), workoutList: tr,
     n: rows.length, from: rows[0] && rows[0].d, to: rows.length && rows[rows.length - 1].d,
     score: av((r) => r.score), hrv: av((r) => r.hrv), rhr: av((r) => r.rhr), sleep: av((r) => r.sleepMin),
     debt: av((r) => r.sleepDebtMin), eff: av((r) => r.sleepEff),
@@ -204,7 +208,10 @@ function bsFacts() {
   if (!last) return null;
   const weekRows = rows.filter((x) => x.d <= last.d).slice(-7);
   const prevRows = rows.filter((x) => x.d < weekRows[0].d).slice(-7);
-  return { last, age: -dayDiff(last.d), week: bsWeek(weekRows), prev: prevRows.length >= 4 ? bsWeek(prevRows) : null, weekRows, prevRows };
+  const week = bsWeek(weekRows), prev = prevRows.length >= 4 ? bsWeek(prevRows) : null;
+  // no workouts in either week: probably no workouts file imported, so do not show zeros
+  if (!(week.sessions > 0 || (prev && prev.sessions > 0))) for (const w of [week, prev]) if (w) w.sessions = w.trMin = w.trKcal = null;
+  return { last, age: -dayDiff(last.d), week, prev, weekRows, prevRows };
 }
 
 // What is shown per measure: label, value text, how much change counts, and whether higher is better
@@ -217,6 +224,10 @@ const BS_ROWS = [
   ['Efficiency', 'eff', (v) => Math.round(v) + ' %', 1, true],
   ['Deep sleep', 'deep', (v) => Math.round(v) + ' %', 1, true],
   ['Bedtime spread', 'spread', (v) => '±' + Math.round(v) + ' min', 5, false],
+  // training volume is not "better" or "worse" (up = null): only the change is shown
+  ['Workouts', 'sessions', (v) => String(Math.round(v)), 1, null],
+  ['Training time', 'trMin', (v) => rcHmShort(v), 20, null],
+  ['Training energy', 'trKcal', (v) => Math.round(v) + ' kcal', 100, null],
 ];
 
 // Change against last week: { text, cls } cls = better | worse | same
@@ -224,8 +235,10 @@ function bsChange(key, cur, old, step, up) {
   if (cur == null || old == null) return { text: '', cls: '' };
   const d = cur - old;
   if (Math.abs(d) < step) return { text: 'same', cls: 'same' };
-  const unit = { score: '', hrv: ' ms', rhr: ' bpm', sleep: ' min', debt: ' min', eff: ' %', deep: ' pp', spread: ' min' }[key];
-  return { text: (d > 0 ? '+' : '−') + Math.round(Math.abs(d)) + unit + (d > 0 === up ? ' better' : ' worse'), cls: d > 0 === up ? 'better' : 'worse' };
+  const unit = { score: '', hrv: ' ms', rhr: ' bpm', sleep: ' min', debt: ' min', eff: ' %', deep: ' pp', spread: ' min', sessions: '', trMin: ' min', trKcal: ' kcal' }[key];
+  const text = (d > 0 ? '+' : '−') + Math.round(Math.abs(d)) + unit;
+  if (up === null) return { text, cls: 'same' };
+  return { text: text + (d > 0 === up ? ' better' : ' worse'), cls: d > 0 === up ? 'better' : 'worse' };
 }
 
 function bsSummary(f) {
@@ -256,13 +269,14 @@ function bsTips(f) {
 /* AI part: one short request per new night (or on the refresh button). Kept in this browser only. Without a key or on an error the fixed rules show instead. */
 let bodyAi = store.get('bodyAi', { key: '', summary: '', tips: [], prev: [], err: '' });
 let bodyAiBusy = false;
-const bsKey = (f) => 'week:' + f.last.d; // one answer per newest night
+const bsKey = (f) => 'week:' + f.last.d + (f.week.sessions != null ? ':w' + f.week.sessions + '/' + (f.prev ? f.prev.sessions : '') : ''); // one answer per newest night (and once more when workouts arrive)
 
 const BS_SYSTEM = 'You are a careful sleep and recovery coach. The data comes from a wrist band: sleep stages and scores are estimates. ' +
   'The user uploads the data once a week, so write about the WEEK: the 7 newest nights ("THIS WEEK") against the 7 nights before ("LAST WEEK"). ' +
   'The summary (2 to 3 sentences) says how the week was and what got better or worse against last week, with the real numbers. ' +
   'The tips are for the coming days: concrete, based on what changed, no generic filler, no diagnoses, no medical claims; ' +
   'only if values are strongly off for many days, say once that a doctor can check it. Do not repeat the earlier tips (their titles are given). ' +
+  'If workouts are listed they come from the same band: relate the training load to recovery and sleep, and do not judge more or less training as good or bad by itself. ' +
   'Language of the answer: the language given in the message. Reply with one JSON object only, no other text: ' +
   '{"summary":"2 to 3 sentences","tips":[{"title":"max 4 words","text":"max 25 words"}]} with 3 to 5 tips.';
 
@@ -271,9 +285,11 @@ function bsInput(f) {
     'sleep ' + (r.sleepMin ?? '?') + ' min', 'debt ' + (r.sleepDebtMin ?? '?') + ' min', 'eff ' + (r.sleepEff ?? '?') + ' %',
     'deep ' + (r.deepMin ?? '?') + ' min', 'REM ' + (r.remMin ?? '?') + ' min', 'bed ' + (r.bed || '?'), 'wake ' + (r.wake || '?')].join(' | ');
   const avg = (w) => BS_ROWS.filter(([, k]) => w[k] != null).map(([label, k, fmt]) => label + ' ' + fmt(w[k])).join(', ');
+  const wline = (w) => w.d + ' ' + w.name + ' | ' + (w.min ?? '?') + ' min | ' + (w.kcal ?? '?') + ' kcal | avg HR ' + (w.avgHr ?? '?') + ' | max HR ' + (w.maxHr ?? '?') + ' | strain ' + (w.strain ?? '?');
+  const wlist = (w) => (w && w.sessions != null ? '\nWorkouts:\n' + (w.workoutList.map(wline).join('\n') || 'none') : '');
   return 'Language of the answer: ' + (navigator.language || 'de-AT') +
-    '\n\nTHIS WEEK (oldest first), averages: ' + avg(f.week) + '\n' + f.weekRows.map(line).join('\n') +
-    '\n\nLAST WEEK' + (f.prev ? ', averages: ' + avg(f.prev) + '\n' + f.prevRows.map(line).join('\n') : ': no data') +
+    '\n\nTHIS WEEK (oldest first), averages: ' + avg(f.week) + '\n' + f.weekRows.map(line).join('\n') + wlist(f.week) +
+    '\n\nLAST WEEK' + (f.prev ? ', averages: ' + avg(f.prev) + '\n' + f.prevRows.map(line).join('\n') + wlist(f.prev) : ': no data') +
     '\n\nEarlier tip titles: ' + ((bodyAi.prev || []).join('; ') || 'none');
 }
 
@@ -295,6 +311,16 @@ async function bsLoadAi(force) {
   renderBodySum();
 }
 
+// The workouts of this week, newest first: day, name, duration, energy and heart rate
+function bsWorkoutList(f) {
+  const list = f.week.sessions != null ? f.week.workoutList.slice().reverse() : [];
+  if (!list.length) return [];
+  return [el('h3', { class: 'bs-wh' }, 'Workouts this week')].concat(list.slice(0, 8).map((w) => {
+    const det = [w.kcal != null ? Math.round(w.kcal) + ' kcal' : '', w.avgHr != null ? 'Ø ' + Math.round(w.avgHr) + ' bpm' : ''].filter(Boolean).join(' · ');
+    return el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, rcShort(w.d)), el('span', {}, w.name), el('b', {}, w.min != null ? rcHmShort(w.min) : ''), el('span', { class: 'muted' }, det));
+  }));
+}
+
 function renderBodySum() {
   const box = $('bodysum');
   if (!box) return;
@@ -312,7 +338,8 @@ function renderBodySum() {
     ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
     el('div', { class: 'bs-col' }, el('h3', {}, 'Last 7 nights' + (f.week.from ? ' \u00b7 ' + rcShort(f.week.from) + '\u2013' + rcShort(f.week.to) : '')),
       f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'This week'), el('span', {}, 'Last week'), el('span', {}, 'Change')) : '',
-      ...bsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text)))),
+      ...bsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text))),
+      ...bsWorkoutList(f)),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
       note ? el('p', { class: 'muted small' }, note) : '',
       el('p', { class: 'muted small' }, 'Not medical advice. Wrist-band data is an estimate.')));

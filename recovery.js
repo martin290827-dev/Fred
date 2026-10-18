@@ -15,6 +15,10 @@ let rcImportMsg = '';
 
 function saveWhoop() { store.set('whoop', whoop); }
 
+// Workouts from the Whoop workouts CSV, in neutral fields: [{ id: start text, d: 'YYYY-MM-DD', t: 'HH:MM', name, min, kcal, avgHr, maxHr, strain }]
+let workouts = store.get('workouts', []);
+function saveWorkouts() { store.set('workouts', workouts); }
+
 /* ---------- CSV import (Whoop export: "Physiologische Zyklen") ---------- */
 
 // Whoop's own app dates a recovery by the day you WOKE UP, not the night it started.
@@ -54,6 +58,33 @@ function rowToEntry(get) {
   };
 }
 
+/* Workouts CSV: the columns are found by keywords in their names, so a small change in the export does not break it.
+   Only these two functions know Whoop; the Body Summary works on the neutral fields. */
+function rcWorkoutCols(header) {
+  const find = (re) => header.find((h) => re.test(h)) || null;
+  return {
+    name: find(/name der aktivit|aktivit\S*\s*name|activity name/i) || find(/^name/i),
+    min: find(/^(dauer|duration) \((min|minut)/i) || find(/^(dauer|duration)/i),
+    end: find(/endzeit des trainings|workout end/i),
+    kcal: find(/energie|kalorien|calories|energy/i),
+    avgHr: find(/durchschnitt\S*\s*(hf|herz)|average hr|avg hr/i),
+    maxHr: find(/^max\S*\s*(hf|herz)|^max hr/i),
+    strain: find(/aktivit\S*\s*belastung|activity strain|^belastung|strain/i),
+  };
+}
+
+function rcWorkoutEntry(raw, cols) {
+  const start = raw['Startzeit des Trainings'];
+  if (!start) return null;
+  const n = (c) => { const v = c && raw[c] !== undefined && raw[c] !== '' ? Number(String(raw[c]).replace(',', '.')) : NaN; return Number.isFinite(v) ? v : null; };
+  let min = n(cols.min);
+  if (min === null && cols.end && raw[cols.end]) { // no duration column: from start and end time
+    const m = Math.round((new Date(String(raw[cols.end]).replace(' ', 'T')) - new Date(start.replace(' ', 'T'))) / 60000);
+    if (Number.isFinite(m) && m > 0) min = m;
+  }
+  return { id: start, d: start.slice(0, 10), t: start.slice(11, 16), name: (cols.name && raw[cols.name]) || 'Workout', min, kcal: n(cols.kcal), avgHr: n(cols.avgHr), maxHr: n(cols.maxHr), strain: n(cols.strain) };
+}
+
 // Which Whoop export is this? Decided by its column names, so file names do not matter.
 function rcFileType(header) {
   if (header.includes('Startzeit des Trainings')) return 'workouts';
@@ -68,11 +99,14 @@ const RC_TYPE_LABEL = { cycles: 'Zyklen', sleep: 'Schlaf', workouts: 'Training' 
 async function importWhoopFiles(files) {
   try {
     const counts = {}, skipped = [];
-    const entries = [];
+    const entries = [], wEntries = [];
+    let wMissing = [];
     for (const file of files) {
       const { header, rows } = arcParseCsv(await file.text());
       const type = rcFileType(header);
       if (!type) { skipped.push(file.name); continue; }
+      const wcols = type === 'workouts' ? rcWorkoutCols(header) : null;
+      if (wcols) wMissing = Object.keys(wcols).filter((k) => !wcols[k] && k !== 'end' && !(k === 'min' && wcols.end));
       for (const raw of rows) {
         const key = raw[RC_KEY_COL[type]];
         if (!key) continue;
@@ -80,9 +114,16 @@ async function importWhoopFiles(files) {
         arcPut(type, key, clean);
         counts[type] = (counts[type] || 0) + 1;
         if (type === 'cycles') { const e = rowToEntry((n) => raw[n] || ''); if (e) entries.push(e); }
+        if (type === 'workouts') { const e = rcWorkoutEntry(raw, wcols); if (e) wEntries.push(e); }
       }
     }
     arcCommit();
+    if (wEntries.length) { // new and changed workouts replace by start time, the rest stays
+      const byId = new Map(workouts.map((w) => [w.id, w]));
+      for (const e of wEntries) byId.set(e.id, e);
+      workouts = [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+      saveWorkouts();
+    }
     const byDate = new Map(whoop.map((r) => [r.d, r]));
     let added = 0, updated = 0;
     for (const r of entries) {
@@ -94,12 +135,14 @@ async function importWhoopFiles(files) {
     if (entries.length) { whoop = [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d)); saveWhoop(); }
     const read = Object.keys(counts).map((t) => RC_TYPE_LABEL[t] + ' ' + counts[t]).join(' \u00b7 ');
     rcImportMsg = (read ? 'Gelesen: ' + read + '. ' : '') + (entries.length ? added + ' neue, ' + updated + ' aktualisierte Nächte in der Anzeige (' + whoop.length + ' gesamt). ' : '') +
+      (wEntries.length ? wEntries.length + ' Trainings in der Anzeige (' + workouts.length + ' gesamt)' + (wMissing.length ? ', Spalten nicht erkannt: ' + wMissing.join(', ') : '') + '. ' : '') +
       (skipped.length ? 'Nicht erkannt: ' + skipped.join(', ') + '.' : '');
     if (!read) rcImportMsg = 'Keine verwertbaren Zeilen gefunden. ' + rcImportMsg;
   } catch (e) {
     rcImportMsg = 'Import fehlgeschlagen: ' + e.message;
   }
   renderRecovery();
+  if (typeof renderBodySum === 'function') renderBodySum();
 }
 
 /* ---------- Fred-Score: provider-neutral, from HRV/RHF-Abweichung und Schlafschuld ----------
