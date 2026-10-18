@@ -1,4 +1,5 @@
-/* ---------- Card "Health & Nutrition Tips": the 14-day tips, what is missing today, and what to cook ---------- */
+/* ---------- Card "Health & Nutrition Tips": what is missing today, and what to cook ---------- */
+// (the 14-day tips were removed: the Nutrition Summary covers 7 / 15 / 30 days)
 // Needs food.js (food data, targets, aiJSON, tips) and an Anthropic key in Settings. Nothing here is sent anywhere else.
 
 let gaps = store.get('gaps', { day: '', sig: '', list: [], err: '' }); // "what is missing today"
@@ -85,52 +86,29 @@ Schlechtes Beispiel (nie so): "Du brauchst noch 80 g Fett."
 
 TEIL 2 steht in der Nachricht des Nutzers als DATENBLOCK.`;
 
-/* ONE request for both: the 14-day tips (part 1) and what is missing today (part 2).
-   Only the parts that are due are sent: tips once a day (or on refresh), today's check when meals or the time of day changed. */
-const ALL_SYSTEM = 'The message has one or two parts. Answer only the parts that are present. The two parts are independent: never mix their content.\n\n' +
-  '=== PART 1: "TAGEBUCH 14 TAGE" (answer key "tips") ===\n' + TIPS_SYSTEM + '\n\n' +
-  '=== TEIL 2: "DATENBLOCK HEUTE" (Antwortschlüssel "today") ===\n' + GAPS_SYSTEM + '\n\n' +
-  '=== ANSWER FORMAT ===\nReply with one JSON object only, no other text. Leave out the key of a part that is not in the message:\n' +
-  '{"tips":[{"kind":"cut|swap|add|good","title":"max 5 words","text":"max 24 words"}],"today":[{"type":"GOOD"|"ADD","title":"max 4 Wörter","text":"1–2 Sätze"}]}';
+/* "Missing today": one request when meals or the time of day changed (or on refresh). */
+const ALL_SYSTEM = GAPS_SYSTEM + '\n\nReply with one JSON object only, no other text: {"today":[{"type":"GOOD"|"ADD","title":"max 4 Wörter","text":"1–2 Sätze"}]}';
 
 let allBusy = false, allQueued = false;
-async function loadAll(forceTips, forceToday) {
+async function loadAll(force) {
   if (!anthropicKey) return;
   if (allBusy) { allQueued = true; return; } // run again when this one is done, so no change is lost
   const today = toDateStr(new Date()), sig = todaySig();
-  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n).length;
-  const needTips = logged >= 2 && (forceTips || tips.day !== today);
-  const needToday = dayTotals(today).n > 0 && (forceToday || !(gaps.sig === sig && (gaps.list.length || gaps.empty)));
-  if (!needTips && !needToday) return;
-  allBusy = true; tipsBusy = needTips; gapsBusy = needToday;
-  renderFood(); renderTips(true);
-  const parts = [];
-  if (needTips) { tips.hist = tipsHist(today); parts.push('TAGEBUCH 14 TAGE:\n' + tipsInput()); } // earlier tips go in, so they are not repeated
-  else parts.push('Language of the answer: ' + (navigator.language || 'de-AT'));
-  if (needToday) parts.push('DATENBLOCK HEUTE:\n' + dayContext());
+  if (!(dayTotals(today).n > 0 && (force || !(gaps.sig === sig && (gaps.list.length || gaps.empty))))) return;
+  allBusy = true; gapsBusy = true;
+  renderTips(true);
   try {
-    const j = await aiTips(ALL_SYSTEM, parts.join('\n\n'), (needTips ? 900 : 0) + (needToday ? 700 : 0));
-    if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('unexpected answer');
-    if (needTips) {
-      if (!Array.isArray(j.tips)) tips = Object.assign({}, tips, { err: 'unexpected answer' });
-      else tips = { hist: tips.hist, day: today, list: j.tips.filter((t) => t && t.text).slice(0, 6).map((t) => ({ kind: ['cut', 'swap', 'add', 'good'].includes(t.kind) ? t.kind : '', title: String(t.title || ''), text: String(t.text) })), err: '' };
-    }
-    if (needToday) {
-      if (!Array.isArray(j.today)) gaps = Object.assign({}, gaps, { err: 'unexpected answer', empty: false });
-      else {
-        const good = j.today.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = j.today.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
-        gaps = { day: today, sig, err: '', empty: !good.length && !add.length, list: good.concat(add).map((x) => ({ kind: x.type === 'GOOD' ? 'good' : 'add', title: String(x.title || ''), text: String(x.text) })) };
-      }
-    }
+    const j = await aiTips(ALL_SYSTEM, 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n\nDATENBLOCK HEUTE:\n' + dayContext(), 700);
+    if (!j || !Array.isArray(j.today)) throw new Error('unexpected answer');
+    const good = j.today.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = j.today.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
+    gaps = { day: today, sig, err: '', empty: !good.length && !add.length, list: good.concat(add).map((x) => ({ kind: x.type === 'GOOD' ? 'good' : 'add', title: String(x.title || ''), text: String(x.text) })) };
   } catch (e) {
-    if (needTips) tips = Object.assign({}, tips, { err: e.message });
-    if (needToday) gaps = Object.assign({}, gaps, { err: e.message, empty: false });
+    gaps = Object.assign({}, gaps, { err: e.message, empty: false });
   }
-  allBusy = false; tipsBusy = false; gapsBusy = false;
-  if (needTips) store.set('tips', tips);
-  if (needToday) store.set('gaps', gaps);
-  renderFood(); renderTips(true);
-  if (allQueued) { allQueued = false; loadAll(false, false); }
+  allBusy = false; gapsBusy = false;
+  store.set('gaps', gaps);
+  renderTips(true);
+  if (allQueued) { allQueued = false; loadAll(false); }
 }
 
 const GAP_KINDS = { add: 'Add', good: 'Good' };
@@ -206,21 +184,20 @@ function renderTips(force) {
   const box = $('tips');
   if (!box) return;
   if (!force && box.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return; // typing: do not redraw
-  const p1 = hcard('bulb', 'yellow', 'Last 14 days', '', tipsBlock(true));
   const p2 = hcard('check', 'green', 'Missing today', '', gapsBlock());
   const p3 = hcard('meals', 'pink', 'What shall I cook?', '', cookBlock());
   const btn = $('tips-refresh');
-  if (btn) { btn.disabled = allBusy; btn.classList.toggle('busy', allBusy); } // one button in the heading for both lists
+  if (btn) { btn.disabled = allBusy; btn.classList.toggle('busy', allBusy); }
   const keep = document.activeElement && document.activeElement.id === 'cook-text' ? [document.activeElement.selectionStart] : null;
-  box.replaceChildren(el('div', { class: 'food-col' }, p2, p1, p3)); // missing today, last 14 days, cook
+  box.replaceChildren(el('div', { class: 'food-col' }, p2, p3)); // missing today, cook
   if (keep) { const i = $('cook-text'); i.focus(); i.setSelectionRange(keep[0], keep[0]); }
 }
 
 function initTips() {
   renderTips(true);
   const btn = $('tips-refresh');
-  if (btn) btn.addEventListener('click', () => loadAll(true, true)); // refresh both lists in one request
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(false, false); }); // back in the app: refresh what is due (new day, new meals, later time of day)
-  setTimeout(() => loadAll(false, false), 2000); // tips and today's check go out as one request
-  setInterval(() => { if (!document.hidden) loadAll(false, false); }, 30 * 60000);
+  if (btn) btn.addEventListener('click', () => loadAll(true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(false); }); // back in the app: refresh what is due (new meals, later time of day)
+  setTimeout(() => loadAll(false), 2000);
+  setInterval(() => { if (!document.hidden) loadAll(false); }, 30 * 60000);
 }

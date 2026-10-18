@@ -17,7 +17,7 @@ let trendRange = store.get('trendRange', 30); // Trends: 7, 30 or 90 days (per d
 let nutri = store.get('nutri', { kcal: 2500, goalPct: 10, startKg: null, height: null, birthYear: null, sex: '', activity: 1.45 });
 
 const AI_MODEL = 'claude-haiku-5-5'; // food estimates and everything else
-const TIPS_MODEL = 'claude-sonnet-5-5'; // health tips (Missing today, Last 14 days): better judgement
+const TIPS_MODEL = 'claude-sonnet-5-5'; // health tips (Missing today, summaries): better judgement
 const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input is a short, often dictated description ' +
   '(German or English) of what one adult ate. When no amount is given, assume a normal single portion as served in Austria. ' +
   'Reply with JSON only, no other text: {"items":[{"name":"","amount":"","kcal":0,"protein":0,"carbs":0,"fat":0,"sugar":0}],' +
@@ -263,24 +263,10 @@ async function backfillSugar() {
   sugarBusy = false;
 }
 
-/* ---------- nutrition tips: once a day from your last 14 days (Claude, your own key) ---------- */
+/* ---------- tolerance; `tips` is the old 14-day tips setting, kept only so the synced settings row stays valid ---------- */
 let tips = store.get('tips', { day: '', list: [], err: '' });
-let tipsBusy = false;
 let tol = store.get('tolerance', { day: '', list: [], note: '', err: '' }); // result of the tolerance analysis
 let tolBusy = false;
-
-const TIPS_SYSTEM = 'You are a fair, evidence-based nutrition coach. You get one adult\'s food diary for the last 14 days, ' +
-  'the daily targets and the goal (lose weight while keeping muscle). Your main job: say what in this diet works against the goal ' +
-  'and what could be left out or reduced. Judge in proportion, not strictly: an occasional treat, a glass of wine now and then or a single ' +
-  'day above the target is normal and not worth a tip. Only point out what is frequent (about 3 or more times in the 14 days) or large, ' +
-  'and say how often it appeared and roughly what it costs per week on average. Name the real foods and drinks from the diary and give a ' +
-  'practical replacement that fits his habits. Order: first what to cut or reduce (biggest effect first), then what is missing ' +
-  '(protein, vegetables, fibre), then a swap or addition. Say what is good, too. Never invent problems; if little needs changing, ' +
-  'give fewer tips (3 to 5). A food or drink that appears only once or twice in the 14 days is NOT a pattern: never write a tip about it. ' +
-  'Cluster similar unhealthy foods (fried food, fast food, sweets, alcohol, large portions) into ONE tip with the total count and the average cost per week; never one tip per dish. ' +
-  'You also get the tips shown on earlier days. Do not repeat the same advice. Only repeat a topic if the numbers got clearly worse, and then say what changed. ' +
-  'If there is nothing new, return only one or two tips (a good one is fine) or an empty list. The diary leaves out his chosen cheat days on purpose; never mention it. Friendly and direct, no moralizing, no medical advice.';
-// (the answer format for these tips is set in ALL_SYSTEM, tips.js: one request answers the 14-day tips and "missing today")
 
 // Cheat days: with the feature on (Settings), one day per week can be marked in Food. Marked days are left out of the tips.
 function isCheatDay(d) { return !!nutri.cheatOn && (nutri.cheatDays || []).includes(d); }
@@ -291,53 +277,7 @@ function setCheat(d, on) {
   const keep = (nutri.cheatDays || []).filter((x) => x !== d && x >= toDateStr(addDays(new Date(), -120)));
   nutri = Object.assign({}, nutri, { cheatDays: on ? keep.concat(d) : keep });
   store.set('nutri', nutri);
-  tips.day = '';
   renderFood();
-  loadTips(false);
-}
-
-function tipsInput() {
-  const tg = targets();
-  const days = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n && !isCheatDay(d));
-  const lines = days.map((d) => {
-    const t = dayTotals(d);
-    const meals = food.filter((e) => e.at.slice(0, 10) === d).sort((a, b) => a.at.localeCompare(b.at))
-      .map((e) => e.at.slice(11, 16) + ' ' + e.text + (e.kcal != null ? ' (' + e.kcal + ' kcal' + (e.p != null ? ', P' + e.p + ' C' + e.c + ' F' + e.f + (e.s != null ? ' sugar ' + e.s : '') : '') + ')' : ''));
-    return d + ': total ' + Math.round(t.kcal) + ' kcal, protein ' + Math.round(t.p) + ' g, carbs ' + Math.round(t.c) + ' g, fat ' + Math.round(t.f) + ' g' + (t.ms ? '' : ', sugar ' + Math.round(t.s) + ' g') + '\n  ' + meals.join('\n  ');
-  });
-  const kc = days.map((d) => dayTotals(d).kcal);
-  const over = kc.filter((v) => v > tg.kcal * KCAL_TOL).length; // up to +10 % counts as within tolerance
-  const avg = kc.length ? Math.round(kc.reduce((x, y) => x + y, 0) / kc.length) : 0;
-  const week = 'Average ' + avg + ' kcal per logged day, ' + over + ' of ' + kc.length + ' days more than 10 % above the target (up to 10 % is tolerated, logging is not exact).\n';
-  const seen = (tips.hist || []).length ? 'Tips already shown on earlier days (do not repeat them):\n' + tips.hist.join('\n') + '\n' : '';
-  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' +
-    'Daily targets: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + ', sugar at most ' + tg.s + ' g' + '\n' +
-    week + seen + 'Diary:\n' + lines.join('\n');
-}
-
-// Tips and "missing today" share one request (loadAll in tips.js). This asks for the 14-day tips only.
-function loadTips(force) { return loadAll(force, false); }
-
-// Tips of earlier days (short, last 12) go back to Claude so it does not repeat itself.
-function tipsHist(today) {
-  const old = (tips.hist || []).slice();
-  if (tips.day && tips.day !== today) for (const t of tips.list) { const s = tips.day + ': ' + t.title + ' - ' + t.text; if (!old.includes(s)) old.push(s); }
-  return old.slice(-12);
-}
-
-const TIP_KINDS = { cut: 'Cut', swap: 'Swap', add: 'Add', good: 'Good' };
-
-function tipsBlock(all) {
-  if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings to get tips from your diary.');
-  const logged = lastDays(15).slice(0, 14).filter((d) => dayTotals(d).n && !isCheatDay(d)).length;
-  if (!tips.list.length) {
-    return el('p', { class: 'muted small' }, tipsBusy ? 'Looking at your last days…' : logged < 2 ? 'Log food on at least 2 days to get tips.' : tips.err ? 'Tips: ' + tips.err : tips.day === toDateStr(new Date()) ? 'Nothing new today.' : '');
-  }
-  const ul = el('ul', { class: 'tips' }, ...tips.list.map((t, i) => el('li', { class: 'tip' },
-    el('span', { class: 'tip-k k-' + (t.kind || 'none'), title: t.kind ? TIP_KINDS[t.kind] : '' }, t.kind ? TIP_KINDS[t.kind] : String(i + 1)),
-    el('span', { class: 'tip-b' }, t.title ? el('span', { class: 'tip-t' }, t.title) : '', el('span', { class: 'tip-x' }, t.text)))));
-  if (!all) fitRows(ul, 2); // two tips; the rest scrolls
-  return ul;
 }
 
 /* ---------- numbers ---------- */
@@ -724,7 +664,6 @@ function nutriSaveSettings() {
   if (JSON.stringify(next) !== JSON.stringify(nutri)) {
     const cheatChanged = !!next.cheatOn !== !!nutri.cheatOn;
     nutri = next; store.set('nutri', nutri); renderFood();
-    if (cheatChanged) { tips.day = ''; loadTips(false); } // new tips without the cheat day
   }
 }
 
@@ -864,7 +803,7 @@ function cheatRow(today) {
   const days = lastDays(7).reverse();
   const name = (d) => (d === today ? 'Today' : new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }));
   const rows = days.filter(isCheatDay).map((d) => el('div', { class: 'cheat-row' },
-    el('span', { class: 'muted small' }, 'Cheat day: ' + name(d) + '. Left out of the tips.'),
+    el('span', { class: 'muted small' }, 'Cheat day: ' + name(d) + '. Marked in the charts.'),
     el('button', { type: 'button', class: 'ghost cheat-btn on', onclick: () => setCheat(d, false) }, 'Undo')));
   const free = days.filter((d) => !cheatOfWeek(d));
   if (free.length) {
@@ -875,13 +814,48 @@ function cheatRow(today) {
   return el('div', { class: 'cheat-box' }, ...rows);
 }
 
-// Suggestions while typing: what you logged before (newest first, each text once).
 // Add one meal for now and start the estimate (used by the Food form and the quick add)
 function addMeal(text) {
   const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, s: null, src: null, err: null };
   food.push(e);
   saveFood();
   estimateEntry(e);
+}
+
+/* ---------- before you eat: what a meal would do to today (no AI, no cost) ---------- */
+// Calories of a meal text: "... 650 kcal" in the text, or the last time you logged the same text. null = unknown.
+function knownMeal(text) {
+  const k = String(text || '').trim().toLowerCase();
+  if (!k) return null;
+  const own = /(\d{2,4})\s*kcal/i.exec(k);
+  if (own) return { kcal: Number(own[1]), p: null };
+  const e = food.filter((x) => x.kcal != null && x.text.trim().toLowerCase() === k).sort((a, b) => b.at.localeCompare(a.at))[0];
+  return e ? { kcal: e.kcal, p: e.p } : null;
+}
+
+// Where today would stand after this meal: { text, over } or null when the calories are not known.
+function mealPreview(text) {
+  const m = knownMeal(text);
+  if (!m) return null;
+  const tg = targets(), after = dayTotals(toDateStr(new Date())).kcal + m.kcal;
+  return { over: after > tg.kcal, text: '≈ ' + fmtN(m.kcal) + ' kcal → today ' + fmtN(after) + ' of ' + fmtN(tg.kcal) + (after > tg.kcal ? ' (' + fmtN(after - tg.kcal) + ' over)' : '') };
+}
+function showPreview(node, text) {
+  const pv = mealPreview(text);
+  node.textContent = pv ? pv.text : '';
+  node.classList.toggle('over', !!(pv && pv.over));
+}
+
+// Meals you logged in the last 60 days that still fit today: most protein per kcal first.
+function mealIdeas(leftKcal, n) {
+  const seen = new Set(), out = [], since = toDateStr(addDays(new Date(), -60));
+  for (const e of [...food].sort((a, b) => b.at.localeCompare(a.at))) {
+    const k = e.text.trim().toLowerCase();
+    if (e.at.slice(0, 10) < since || e.kcal == null || e.p == null || !k || k.length > 60 || seen.has(k)) continue;
+    seen.add(k);
+    if (e.kcal >= 150 && e.kcal <= leftKcal) out.push(e);
+  }
+  return out.sort((a, b) => b.p / b.kcal - a.p / a.kcal).slice(0, n);
 }
 
 /* ---------- quick add (header + button, works on every tab) ---------- */
@@ -897,9 +871,13 @@ function recentMeals(n) {
 
 function openQuick() {
   const dlg = $('dlg-quick'), input = $('quick-text'), note = $('quick-note');
-  input.value = ''; note.textContent = '';
-  const add = (text) => { addMeal(text); note.textContent = 'Added: ' + text; input.value = ''; setTimeout(() => dlg.close(), 700); };
-  $('quick-recent').replaceChildren(...recentMeals(8).map((t) => el('button', { type: 'button', class: 'chip', onclick: () => add(t) }, t)));
+  input.value = ''; note.textContent = ''; note.classList.remove('over');
+  const add = (text) => { addMeal(text); note.textContent = 'Added: ' + text; note.classList.remove('over'); input.value = ''; setTimeout(() => dlg.close(), 700); };
+  input.oninput = () => showPreview(note, input.value); // where today would stand, before you add it
+  $('quick-recent').replaceChildren(...recentMeals(8).map((t) => {
+    const pv = mealPreview(t);
+    return el('button', { type: 'button', class: 'chip' + (pv && pv.over ? ' over' : ''), title: pv ? pv.text : '', onclick: () => add(t) }, t, pv ? el('span', { class: 'chip-k' }, ' · ' + fmtN(knownMeal(t).kcal)) : '');
+  }));
   $('quick-form').onsubmit = (ev) => { ev.preventDefault(); const t = input.value.trim(); if (t) add(t); };
   dlg.showModal();
   input.focus();
@@ -961,12 +939,15 @@ function renderFood() {
 
   const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '1500', autocomplete: 'off', 'aria-label': 'What did you eat' });
   const form = el('form', { class: 'row food-add' }, input, foodHistList(), el('button', { type: 'submit' }, 'Add'));
+  const preview = el('p', { class: 'small meal-prev', 'aria-live': 'polite' });
+  input.addEventListener('input', () => showPreview(preview, input.value));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const text = input.value.trim();
     if (!text) return;
     addMeal(text);
     input.value = '';
+    showPreview(preview, '');
   });
 
   const tg = targets();
@@ -1037,7 +1018,7 @@ function renderFood() {
   ];
 
   // three cards: Food (today), Health (weight and goal), Trends (last days)
-  box.replaceChildren(el('div', { class: 'food-col' }, form, head,
+  box.replaceChildren(el('div', { class: 'food-col' }, form, preview, head,
     hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
   const wcard = trendCards.find((c) => c && c.classList && c.querySelector('.w-cap'));
   const wsvg = wcard.querySelector('svg.fchart');
@@ -1052,7 +1033,7 @@ function renderFood() {
     // card height is fixed in CSS; more content scrolls inside the card
     growChart($('trends'), (h) => weightChart(daysN, h));
   });
-  if (typing !== null) { input.value = typing; input.focus(); }
+  if (typing !== null) { input.value = typing; input.focus(); showPreview(preview, typing); }
   if (wtyping !== null) { const wi = $('wt-in'); if (wi) { wi.value = wtyping; wi.focus(); } }
   if (watyping !== null) { const wai = $('wa-in'); if (wai) { wai.value = watyping; wai.focus(); } }
   $('food-status').textContent = foodMirrorMsg;

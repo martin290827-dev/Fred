@@ -207,35 +207,60 @@ async function shOpen1() {
   return shId;
 }
 
-async function shReadRows(set) {
+// Rows of one tab from its cell values (first row = header)
+function shRowsOf(set, values) {
   const s = SH_SETS[set];
-  const r = await shApi('/' + shId + '/values/' + encodeURIComponent(s.tab) + '?valueRenderOption=UNFORMATTED_VALUE');
   const rows = [];
-  for (const cells of (r.values || []).slice(1)) {
+  for (const cells of (values || []).slice(1)) {
     const row = Object.fromEntries(s.cols.map((c, i) => [c, cells[i] === undefined ? '' : cells[i]]));
     if (row[s.key] !== '') rows.push(row);
   }
   return rows;
 }
 
+// All tabs of the sets in ONE request (instead of one per tab)
+async function shReadAll() {
+  const q = SH_KEYS.map((k) => 'ranges=' + encodeURIComponent("'" + SH_SETS[k].tab + "'")).join('&');
+  const r = await shApi('/' + shId + '/values:batchGet?valueRenderOption=UNFORMATTED_VALUE&' + q);
+  const out = {};
+  SH_KEYS.forEach((k, i) => { const v = ((r.valueRanges || [])[i] || {}).values; out[k] = { rows: shRowsOf(k, v), blank: !v || !v.length }; });
+  return out;
+}
+
+// Write a whole tab. Write FIRST, then clear only the old rows below: if the second step fails,
+// the tab still has all rows (an empty tab would look like "everything deleted").
+async function shPutTab(tab, values) {
+  await shApi('/' + shId + '/values/' + encodeURIComponent("'" + tab + "'!A1") + '?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values })));
+  await shApi('/' + shId + '/values/' + encodeURIComponent("'" + tab + "'!A" + (values.length + 1) + ':ZZ') + ':clear', { method: 'POST' });
+}
+
 async function shWriteRows(set, rows) {
   const s = SH_SETS[set];
-  const range = encodeURIComponent(s.tab);
-  await shApi('/' + shId + '/values/' + range + ':clear', { method: 'POST' });
-  const values = [s.cols].concat(rows.map((r) => s.cols.map((c) => (r[c] === undefined || r[c] === null ? '' : r[c]))));
-  await shApi('/' + shId + '/values/' + range + '!A1?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values })));
+  await shPutTab(s.tab, [s.cols].concat(rows.map((r) => s.cols.map((c) => (r[c] === undefined || r[c] === null ? '' : r[c])))));
 }
 
 /* ---------- sync of one data set ---------- */
 
+const shLost = (remoteN, baseN, localN) => remoteN === 0 && baseN >= 3 && localN > 0;
+let shWarn = []; // tabs that were found empty and written back in this sync
 const shText = (row, cols) => JSON.stringify(cols.map((c) => (row[c] === undefined || row[c] === null ? '' : row[c])));
 const shMap = (rows, s) => new Map(rows.map((r) => [String(r[s.key]), r]));
 
-async function shSyncSet(set) {
+async function shSyncSet(set, read) {
   const s = SH_SETS[set];
-  const remote = shMap(await shReadRows(set), s);
+  const remote = shMap(read.rows, s);
   const local = shMap(s.get(), s);
   const base = shBase[set] || {};
+  // Safety: the tab is completely blank (not even the header row), but it had rows at the last sync.
+  // Fred always writes the header, so this is a failed write or a cleared tab, not a real delete
+  // (deleting everything in Fred leaves the header). Keep this device's rows and write them back.
+  if (read.blank && shLost(remote.size, Object.keys(base).length, local.size)) {
+    await shWriteRows(set, [...local.values()].sort(s.order));
+    shBase[set] = Object.fromEntries([...local].filter(([k]) => !s.owns || s.owns(k)).map(([k, r]) => [k, shText(r, s.cols)]));
+    store.set('shBase', shBase);
+    shWarn.push(s.tab);
+    return;
+  }
   const merged = new Map(remote);
   // changes made here since the last sync
   // a row this device never synced before, but Google already has: Google wins (a new device must not overwrite with defaults)
@@ -263,7 +288,10 @@ async function shSync() {
   shBusy = true;
   try {
     await shOpen();
-    for (const set of SH_KEYS) await shSyncSet(set);
+    const remote = await shReadAll();
+    shWarn = [];
+    for (const set of SH_KEYS) await shSyncSet(set, remote[set]);
+    if (shWarn.length && typeof banner === 'function') banner('Google Sheet: the tab ' + shWarn.join(', ') + ' was empty. Fred kept the data of this device and wrote it back.', true);
     store.set('shOkAt', Date.now());
     shMsg = 'Saved to Google Sheet ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
@@ -337,8 +365,7 @@ async function shRawFlush(snap) {
     }
     const list = [...rows.entries()].sort((a, b) => a[0].localeCompare(b[0])).map((e) => e[1]);
     const values = [header].concat(list.map((o) => header.map((h) => (o[h] === undefined ? '' : shCell(o[h], h === keyCol)))));
-    await shApi('/' + shId + '/values/' + shEnc(tab) + ':clear', { method: 'POST' });
-    await shApi('/' + shId + '/values/' + shEnc(tab) + '!A1?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values })));
+    await shPutTab(tab, values);
     counts[set] = list.length;
   }
   return counts;

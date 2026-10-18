@@ -74,7 +74,16 @@ function nowFoodMore() {
   add('Protein', t.p, g.p, 'g'); add('Carbs', t.c, g.c, 'g'); add('Fat', t.f, g.f, 'g'); add('Sugar', t.s, g.s, 'g');
   const gi = goalInfo();
   if (gi) out.push(nowLine('Weight', fmtKg(gi.cur) + ' kg', ''), nowLine('Goal', fmtKg(gi.goal) + ' kg', ''));
-  return out;
+  return nowFits(t, g).concat(out);
+}
+
+// From 14:00: your own earlier meals that still fit today, so you decide before you eat (no AI)
+function nowFits(t, g) {
+  if (new Date().getHours() < 14 || !t.n) return [];
+  const left = g.kcal - t.kcal;
+  if (left < 150) return [nowLine('Rest of today', left < 0 ? 'already over, nothing more needed' : 'nothing more needed', left < 0 ? 'over' : '')];
+  const ideas = mealIdeas(left, 3);
+  return ideas.length ? [nowLine('Still fits today (most protein first)', '', '')].concat(ideas.map((e) => nowLine(e.text, fmtN(e.kcal) + ' kcal · ' + Math.round(e.p) + ' g P', 'fit'))) : [];
 }
 
 function nowBodyMore() {
@@ -125,7 +134,7 @@ function renderNow() {
   box.replaceChildren(...rows.map(([label, r, more, id]) =>
     el('button', { type: 'button', class: 'now-row', onclick: () => nowGo(id) },
       el('div', { class: 'now-l' }, label), el('div', { class: 'now-v ' + (r.cls || '') }, r.value), el('div', { class: 'now-t' }, r.text),
-      more.length ? el('ul', { class: 'now-x' }, ...more.map((m) => el('li', { class: m.cls === 'over' ? 'over' : '' }, el('span', {}, m.l), el('b', { class: m.cls === 'up' || m.cls === 'down' ? m.cls : '' }, m.v)))) : '')));
+      more.length ? el('ul', { class: 'now-x' }, ...more.map((m) => el('li', { class: m.cls === 'over' || m.cls === 'fit' ? m.cls : '' }, el('span', {}, m.l), el('b', { class: m.cls === 'up' || m.cls === 'down' ? m.cls : '' }, m.v)))) : '')));
 }
 
 /* ---------- Patterns ---------- */

@@ -1284,7 +1284,7 @@ ul.tol-list > li.tol-meal { display: flex; flex-direction: column; align-items: 
 }
 
 /* Now and Patterns cards */
-.now-row { display: grid; grid-template-columns: 70px 1fr; column-gap: 10px; align-items: baseline; width: 100%; text-align: left; padding: 8px 12px; margin: 0 0 6px; border-radius: 14px; background: var(--card-2); color: var(--text); box-shadow: none; min-height: 0; font-weight: 400; }
+.now-row { display: grid; grid-template-columns: 70px minmax(0, 1fr); column-gap: 10px; align-items: baseline; width: 100%; text-align: left; padding: 8px 12px; margin: 0 0 6px; border-radius: 14px; background: var(--card-2); color: var(--text); box-shadow: none; min-height: 0; font-weight: 400; }
 .now-row:last-child { margin-bottom: 0; }
 .now-l { grid-row: 1 / span 2; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
 .now-v { grid-column: 2; font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
@@ -1359,3 +1359,12 @@ body[data-tab="body"] { --card-h: 700px; }
 .bs-head { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding-bottom: 4px; }
 .bs-ch { font-size: 0.85rem; font-weight: 600; }
 .bs-ch.better { color: #30a14e; } .bs-ch.worse { color: #e5484d; } .bs-ch.same { color: var(--muted); font-weight: 400; }
+
+/* before you eat: preview under the meal field, kcal on the quick-add chips */
+.meal-prev { margin: -4px 0 6px; color: var(--muted); min-height: 0; }
+.meal-prev:empty { display: none; }
+.meal-prev.over, #quick-note.over { color: #e5484d; }
+.quick-recent .chip.over { box-shadow: inset 0 0 0 1px #e5484d; }
+.chip-k { color: var(--muted); font-variant-numeric: tabular-nums; }
+.now-x li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* long labels shorten, the value stays whole */
+.now-x li.fit span { color: var(--text); }
