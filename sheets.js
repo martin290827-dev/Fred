@@ -48,6 +48,14 @@ const SH_SETS = {
     save: () => store.set('weight', weight),
     show: () => renderFood(),
   },
+  waist: {
+    tab: 'Waist', cols: ['date', 'waist_cm'], key: 'date',
+    get: () => waist.map((w) => ({ date: w.d, waist_cm: w.cm })),
+    set: (rows) => { waist = rows.map((r) => ({ d: r.date, cm: num(r.waist_cm) })); },
+    order: (a, b) => a.date.localeCompare(b.date),
+    save: () => store.set('waist', waist),
+    show: () => renderFood(),
+  },
   poker: {
     tab: 'Poker', cols: ['id', 'date', 'place', 'game', 'result_eur'], key: 'id',
     get: () => poker.map((e) => ({ id: e.id, date: e.d, place: e.place || '', game: e.game || '', result_eur: e.amt })),

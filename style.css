@@ -1296,6 +1296,9 @@ body[data-tab="body"] { --card-h: 700px; }
   .grid > #card-news.card-wide { grid-column: span 6; }
   .grid > #card-notes { grid-column: span 6; }
   .grid > #card-poker { grid-column: span 4; }
+  /* Body has 4 cards under the summary and Nutrition 5 under its summary: two per row, so every row is full */
+  body[data-tab="body"] .grid > :is(#card-health, #card-recovery, #card-sleep, #card-habits) { grid-column: span 3; }
+  body[data-tab="nutrition"] .grid > :is(#card-weekly, #card-patterns) { grid-column: span 3; }
 }
 
 .now-x { grid-column: 2; display: block; margin: 6px 0 0; padding: 6px 0 0; list-style: none; border-top: 1px solid var(--line); }

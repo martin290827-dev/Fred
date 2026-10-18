@@ -9,6 +9,7 @@
 
 let food = store.get('food', []);     // [{ id, at: 'YYYY-MM-DDTHH:MM', text, kcal, p, c, f, src: 'ai'|'manual', err }]
 let weight = store.get('weight', []); // [{ d: 'YYYY-MM-DD', kg }]
+let waist = store.get('waist', []);   // [{ d: 'YYYY-MM-DD', cm }] entered about once a week
 let anthropicKey = store.get('anthropicKey', '');
 let foodEditId = null;
 // Your goal (Settings). Personal values live only in your browser and your Drive sync, never in the code.
@@ -32,6 +33,7 @@ const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input i
 
 function saveFood() { store.set('food', food); foodMirrorSoon(); arcScan(); }
 function saveWeight() { store.set('weight', weight); foodMirrorSoon(); arcScan(); }
+function saveWaist() { store.set('waist', waist); } // goes to the Sheet tab "Waist" (sheets.js)
 
 /* ---------- estimating ---------- */
 
@@ -369,6 +371,22 @@ function weightOn(d) {
   return w.length ? w[w.length - 1] : null;
 }
 
+// Latest waist entry on or before a day.
+function waistOn(d) {
+  const w = waist.filter((x) => x.d <= d).sort((a, b) => a.d.localeCompare(b.d));
+  return w.length ? w[w.length - 1] : null;
+}
+
+// BMI from the height in Settings (null without it).
+function bmiOf(kg) {
+  return kg && nutri.height > 100 ? kg / ((nutri.height / 100) ** 2) : null;
+}
+
+// Waist limits for lower and higher health risk (WHO / EU, by sex in Settings); null without a sex.
+function waistRef() {
+  return nutri.sex === 'm' ? [94, 102] : nutri.sex === 'f' ? [80, 88] : null;
+}
+
 const fmtN = (v) => Math.round(v).toLocaleString('en-US');
 const fmtKg = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const shortDay = (d) => new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -685,6 +703,16 @@ function saveTodayWeight(text) {
   return true;
 }
 
+// This week's waist in cm, entered in the Weight & Goal card: one entry per day, a new value replaces it.
+function saveTodayWaist(text) {
+  const cm = parseFloat(String(text).replace(',', '.'));
+  if (!(cm > 40 && cm < 250)) return false;
+  const today = toDateStr(new Date());
+  waist = waist.filter((x) => x.d !== today).concat({ d: today, cm: Math.round(cm * 10) / 10 });
+  saveWaist();
+  return true;
+}
+
 function nutriSaveSettings() {
   const num = (id) => { const v = parseFloat(String($(id).value).replace(',', '.')); return v > 0 ? v : null; };
   const next = {
@@ -905,6 +933,19 @@ function wtForm(w, today) {
   return form;
 }
 
+// Same form for the waist (cm), meant for once a week.
+function waForm(w, today) {
+  const inp = el('input', { type: 'text', id: 'wa-in', inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Waist in cm', placeholder: w && w.d === today ? 'Change today (cm)' : 'Waist this week (cm)' });
+  const form = el('form', { class: 'wt-form' }, inp, el('button', { type: 'submit', class: 'ghost small' }, 'Save'));
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    if (!saveTodayWaist(inp.value)) { inp.setAttribute('aria-invalid', 'true'); return; }
+    inp.blur();
+    renderFood();
+  });
+  return form;
+}
+
 function renderFood() {
   if (typeof renderNutSum === 'function') renderNutSum(); // the weekly summary follows the diary
   const box = $('food');
@@ -912,6 +953,7 @@ function renderFood() {
   if (box.contains(document.activeElement) && document.activeElement.closest('.food-edit')) return; // editing: do not redraw
   const typing = document.activeElement && document.activeElement.id === 'food-text' ? document.activeElement.value : null;
   const wtyping = document.activeElement && document.activeElement.id === 'wt-in' ? document.activeElement.value : null;
+  const watyping = document.activeElement && document.activeElement.id === 'wa-in' ? document.activeElement.value : null;
   const today = toDateStr(new Date());
   const t = dayTotals(today);
   const avg7 = avgKcal(lastDays(7));
@@ -948,12 +990,30 @@ function renderFood() {
   const w = weightOn(today);
   const w7 = weightOn(toDateStr(addDays(new Date(), -7)));
   const dw = w && w7 && w7.d !== w.d ? w.kg - w7.kg : null;
+  const bmi = w ? bmiOf(w.kg) : null;
   const wForm = el('div', { class: 'food-weight' },
     el('div', { class: 'grow' },
       el('div', { class: 'wt-v' }, w ? fmtKg(w.kg) : '\u2013', el('span', { class: 'wt-u' }, ' kg')),
-      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) + (dw !== null ? ' \u00b7 ' : '') : 'Enter your weight below',
+      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) : 'Enter your weight below',
+        bmi !== null ? ' \u00b7 BMI ' + fmtKg(bmi) : '',
+        dw !== null ? ' \u00b7 ' : '',
         dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')),
     wtForm(w, today));
+
+  // Waist: entered once a week; the change is against the entry before (not against 7 days ago)
+  const wa = waistOn(today);
+  const waBefore = wa ? waist.filter((x) => x.d < wa.d).sort((a, b) => b.d.localeCompare(a.d))[0] : null;
+  const dwa = wa && waBefore ? wa.cm - waBefore.cm : null;
+  const ref = waistRef();
+  const refTxt = wa && ref ? (wa.cm < ref[0] ? 'lower risk' : wa.cm < ref[1] ? 'above ' + ref[0] + ' cm: higher risk' : 'above ' + ref[1] + ' cm: high risk') : '';
+  const waForBlock = el('div', { class: 'food-weight' },
+    el('div', { class: 'grow' },
+      el('div', { class: 'wt-v' }, wa ? fmtKg(wa.cm) : '\u2013', el('span', { class: 'wt-u' }, ' cm waist')),
+      el('div', { class: 'muted small' }, wa ? (wa.d === today ? 'Today' : shortDay(wa.d)) : 'Enter your waist below, once a week',
+        refTxt ? ' \u00b7 ' + refTxt : '',
+        dwa !== null ? ' \u00b7 ' : '',
+        dwa !== null ? el('span', { class: 'wt-d ' + (dwa < -0.05 ? 'good' : dwa > 0.05 ? 'bad' : '') }, Math.abs(dwa) < 0.05 ? 'same as before' : (dwa > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dwa)) + ' cm vs ' + shortDay(waBefore.d)) : '')),
+    waForm(wa, today));
 
   const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %' + (dataStatus().ok ? ' \u00b7 \u2713 measured' : ''), goalBlock());
   // Trends: one range for all charts, like Apple Health (W / M / 3M)
@@ -983,7 +1043,7 @@ function renderFood() {
   const wsvg = wcard.querySelector('svg.fchart');
   const wcap = wcard.querySelector('.w-cap');
   if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
-  goalCard.querySelector('.fh').after(wForm); // current weight sits at the top of the goal
+  goalCard.querySelector('.fh').after(wForm, waForBlock); // current weight and waist sit at the top of the goal
   $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tolCard()));
   const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat day') : '';
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, cheatKey, ...trendCards));
@@ -994,6 +1054,7 @@ function renderFood() {
   });
   if (typing !== null) { input.value = typing; input.focus(); }
   if (wtyping !== null) { const wi = $('wt-in'); if (wi) { wi.value = wtyping; wi.focus(); } }
+  if (watyping !== null) { const wai = $('wa-in'); if (wai) { wai.value = watyping; wai.focus(); } }
   $('food-status').textContent = foodMirrorMsg;
   if (typeof renderWeekly === 'function') renderWeekly();
   if (typeof renderTips === 'function') renderTips();
