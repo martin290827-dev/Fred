@@ -223,20 +223,29 @@ async function shReadAll() {
   const q = SH_KEYS.map((k) => 'ranges=' + encodeURIComponent("'" + SH_SETS[k].tab + "'")).join('&');
   const r = await shApi('/' + shId + '/values:batchGet?valueRenderOption=UNFORMATTED_VALUE&' + q);
   const out = {};
-  SH_KEYS.forEach((k, i) => { const v = ((r.valueRanges || [])[i] || {}).values; out[k] = { rows: shRowsOf(k, v), blank: !v || !v.length }; });
+  SH_KEYS.forEach((k, i) => { const v = ((r.valueRanges || [])[i] || {}).values; out[k] = { rows: shRowsOf(k, v), blank: !v || !v.length, size: shSize(v) }; });
   return out;
 }
 
-// Write a whole tab. Write FIRST, then clear only the old rows below: if the second step fails,
-// the tab still has all rows (an empty tab would look like "everything deleted").
-async function shPutTab(tab, values) {
-  await shApi('/' + shId + '/values/' + encodeURIComponent("'" + tab + "'!A1") + '?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values })));
-  await shApi('/' + shId + '/values/' + encodeURIComponent("'" + tab + "'!A" + (values.length + 1) + ':ZZ') + ':clear', { method: 'POST' });
+// Rows and columns that hold values now
+const shWidth = (rows) => rows.reduce((m, r) => Math.max(m, r.length), 0); // no spread: tabs can have thousands of rows
+const shSize = (v) => ({ n: (v || []).length, w: shWidth(v || []) });
+
+// Write a whole tab in ONE request (one update is all or nothing, so the tab is never left empty).
+// Old rows and columns beyond the new data are overwritten with empty cells instead of a separate clear.
+function shPad(values, old) {
+  const w = Math.max(old.w, shWidth(values));
+  const rows = values.map((r) => r.concat(Array(w - r.length).fill('')));
+  while (rows.length < old.n) rows.push(Array(w).fill(''));
+  return rows;
+}
+async function shPutTab(tab, values, old) {
+  await shApi('/' + shId + '/values/' + encodeURIComponent("'" + tab + "'!A1") + '?valueInputOption=RAW', Object.assign({ method: 'PUT' }, shJson({ values: shPad(values, old || { n: 0, w: 0 }) })));
 }
 
-async function shWriteRows(set, rows) {
+async function shWriteRows(set, rows, old) {
   const s = SH_SETS[set];
-  await shPutTab(s.tab, [s.cols].concat(rows.map((r) => s.cols.map((c) => (r[c] === undefined || r[c] === null ? '' : r[c])))));
+  await shPutTab(s.tab, [s.cols].concat(rows.map((r) => s.cols.map((c) => (r[c] === undefined || r[c] === null ? '' : r[c])))), old);
 }
 
 /* ---------- sync of one data set ---------- */
@@ -255,7 +264,7 @@ async function shSyncSet(set, read) {
   // Fred always writes the header, so this is a failed write or a cleared tab, not a real delete
   // (deleting everything in Fred leaves the header). Keep this device's rows and write them back.
   if (read.blank && shLost(remote.size, Object.keys(base).length, local.size)) {
-    await shWriteRows(set, [...local.values()].sort(s.order));
+    await shWriteRows(set, [...local.values()].sort(s.order), read.size);
     shBase[set] = Object.fromEntries([...local].filter(([k]) => !s.owns || s.owns(k)).map(([k, r]) => [k, shText(r, s.cols)]));
     store.set('shBase', shBase);
     shWarn.push(s.tab);
@@ -268,7 +277,7 @@ async function shSyncSet(set, read) {
   for (const k of Object.keys(base)) if (!local.has(k)) merged.delete(k);
   const rows = [...merged.values()].sort(s.order);
   const same = (a, b) => a.length === b.length && a.every((r, i) => shText(r, s.cols) === shText(b[i], s.cols));
-  if (!same(rows, [...remote.values()])) await shWriteRows(set, rows);
+  if (!same(rows, [...remote.values()])) await shWriteRows(set, rows, read.size);
   shBase[set] = Object.fromEntries(rows.filter((r) => !s.owns || s.owns(String(r[s.key]))).map((r) => [String(r[s.key]), shText(r, s.cols)]));
   store.set('shBase', shBase);
   // show what came from Google, if it differs from what this device has
@@ -365,7 +374,7 @@ async function shRawFlush(snap) {
     }
     const list = [...rows.entries()].sort((a, b) => a[0].localeCompare(b[0])).map((e) => e[1]);
     const values = [header].concat(list.map((o) => header.map((h) => (o[h] === undefined ? '' : shCell(o[h], h === keyCol)))));
-    await shPutTab(tab, values);
+    await shPutTab(tab, values, shSize(vals));
     counts[set] = list.length;
   }
   return counts;

@@ -846,9 +846,10 @@ function showPreview(node, text) {
   node.classList.toggle('over', !!(pv && pv.over));
 }
 
-// Meals you logged in the last 60 days that still fit today: most protein per kcal first.
+// Meals you logged in the last 60 days (not today) that still fit today: most protein per kcal first.
 function mealIdeas(leftKcal, n) {
-  const seen = new Set(), out = [], since = toDateStr(addDays(new Date(), -60));
+  const today = toDateStr(new Date()), since = toDateStr(addDays(new Date(), -60)), out = [];
+  const seen = new Set(food.filter((e) => e.at.slice(0, 10) === today).map((e) => e.text.trim().toLowerCase())); // not what you already ate today
   for (const e of [...food].sort((a, b) => b.at.localeCompare(a.at))) {
     const k = e.text.trim().toLowerCase();
     if (e.at.slice(0, 10) < since || e.kcal == null || e.p == null || !k || k.length > 60 || seen.has(k)) continue;
