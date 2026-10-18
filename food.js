@@ -906,6 +906,7 @@ function wtForm(w, today) {
 }
 
 function renderFood() {
+  if (typeof renderNutSum === 'function') renderNutSum(); // the weekly summary follows the diary
   const box = $('food');
   if (!box) return;
   if (box.contains(document.activeElement) && document.activeElement.closest('.food-edit')) return; // editing: do not redraw
