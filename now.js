@@ -177,7 +177,74 @@ function renderPatterns() {
   box.replaceChildren(...blocks, el('p', { class: 'muted small' }, 'A comparison is not proof. Few weeks of data can show a pattern that is only chance.'));
 }
 
-function renderNowCards() { renderNow(); renderPatterns(); }
+
+/* ---------- Body summary (rules on the Whoop data, no AI, no cost) ---------- */
+const bsAvg = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
+const bsSigned = (v, unit) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v) + unit;
+
+// Numbers from the newest night and the 7 nights before it
+function bsFacts() {
+  const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d)));
+  const last = [...rows].reverse().find((x) => x.score != null);
+  if (!last) return null;
+  const week = rows.filter((x) => x.d <= last.d).slice(-7);
+  const prev = rows.filter((x) => x.d < last.d).slice(-7); // the 7 nights before, so the newest night is not compared with itself
+  const bed = week.map((x) => rcMin(x.bed, true)).filter((v) => v != null);
+  const mBed = bsAvg(bed);
+  return {
+    last, age: -dayDiff(last.d),
+    avgScore: Math.round(bsAvg(prev.map((x) => x.score).filter((v) => v != null)) || 0),
+    avgSleep: Math.round(bsAvg(prev.map((x) => x.sleepMin).filter((v) => v != null)) || 0),
+    spread: bed.length >= 5 ? Math.round(rcStd(bed, mBed)) : null,
+    mBed,
+    deepPct: last.sleepMin && last.deepMin != null ? Math.round(100 * last.deepMin / last.sleepMin) : null,
+  };
+}
+
+function bsSummary(f) {
+  const r = f.last, out = [];
+  const band = { low: 'low', mid: 'medium', high: 'good' }[scoreBand(r.score)];
+  const diff = r.score - f.avgScore;
+  out.push(['Recovery', r.score + ' / 100 (' + band + '), ' + (Math.abs(diff) < 3 ? 'about the average of the 7 nights before (' + f.avgScore + ').' : Math.abs(diff) + (diff < 0 ? ' below' : ' above') + ' the average of the 7 nights before (' + f.avgScore + ').')]);
+  const body = [];
+  if (r.hrv != null && r.baseHrv) body.push('HRV ' + r.hrv + ' ms (' + bsSigned(r.hrv - r.baseHrv, ' ms') + ' vs usual)');
+  if (r.rhr != null && r.baseRhr) body.push('resting HR ' + r.rhr + ' bpm (' + bsSigned(r.rhr - r.baseRhr, ' bpm') + ')');
+  if (body.length) out.push(['Body', body.join(', ') + '.']);
+  if (r.sleepMin != null) out.push(['Sleep', rcHmShort(r.sleepMin) + ' last night, the 7 nights before averaged ' + rcHmShort(f.avgSleep) + (r.sleepEff != null ? '. Efficiency ' + Math.round(r.sleepEff) + ' %.' : '.')]);
+  if (r.sleepDebtMin != null) out.push(['Sleep debt', r.sleepDebtMin + ' min.']);
+  if (f.spread != null) out.push(['Rhythm', 'bedtime around ' + rcClock(f.mBed) + ', spread ±' + f.spread + ' min.']);
+  return out;
+}
+
+function bsTips(f) {
+  const r = f.last, t = [];
+  const band = scoreBand(r.score);
+  if (band === 'low') t.push('Recovery is low: keep training light today (walk, easy mobility) and avoid hard sessions.');
+  else if (band === 'high') t.push('Recovery is good: a fine day for hard training.');
+  else t.push('Recovery is medium: a normal day is fine, train at moderate effort.');
+  if (r.sleepDebtMin > 90) t.push('Sleep debt is over 90 min: go to bed 30 to 45 min earlier for the next few nights.');
+  else if (r.sleepDebtMin > 45) t.push('Sleep debt is building up: aim for bed 20 to 30 min earlier tonight.');
+  if (f.avgSleep && f.avgSleep < 420) t.push('Your sleep average of the last 7 nights is under 7 h. A fixed wake time and an earlier bedtime are the simplest fix.');
+  if (f.spread != null && f.spread > 60) t.push('Your bedtime varies by more than an hour. A steady bedtime (about ' + rcClock(f.mBed) + ') helps sleep quality more than one long night.');
+  if (r.sleepEff != null && r.sleepEff < 85) t.push('Sleep efficiency is under 85 %: less screen time in bed and a cooler, darker room can help.');
+  if (f.deepPct != null && f.deepPct < 10) t.push('Deep sleep was low (' + f.deepPct + ' %). Alcohol and late meals often cut it; wrist-based stages are only estimates.');
+  if (r.rhr != null && r.baseRhr && r.rhr - r.baseRhr >= 5 && r.hrv != null && r.baseHrv && r.hrv < r.baseHrv) t.push('Resting HR up and HRV down together can mean stress, alcohol, illness or hard training. Watch the next days.');
+  if (f.age > 3) t.push('The newest data is ' + f.age + ' days old. Import a new Whoop CSV in the Recovery card.');
+  return t.slice(0, 5);
+}
+
+function renderBodySum() {
+  const box = $('bodysum');
+  if (!box) return;
+  const f = bsFacts();
+  if (!f) { box.replaceChildren(el('p', { class: 'muted' }, whoop.length ? 'Not enough nights for a baseline yet (about 14 are needed).' : 'Import a Whoop CSV in the Recovery card to see a summary and tips.')); return; }
+  box.replaceChildren(
+    el('div', { class: 'bs-col' }, el('h3', {}, 'Summary · ' + rcShort(f.last.d)), ...bsSummary(f).map(([l, v]) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, l), el('span', {}, v)))),
+    el('div', { class: 'bs-col' }, el('h3', {}, 'Tips'), ...bsTips(f).map((x) => el('p', { class: 'bs-tip' }, x)),
+      el('p', { class: 'muted small' }, 'Rules of thumb from your own data, not medical advice.')));
+}
+
+function renderNowCards() { renderNow(); renderPatterns(); renderBodySum(); }
 
 function initNow() {
   renderNowCards();

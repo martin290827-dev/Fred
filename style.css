@@ -1324,3 +1324,15 @@ body[data-tab="body"] { --card-h: 700px; }
 .quick-recent { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
 .quick-recent .chip { padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; background: var(--fill); color: var(--text); box-shadow: none; min-height: 0; }
 .quick #quick-close { width: 100%; margin-top: 6px; }
+
+/* Body summary: two columns on a wide screen, stacked on the phone */
+.bs { display: grid; gap: 14px; }
+.bs h3 { margin: 0 0 6px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.bs-line { display: grid; grid-template-columns: 84px 1fr; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--line); font-size: 0.95rem; }
+.bs-line:last-child { border-bottom: 0; }
+.bs-l { color: var(--muted); font-size: 0.82rem; padding-top: 2px; }
+.bs-tip { margin: 0 0 8px; padding: 9px 12px; border-radius: 12px; background: var(--card-2); font-size: 0.95rem; line-height: 1.35; }
+@media (min-width: 1000px) {
+  .grid > #card-bodysum { grid-column: span 6; height: auto; }
+  .bs { grid-template-columns: 1fr 1fr; gap: 28px; }
+}
