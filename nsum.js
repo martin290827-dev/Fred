@@ -9,10 +9,12 @@ function nsWeek(days) {
   const t = days.map((d) => ({ d, t: dayTotals(d) })).filter((x) => x.t.n);
   const av = (f, ok) => { const v = t.filter((x) => (ok ? ok(x.t) : true)).map((x) => f(x.t)); return v.length ? nsAvg(v) : null; };
   const w0 = weightOn(addDaysStr(days[0], -1)), w1 = weightOn(days[days.length - 1]);
+  const wa = waistOn(days[days.length - 1]); // the waist is entered about once a week: the latest entry up to the end of the week
   return {
     from: days[0], to: days[days.length - 1], logged: t.length,
     kcal: av((x) => x.kcal), p: av((x) => x.p, (x) => !x.m), c: av((x) => x.c, (x) => !x.m), f: av((x) => x.f, (x) => !x.m), s: av((x) => x.s, (x) => !x.ms),
     kg: w1 ? w1.kg : null, kgBefore: w0 ? w0.kg : null,
+    bmi: w1 ? bmiOf(w1.kg) : null, waist: wa ? wa.cm : null,
     cheat: days.filter(isCheatDay).length,
   };
 }
@@ -43,17 +45,21 @@ const NS_ROWS = [
   ['Fat per day', 'f', (v) => Math.round(v) + ' g', 4],
   ['Sugar per day', 's', (v) => Math.round(v) + ' g', 3],
   ['Weight', 'kg', (v) => v.toFixed(1) + ' kg', 0.2],
+  ['BMI', 'bmi', (v) => v.toFixed(1), 0.1], // needs the height in Settings
+  ['Waist', 'waist', (v) => v.toFixed(1) + ' cm', 0.5],
 ];
 
 function nsChange(key, cur, old, step, f) {
   if (cur == null || old == null) return { text: '', cls: '' };
   const d = cur - old;
   if (Math.abs(d) < step) return { text: 'same', cls: 'same' };
-  const unit = { logged: ' days', kcal: ' kcal', p: ' g', c: ' g', f: ' g', s: ' g', kg: ' kg' }[key];
-  const num = (d > 0 ? '+' : '−') + (key === 'kg' ? Math.abs(d).toFixed(1) : Math.round(Math.abs(d))) + unit;
+  const unit = { logged: ' days', kcal: ' kcal', p: ' g', c: ' g', f: ' g', s: ' g', kg: ' kg', bmi: '', waist: ' cm' }[key];
+  const decimal = key === 'kg' || key === 'bmi' || key === 'waist'; // one decimal for body values
+  const num = (d > 0 ? '+' : '−') + (decimal ? Math.abs(d).toFixed(1) : Math.round(Math.abs(d))) + unit;
   let better = null;
   if (key === 'logged') better = d > 0;
-  else if (key === 'kg') better = f.g ? (f.g.goal < f.g.start ? d < 0 : d > 0) : null;
+  else if (key === 'kg' || key === 'bmi') better = f.g ? (f.g.goal < f.g.start ? d < 0 : d > 0) : null; // BMI follows the weight goal
+  else if (key === 'waist') better = d < 0; // a smaller waist is better
   else { const a = nsBad(key, cur, f), b = nsBad(key, old, f); better = a == null || b == null ? null : a < b; }
   return { text: num + (better == null ? '' : better ? ' better' : ' worse'), cls: better == null ? 'same' : better ? 'better' : 'worse' };
 }

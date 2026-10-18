@@ -106,6 +106,8 @@ function nowOpen() {
   // once a week is enough for both
   const lastW = weight.map((w) => w.d).sort().pop();
   if (lastW && -dayDiff(lastW) >= 7) list.push('weight not entered for a week'), go = 'card-health';
+  const lastWa = waist.map((w) => w.d).sort().pop();
+  if (lastWa && -dayDiff(lastWa) >= 7) list.push('waist not entered for a week'), go = 'card-health';
   const lastC = whoop.map((r) => r.d).sort().pop();
   if (lastC && -dayDiff(lastC) >= 7) list.push('Whoop data older than a week, import a new CSV'), go = 'card-recovery';
   if (now.getHours() >= 14 && !dayTotals(today).n) list.push('no meal logged');

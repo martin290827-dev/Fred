@@ -1112,9 +1112,9 @@ function saveSettings() {
 }
 
 /* ---------- Backup: download and upload the settings as a file ---------- */
-const BACKUP_KEYS = ['place', 'place2', 'tickers', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'nutri', 'whoop', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
+const BACKUP_KEYS = ['place', 'place2', 'tickers', 'shop', 'notes', 'fxDefault', 'food', 'weight', 'waist', 'nutri', 'whoop', 'layout', 'finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey', 'tips', 'tolerance', 'poker', 'weekly', 'aiUse'];
 const SECRET_KEYS = ['finnhubKey', 'twelveKey', 'googleClientId', 'anthropicKey'];
-const ARRAY_KEYS = ['tickers', 'shop', 'food', 'weight', 'poker'];
+const ARRAY_KEYS = ['tickers', 'shop', 'food', 'weight', 'waist', 'poker'];
 
 function exportSettings() {
   const withKeys = $('bk-keys').checked;
@@ -1176,8 +1176,8 @@ function currentOrder() {
 const TAB_GROUPS = [
   { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
   { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
-  { id: 'nutrition', label: 'Nutrition', cards: ['card-nutsum', 'card-food', 'card-tips', 'card-health', 'card-trends', 'card-weekly', 'card-patterns'] },
-  { id: 'body', label: 'Body', cards: ['card-bodysum', 'card-recovery', 'card-sleep', 'card-habits'] },
+  { id: 'nutrition', label: 'Nutrition', cards: ['card-nutsum', 'card-food', 'card-tips', 'card-trends', 'card-weekly', 'card-patterns'] },
+  { id: 'body', label: 'Body', cards: ['card-bodysum', 'card-health', 'card-recovery', 'card-sleep', 'card-habits'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
 let activeTab = store.get('tab', 'today'); // per device, not synced
@@ -1372,6 +1372,13 @@ function initLayout() {
     layout.order = flat.concat(layout.order.filter((id) => !flat.includes(id)));
     store.set('layout', layout);
     store.set('mig.tabOrder2', true);
+  }
+  // one-time: Weight & Goal moved from Nutrition to Body, right after Body Summary
+  if (!store.get('mig.healthToBody', false)) {
+    const o = layout.order.filter((id) => id !== 'card-health');
+    const n = o.indexOf('card-bodysum');
+    if (n >= 0) { o.splice(n + 1, 0, 'card-health'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.healthToBody', true);
   }
   applyLayout();
 }
