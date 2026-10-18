@@ -27,7 +27,7 @@ function nsFacts() {
   const days = lastDays(2 * n + 1).slice(0, 2 * n); // today is not finished, so it does not count
   const week = nsWeek(days.slice(n)), prev = nsWeek(days.slice(0, n));
   if (week.logged < Math.ceil(n * 2 / 7)) return null; // 2 of 7, 5 of 15, 9 of 30
-  return { n, week, prev: prev.logged >= Math.ceil(n * 3 / 7) ? prev : null, days, tg: targets(), g: goalInfo() };
+  return { n, week, prev: prev.logged >= 3 ? prev : null, prevAll: prev, days, tg: targets(), g: goalInfo() };
 }
 
 // How far a value is from what is wanted: lower is better. null = no target to judge by.
@@ -164,6 +164,7 @@ function renderNutSum() {
       ...nsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text)))),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
       note ? el('p', { class: 'muted small' }, note) : '',
+      f.prev ? '' : el('p', { class: 'muted small' }, 'No comparison: the ' + f.n + ' days before (' + rcShort(f.prevAll.from) + '–' + rcShort(f.prevAll.to) + ') have only ' + f.prevAll.logged + ' logged day' + (f.prevAll.logged === 1 ? '' : 's') + ', 3 are needed.'),
       el('p', { class: 'muted small' }, 'Averages count only days with entries. Calories and macros are estimates.')));
   nsLoadAi(false);
 }
