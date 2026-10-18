@@ -848,6 +848,40 @@ function cheatRow(today) {
 }
 
 // Suggestions while typing: what you logged before (newest first, each text once).
+// Add one meal for now and start the estimate (used by the Food form and the quick add)
+function addMeal(text) {
+  const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, s: null, src: null, err: null };
+  food.push(e);
+  saveFood();
+  estimateEntry(e);
+}
+
+/* ---------- quick add (header + button, works on every tab) ---------- */
+function recentMeals(n) {
+  const seen = new Set(), out = [];
+  for (const e of [...food].sort((a, b) => b.at.localeCompare(a.at))) {
+    const t = e.text.trim(), k = t.toLowerCase();
+    if (t && t.length <= 60 && !seen.has(k)) { seen.add(k); out.push(t); }
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
+function openQuick() {
+  const dlg = $('dlg-quick'), input = $('quick-text'), note = $('quick-note');
+  input.value = ''; note.textContent = '';
+  const add = (text) => { addMeal(text); note.textContent = 'Added: ' + text; input.value = ''; setTimeout(() => dlg.close(), 700); };
+  $('quick-recent').replaceChildren(...recentMeals(8).map((t) => el('button', { type: 'button', class: 'chip', onclick: () => add(t) }, t)));
+  $('quick-form').onsubmit = (ev) => { ev.preventDefault(); const t = input.value.trim(); if (t) add(t); };
+  dlg.showModal();
+  input.focus();
+}
+
+function initQuick() {
+  $('btn-quick').addEventListener('click', openQuick);
+  $('quick-close').addEventListener('click', () => $('dlg-quick').close());
+}
+
 function foodHistList() {
   const seen = new Set(), out = [];
   for (const e of [...food].sort((a, b) => b.at.localeCompare(a.at))) {
@@ -888,11 +922,8 @@ function renderFood() {
     ev.preventDefault();
     const text = input.value.trim();
     if (!text) return;
-    const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, s: null, src: null, err: null };
-    food.push(e);
-    saveFood();
+    addMeal(text);
     input.value = '';
-    estimateEntry(e);
   });
 
   const tg = targets();
