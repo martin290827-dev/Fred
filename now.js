@@ -180,55 +180,73 @@ function renderPatterns() {
 
 /* ---------- Body summary (rules on the Whoop data, no AI, no cost) ---------- */
 const bsAvg = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
-const bsSigned = (v, unit) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v) + unit;
 
-// Numbers from the newest night and the 7 nights before it
+// Averages of a list of nights (null where a value is missing)
+function bsWeek(rows) {
+  const av = (f) => { const v = rows.map(f).filter((x) => x != null && !Number.isNaN(x)); return v.length ? bsAvg(v) : null; };
+  const bed = rows.map((r) => rcMin(r.bed, true)).filter((v) => v != null);
+  const mBed = bed.length ? bsAvg(bed) : null;
+  return {
+    n: rows.length, from: rows[0] && rows[0].d, to: rows.length && rows[rows.length - 1].d,
+    score: av((r) => r.score), hrv: av((r) => r.hrv), rhr: av((r) => r.rhr), sleep: av((r) => r.sleepMin),
+    debt: av((r) => r.sleepDebtMin), eff: av((r) => r.sleepEff),
+    deep: av((r) => (r.sleepMin && r.deepMin != null ? 100 * r.deepMin / r.sleepMin : null)),
+    spread: bed.length >= 4 ? rcStd(bed, mBed) : null, mBed,
+  };
+}
+
+// The newest 7 nights against the 7 nights before them (data comes in once a week)
 function bsFacts() {
   const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d)));
   const last = [...rows].reverse().find((x) => x.score != null);
   if (!last) return null;
-  const week = rows.filter((x) => x.d <= last.d).slice(-7);
-  const prev = rows.filter((x) => x.d < last.d).slice(-7); // the 7 nights before, so the newest night is not compared with itself
-  const bed = week.map((x) => rcMin(x.bed, true)).filter((v) => v != null);
-  const mBed = bsAvg(bed);
-  return {
-    last, age: -dayDiff(last.d),
-    avgScore: Math.round(bsAvg(prev.map((x) => x.score).filter((v) => v != null)) || 0),
-    avgSleep: Math.round(bsAvg(prev.map((x) => x.sleepMin).filter((v) => v != null)) || 0),
-    spread: bed.length >= 5 ? Math.round(rcStd(bed, mBed)) : null,
-    mBed,
-    deepPct: last.sleepMin && last.deepMin != null ? Math.round(100 * last.deepMin / last.sleepMin) : null,
-  };
+  const weekRows = rows.filter((x) => x.d <= last.d).slice(-7);
+  const prevRows = rows.filter((x) => x.d < weekRows[0].d).slice(-7);
+  return { last, age: -dayDiff(last.d), week: bsWeek(weekRows), prev: prevRows.length >= 4 ? bsWeek(prevRows) : null, weekRows, prevRows };
+}
+
+// What is shown per measure: label, value text, how much change counts, and whether higher is better
+const BS_ROWS = [
+  ['Recovery score', 'score', (v) => Math.round(v) + ' / 100', 3, true],
+  ['HRV', 'hrv', (v) => Math.round(v) + ' ms', 2, true],
+  ['Resting HR', 'rhr', (v) => Math.round(v) + ' bpm', 1, false],
+  ['Sleep per night', 'sleep', (v) => rcHmShort(v), 10, true],
+  ['Sleep debt', 'debt', (v) => Math.round(v) + ' min', 10, false],
+  ['Efficiency', 'eff', (v) => Math.round(v) + ' %', 1, true],
+  ['Deep sleep', 'deep', (v) => Math.round(v) + ' %', 1, true],
+  ['Bedtime spread', 'spread', (v) => '±' + Math.round(v) + ' min', 5, false],
+];
+
+// Change against last week: { text, cls } cls = better | worse | same
+function bsChange(key, cur, old, step, up) {
+  if (cur == null || old == null) return { text: '', cls: '' };
+  const d = cur - old;
+  if (Math.abs(d) < step) return { text: 'same', cls: 'same' };
+  const unit = { score: '', hrv: ' ms', rhr: ' bpm', sleep: ' min', debt: ' min', eff: ' %', deep: ' pp', spread: ' min' }[key];
+  return { text: (d > 0 ? '+' : '−') + Math.round(Math.abs(d)) + unit + (d > 0 === up ? ' better' : ' worse'), cls: d > 0 === up ? 'better' : 'worse' };
 }
 
 function bsSummary(f) {
-  const r = f.last, out = [];
-  const band = { low: 'low', mid: 'medium', high: 'good' }[scoreBand(r.score)];
-  const diff = r.score - f.avgScore;
-  out.push(['Recovery', r.score + ' / 100 (' + band + '), ' + (Math.abs(diff) < 3 ? 'about the average of the 7 nights before (' + f.avgScore + ').' : Math.abs(diff) + (diff < 0 ? ' below' : ' above') + ' the average of the 7 nights before (' + f.avgScore + ').')]);
-  const body = [];
-  if (r.hrv != null && r.baseHrv) body.push('HRV ' + r.hrv + ' ms (' + bsSigned(r.hrv - r.baseHrv, ' ms') + ' vs usual)');
-  if (r.rhr != null && r.baseRhr) body.push('resting HR ' + r.rhr + ' bpm (' + bsSigned(r.rhr - r.baseRhr, ' bpm') + ')');
-  if (body.length) out.push(['Body', body.join(', ') + '.']);
-  if (r.sleepMin != null) out.push(['Sleep', rcHmShort(r.sleepMin) + ' last night, the 7 nights before averaged ' + rcHmShort(f.avgSleep) + (r.sleepEff != null ? '. Efficiency ' + Math.round(r.sleepEff) + ' %.' : '.')]);
-  if (r.sleepDebtMin != null) out.push(['Sleep debt', r.sleepDebtMin + ' min.']);
-  if (f.spread != null) out.push(['Rhythm', 'bedtime around ' + rcClock(f.mBed) + ', spread ±' + f.spread + ' min.']);
-  return out;
+  return BS_ROWS.filter(([, k]) => f.week[k] != null).map(([label, k, fmt, step, up]) => ({
+    label, value: fmt(f.week[k]), old: f.prev && f.prev[k] != null ? fmt(f.prev[k]) : '', change: f.prev ? bsChange(k, f.week[k], f.prev[k], step, up) : { text: '', cls: '' },
+  }));
 }
 
+// Fixed rules, used when there is no AI answer
 function bsTips(f) {
-  const r = f.last, t = [];
-  const band = scoreBand(r.score);
-  if (band === 'low') t.push('Recovery is low: keep training light today (walk, easy mobility) and avoid hard sessions.');
-  else if (band === 'high') t.push('Recovery is good: a fine day for hard training.');
-  else t.push('Recovery is medium: a normal day is fine, train at moderate effort.');
-  if (r.sleepDebtMin > 90) t.push('Sleep debt is over 90 min: go to bed 30 to 45 min earlier for the next few nights.');
-  else if (r.sleepDebtMin > 45) t.push('Sleep debt is building up: aim for bed 20 to 30 min earlier tonight.');
-  if (f.avgSleep && f.avgSleep < 420) t.push('Your sleep average of the last 7 nights is under 7 h. A fixed wake time and an earlier bedtime are the simplest fix.');
-  if (f.spread != null && f.spread > 60) t.push('Your bedtime varies by more than an hour. A steady bedtime (about ' + rcClock(f.mBed) + ') helps sleep quality more than one long night.');
-  if (r.sleepEff != null && r.sleepEff < 85) t.push('Sleep efficiency is under 85 %: less screen time in bed and a cooler, darker room can help.');
-  if (f.deepPct != null && f.deepPct < 10) t.push('Deep sleep was low (' + f.deepPct + ' %). Alcohol and late meals often cut it; wrist-based stages are only estimates.');
-  if (r.rhr != null && r.baseRhr && r.rhr - r.baseRhr >= 5 && r.hrv != null && r.baseHrv && r.hrv < r.baseHrv) t.push('Resting HR up and HRV down together can mean stress, alcohol, illness or hard training. Watch the next days.');
+  const w = f.week, t = [];
+  const band = scoreBand(Math.round(w.score));
+  if (band === 'low') t.push('Your recovery was low this week: keep training light for a few days and avoid hard sessions.');
+  else if (band === 'high') t.push('Your recovery was good this week: a fine time for hard training.');
+  else t.push('Your recovery was medium this week: train at moderate effort.');
+  const debt = f.last.sleepDebtMin;
+  if (debt > 90) t.push('Sleep debt is over 90 min: go to bed 30 to 45 min earlier for the next few nights.');
+  else if (debt > 45) t.push('Sleep debt is building up: aim for bed 20 to 30 min earlier.');
+  if (w.sleep && w.sleep < 420) t.push('You slept under 7 h per night on average. A fixed wake time and an earlier bedtime are the simplest fix.');
+  if (w.spread != null && w.spread > 60) t.push('Your bedtime varies by more than an hour. A steady bedtime (about ' + rcClock(w.mBed) + ') helps sleep quality.');
+  if (w.eff != null && w.eff < 85) t.push('Sleep efficiency is under 85 %: less screen time in bed and a cooler, darker room can help.');
+  if (w.deep != null && w.deep < 10) t.push('Deep sleep was low (' + Math.round(w.deep) + ' %). Alcohol and late meals often cut it; wrist-based stages are only estimates.');
+  if (f.prev && f.prev.score != null && w.score - f.prev.score <= -8) t.push('Your score fell clearly against last week. Look at what changed: stress, alcohol, late nights, hard training.');
   if (f.age > 3) t.push('The newest data is ' + f.age + ' days old. Import a new Whoop CSV in the Recovery card.');
   return t.slice(0, 5);
 }
@@ -236,35 +254,39 @@ function bsTips(f) {
 /* AI part: one short request per new night (or on the refresh button). Kept in this browser only. Without a key or on an error the fixed rules show instead. */
 let bodyAi = store.get('bodyAi', { key: '', summary: '', tips: [], prev: [], err: '' });
 let bodyAiBusy = false;
+const bsKey = (f) => 'week:' + f.last.d; // one answer per newest night
 
 const BS_SYSTEM = 'You are a careful sleep and recovery coach. The data comes from a wrist band: sleep stages and scores are estimates. ' +
-  'The user gets a short summary and tips for TODAY, based on the newest night and the trend of the nights before. ' +
-  'Be concrete: use the real numbers, name what changed, say what to do today and tonight. No generic filler, no diagnoses, no medical claims; ' +
+  'The user uploads the data once a week, so write about the WEEK: the 7 newest nights ("THIS WEEK") against the 7 nights before ("LAST WEEK"). ' +
+  'The summary (2 to 3 sentences) says how the week was and what got better or worse against last week, with the real numbers. ' +
+  'The tips are for the coming days: concrete, based on what changed, no generic filler, no diagnoses, no medical claims; ' +
   'only if values are strongly off for many days, say once that a doctor can check it. Do not repeat the earlier tips (their titles are given). ' +
   'Language of the answer: the language given in the message. Reply with one JSON object only, no other text: ' +
   '{"summary":"2 to 3 sentences","tips":[{"title":"max 4 words","text":"max 25 words"}]} with 3 to 5 tips.';
 
 function bsInput(f) {
-  const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d))).filter((x) => x.d <= f.last.d).slice(-14);
   const line = (r) => [r.d, 'score ' + (r.score ?? '?'), 'HRV ' + (r.hrv ?? '?') + ' (usual ' + (r.baseHrv ?? '?') + ')', 'RHR ' + (r.rhr ?? '?') + ' (usual ' + (r.baseRhr ?? '?') + ')',
     'sleep ' + (r.sleepMin ?? '?') + ' min', 'debt ' + (r.sleepDebtMin ?? '?') + ' min', 'eff ' + (r.sleepEff ?? '?') + ' %',
     'deep ' + (r.deepMin ?? '?') + ' min', 'REM ' + (r.remMin ?? '?') + ' min', 'bed ' + (r.bed || '?'), 'wake ' + (r.wake || '?')].join(' | ');
-  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\nNights (oldest first, the last line is the newest night):\n' + rows.map(line).join('\n') +
-    '\nEarlier tip titles: ' + ((bodyAi.prev || []).join('; ') || 'none');
+  const avg = (w) => BS_ROWS.filter(([, k]) => w[k] != null).map(([label, k, fmt]) => label + ' ' + fmt(w[k])).join(', ');
+  return 'Language of the answer: ' + (navigator.language || 'de-AT') +
+    '\n\nTHIS WEEK (oldest first), averages: ' + avg(f.week) + '\n' + f.weekRows.map(line).join('\n') +
+    '\n\nLAST WEEK' + (f.prev ? ', averages: ' + avg(f.prev) + '\n' + f.prevRows.map(line).join('\n') : ': no data') +
+    '\n\nEarlier tip titles: ' + ((bodyAi.prev || []).join('; ') || 'none');
 }
 
 async function bsLoadAi(force) {
   const f = bsFacts();
   if (!f || !anthropicKey || bodyAiBusy) return;
-  if (!force && bodyAi.key === f.last.d) return; // this night is done (also after an error: retry only with the button)
+  if (!force && bodyAi.key === bsKey(f)) return; // this night is done (also after an error: retry only with the button)
   bodyAiBusy = true; renderBodySum();
   try {
     const j = await aiTips(BS_SYSTEM, bsInput(f), 700);
     if (!j || typeof j.summary !== 'string' || !Array.isArray(j.tips)) throw new Error('unexpected answer');
     const list = j.tips.filter((t) => t && t.text).slice(0, 5).map((t) => ({ title: String(t.title || ''), text: String(t.text) }));
-    bodyAi = { key: f.last.d, summary: j.summary, tips: list, prev: list.map((t) => t.title).filter(Boolean).slice(0, 8), err: '' };
+    bodyAi = { key: bsKey(f), summary: j.summary, tips: list, prev: list.map((t) => t.title).filter(Boolean).slice(0, 8), err: '' };
   } catch (e) {
-    bodyAi = Object.assign({}, bodyAi, { key: f.last.d, err: e.message });
+    bodyAi = Object.assign({}, bodyAi, { key: bsKey(f), err: e.message });
   }
   bodyAiBusy = false;
   store.set('bodyAi', bodyAi);
@@ -278,15 +300,17 @@ function renderBodySum() {
   if (btn) { btn.hidden = !anthropicKey; btn.disabled = bodyAiBusy; btn.classList.toggle('busy', bodyAiBusy); }
   const f = bsFacts();
   if (!f) { box.replaceChildren(el('p', { class: 'muted' }, whoop.length ? 'Not enough nights for a baseline yet (about 14 are needed).' : 'Import a Whoop CSV in the Recovery card to see a summary and tips.')); return; }
-  const ai = anthropicKey && bodyAi.key === f.last.d && !bodyAi.err && bodyAi.tips.length ? bodyAi : null;
+  const ai = anthropicKey && bodyAi.key === bsKey(f) && !bodyAi.err && bodyAi.tips.length ? bodyAi : null;
   let note = '';
   if (!anthropicKey) note = 'Add an Anthropic key in Settings for AI tips. These are fixed rules.';
   else if (bodyAiBusy) note = 'Writing tips …';
-  else if (bodyAi.err && bodyAi.key === f.last.d) note = 'AI tips failed (' + bodyAi.err + '). Fixed rules shown, press ↻ to try again.';
+  else if (bodyAi.err && bodyAi.key === bsKey(f)) note = 'AI tips failed (' + bodyAi.err + '). Fixed rules shown, press ↻ to try again.';
   const tips = ai ? ai.tips.map((t) => el('p', { class: 'bs-tip' }, t.title ? el('b', {}, t.title + ': ') : '', t.text)) : bsTips(f).map((x) => el('p', { class: 'bs-tip' }, x));
   box.replaceChildren(
     ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
-    el('div', { class: 'bs-col' }, el('h3', {}, 'Numbers · ' + rcShort(f.last.d)), ...bsSummary(f).map(([l, v]) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, l), el('span', {}, v)))),
+    el('div', { class: 'bs-col' }, el('h3', {}, 'Last 7 nights' + (f.week.from ? ' \u00b7 ' + rcShort(f.week.from) + '\u2013' + rcShort(f.week.to) : '')),
+      f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'This week'), el('span', {}, 'Last week'), el('span', {}, 'Change')) : '',
+      ...bsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text)))),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
       note ? el('p', { class: 'muted small' }, note) : '',
       el('p', { class: 'muted small' }, 'Not medical advice. Wrist-band data is an estimate.')));
