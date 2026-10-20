@@ -84,8 +84,10 @@ async function gRequestToken(prompt) {
         gExpiry = Date.now() + (parseInt(r.expires_in, 10) || 3600) * 1000;
         gPopHidden = false;
         store.set('gConnected', true);
-        clearTimeout(gEndTimer); // show the Reconnect button the moment the hour is over
-        gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); }, gExpiry - Date.now() - 25000);
+        clearTimeout(gEndTimer); // 3 minutes before the hour is over: renew without a window; only if Google refuses, the Reconnect button shows
+        gEndTimer = setTimeout(() => {
+          gSilentToken().catch(() => { gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); }, Math.max(0, gExpiry - Date.now() - 25000)); });
+        }, Math.max(0, gExpiry - Date.now() - 180000));
         resolve();
       },
       error_callback: (err) => { clearTimeout(timer); reject(new Error(err && err.type ? err.type : 'sign-in cancelled')); },

@@ -160,7 +160,7 @@ async function arcFlush() {
     arcInfo = { at: Date.now(), counts: await shRawCounts() };
     store.set('arcInfo', arcInfo);
     arcMsg = '';
-    if (arcNote) arcNote = 'Gespeichert \u2713';
+    if (arcNote) arcNote = 'Saved \u2713';
   } catch (e) {
     arcMsg = 'History: ' + e.message;
   }
@@ -190,7 +190,7 @@ function arcNow() {
   arcMsg = '';
   arcScan();
   const nothing = !Object.keys(arcQueue).length;
-  arcNote = !gHasToken() ? 'Nicht gespeichert: Google ist nicht verbunden.' : nothing ? 'Nichts Neues: alles ist schon gespeichert.' : 'Speichere \u2026';
+  arcNote = !gHasToken() ? 'Not saved: Google is not connected.' : nothing ? 'Nothing new: everything is saved already.' : 'Saving \u2026';
   setTimeout(() => { arcNote = ''; renderRecovery(); }, 8000);
   arcFlush();
   renderRecovery();
