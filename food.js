@@ -3,8 +3,7 @@
    - Type or dictate (microphone on the iPhone keyboard) what you ate.
    - Calories and macros are estimated by Claude (Anthropic API, your own key in Settings).
      Say "... 600 kcal" to set the calories yourself; then nothing is sent anywhere.
-   - Entries sync between your devices (sync.js) and are mirrored to two Google Sheets
-     in your Drive ("Fred Food Log", "Fred Weight Log") for your own analysis.
+   - Entries are saved in the Google Sheet "Fred Daten" (sheets.js), which also brings them to your other devices.
    Estimates are rough (often +/- 20-30 %). */
 
 let food = store.get('food', []);     // [{ id, at: 'YYYY-MM-DDTHH:MM', text, kcal, p, c, f, src: 'ai'|'manual', err }]
@@ -31,8 +30,8 @@ const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input i
   'If the text is not about food or drink, reply with kcal 0 and an empty items list. ' +
   'If a number with kcal is given for an item (for example "Frankfurter 240 kcal"), it belongs only to the item right before it: use exactly that value for this item, estimate every other item, and make the totals the sum of all items. A "#", "+" or comma separates items.';
 
-function saveFood() { store.set('food', food); foodMirrorSoon(); arcScan(); }
-function saveWeight() { store.set('weight', weight); foodMirrorSoon(); arcScan(); }
+function saveFood() { store.set('food', food); } // goes to the Sheet tab "Food" (sheets.js)
+function saveWeight() { store.set('weight', weight); } // Sheet tab "Weight"
 function saveWaist() { store.set('waist', waist); } // goes to the Sheet tab "Waist" (sheets.js)
 
 /* ---------- estimating ---------- */
@@ -1037,7 +1036,6 @@ function renderFood() {
   if (typing !== null) { input.value = typing; input.focus(); showPreview(preview, typing); }
   if (wtyping !== null) { const wi = $('wt-in'); if (wi) { wi.value = wtyping; wi.focus(); } }
   if (watyping !== null) { const wai = $('wa-in'); if (wai) { wai.value = watyping; wai.focus(); } }
-  $('food-status').textContent = foodMirrorMsg;
   if (typeof renderWeekly === 'function') renderWeekly();
   if (typeof renderTips === 'function') renderTips();
 }
@@ -1094,59 +1092,6 @@ function foodEditRow(e) {
   return el('li', { class: 'food-edit' }, el('span', { class: 'grow food-edit-fields' }, text, el('span', { class: 'row' }, time, kcal)),
     el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
     el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'));
-}
-
-/* ---------- mirror to two Google Sheets in your Drive (for your own analysis) ---------- */
-
-let foodMirrorTimer = null;
-let foodMirrorMsg = '';
-
-function foodMirrorSoon() {
-  clearTimeout(foodMirrorTimer);
-  foodMirrorTimer = setTimeout(foodMirror, 8000);
-}
-
-function csv(rows) {
-  return rows.map((r) => r.map((v) => {
-    const s = v === null || v === undefined ? '' : String(v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }).join(',')).join('\n') + '\n';
-}
-
-async function sheetFind(name) {
-  const q = encodeURIComponent("name='" + name + "' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
-  const r = await (await driveFetch(DRIVE + '?fields=files(id)&q=' + q)).json();
-  return r.files && r.files[0] ? r.files[0].id : null;
-}
-
-// Create the sheet from CSV the first time; afterwards replace its content with the new CSV.
-async function sheetWrite(name, content) {
-  const id = await sheetFind(name);
-  if (id) {
-    await driveFetch(DRIVE_UP + '/' + id + '?uploadType=media', { method: 'PATCH', headers: { 'Content-Type': 'text/csv' }, body: content });
-    return;
-  }
-  const b = 'fredsheet' + Date.now();
-  const meta = { name, mimeType: 'application/vnd.google-apps.spreadsheet' };
-  const body = '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
-    '\r\n--' + b + '\r\nContent-Type: text/csv\r\n\r\n' + content + '\r\n--' + b + '--';
-  await driveFetch(DRIVE_UP + '?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body });
-}
-
-async function foodMirror() {
-  return; // replaced by the Google Sheet "Fred Daten" (sheets.js)
-  if (typeof gHasToken !== 'function' || !gHasToken()) return; // next time you are connected
-  if (!gScopes.includes('drive.file')) { foodMirrorMsg = 'Sheets in Drive need one more Google permission: press Connect.'; $('food-status').textContent = foodMirrorMsg; return; }
-  try {
-    const rows = [['date', 'time', 'food', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'source', 'reaction', 'symptoms']].concat(
-      [...food].sort((a, b) => a.at.localeCompare(b.at)).map((e) => [e.at.slice(0, 10), e.at.slice(11, 16), e.text, e.kcal, e.p, e.c, e.f, e.src || '', e.bad ? TOL_LEVELS[e.bad.lvl] : '', e.bad ? e.bad.sym.join('; ') : '']));
-    await sheetWrite('Fred Food Log', csv(rows));
-    await sheetWrite('Fred Weight Log', csv([['date', 'weight_kg']].concat([...weight].sort((a, b) => a.d.localeCompare(b.d)).map((w) => [w.d, w.kg]))));
-    foodMirrorMsg = 'Saved to Google Sheets ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
-    foodMirrorMsg = 'Sheets: ' + e.message;
-  }
-  $('food-status').textContent = foodMirrorMsg;
 }
 
 function initFood() {

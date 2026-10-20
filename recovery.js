@@ -93,7 +93,7 @@ function rcFileType(header) {
   return null;
 }
 const RC_KEY_COL = { cycles: 'Startzeit des Zyklus', sleep: 'Beginn des Schlafs', workouts: 'Startzeit des Trainings' };
-const RC_TYPE_LABEL = { cycles: 'Zyklen', sleep: 'Schlaf', workouts: 'Training' };
+const RC_TYPE_LABEL = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts' };
 
 // Every raw row of every file goes to the hidden archive (archive.js); cycles also feed the cards.
 async function importWhoopFiles(files) {
@@ -134,12 +134,12 @@ async function importWhoopFiles(files) {
     }
     if (entries.length) { whoop = [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d)); saveWhoop(); }
     const read = Object.keys(counts).map((t) => RC_TYPE_LABEL[t] + ' ' + counts[t]).join(' \u00b7 ');
-    rcImportMsg = (read ? 'Gelesen: ' + read + '. ' : '') + (entries.length ? added + ' neue, ' + updated + ' aktualisierte Nächte in der Anzeige (' + whoop.length + ' gesamt). ' : '') +
-      (wEntries.length ? wEntries.length + ' Trainings in der Anzeige (' + workouts.length + ' gesamt)' + (wMissing.length ? ', Spalten nicht erkannt: ' + wMissing.join(', ') : '') + '. ' : '') +
-      (skipped.length ? 'Nicht erkannt: ' + skipped.join(', ') + '.' : '');
-    if (!read) rcImportMsg = 'Keine verwertbaren Zeilen gefunden. ' + rcImportMsg;
+    rcImportMsg = (read ? 'Read: ' + read + '. ' : '') + (entries.length ? added + ' new, ' + updated + ' updated nights (' + whoop.length + ' in total). ' : '') +
+      (wEntries.length ? wEntries.length + ' workouts read (' + workouts.length + ' in total)' + (wMissing.length ? ', columns not found: ' + wMissing.join(', ') : '') + '. ' : '') +
+      (skipped.length ? 'Not recognised: ' + skipped.join(', ') + '.' : '');
+    if (!read) rcImportMsg = 'No usable rows found. ' + rcImportMsg;
   } catch (e) {
-    rcImportMsg = 'Import fehlgeschlagen: ' + e.message;
+    rcImportMsg = 'Import failed: ' + e.message;
   }
   renderRecovery();
   if (typeof renderBodySum === 'function') renderBodySum();
