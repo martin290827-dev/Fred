@@ -1028,7 +1028,7 @@ function renderFood() {
   $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tolCard()));
   const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat day') : '';
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, cheatKey, ...trendCards));
-  fitRows(ul, 2); // the last two meals; the rest scrolls
+  if (foodEditId) ul.style.maxHeight = ''; else fitRows(ul, 2); // the last two meals; the rest scrolls (while editing the whole row shows)
   requestAnimationFrame(() => {
     // card height is fixed in CSS; more content scrolls inside the card
     growChart($('trends'), (h) => weightChart(daysN, h));
@@ -1040,7 +1040,7 @@ function renderFood() {
   if (typeof renderTips === 'function') renderTips();
 }
 
-// One row per meal: text (up to 3 lines) with the buttons at its right, below it time, calories and macro chips.
+// One row per meal: text (up to 3 lines; tap it to edit) with the buttons at its right, below it time, calories and macro chips.
 function foodRow(e) {
   const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
     : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
@@ -1051,7 +1051,7 @@ function foodRow(e) {
     : e.src === 'manual' ? [el('span', { class: 'muted small' }, 'own value')] : [];
   return el('li', { class: 'meal', title: e.text },
     el('div', { class: 'meal-body' },
-      el('div', { class: 'meal-t' }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text),
+      el('div', { class: 'meal-t', title: 'Tap to edit', onclick: () => { foodEditId = e.id; renderFood(); } }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text),
       el('span', { class: 'meal-act' },
         // estimate this meal again (clears the old numbers first, so a wrong value cannot stay)
         el('button', { type: 'button', class: 'tip-refresh', title: 'Estimate again', 'aria-label': 'Estimate ' + e.text + ' again',
@@ -1062,9 +1062,13 @@ function foodRow(e) {
       e.err && !e.busy ? el('div', { class: 'food-err small' }, e.err.slice(0, 140)) : ''));
 }
 
+// Grow a text box with its text, so a long meal is fully visible while you edit it (no sideways scrolling)
+function autoGrow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
+
 // Change text, time or calories. A changed text is estimated again (unless you typed the calories).
 function foodEditRow(e) {
-  const text = el('input', { type: 'text', 'aria-label': 'Food' }); text.value = e.text;
+  const text = el('textarea', { rows: '3', maxlength: '1500', 'aria-label': 'Food', class: 'food-edit-text' }); text.value = e.text;
+  text.addEventListener('input', () => autoGrow(text));
   const time = el('input', { type: 'time', 'aria-label': 'Time' }); time.value = e.at.slice(11, 16);
   const kcal = el('input', { type: 'text', inputmode: 'numeric', 'aria-label': 'kcal', placeholder: 'kcal' }); kcal.value = e.kcal ?? '';
   const leave = () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }; // focus leaves the edit row, so the card may redraw
@@ -1088,10 +1092,18 @@ function foodEditRow(e) {
     }
   };
   for (const n of [text, time, kcal]) n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } if (ev.key === 'Escape') done(); });
-  requestAnimationFrame(() => text.focus());
-  return el('li', { class: 'food-edit' }, el('span', { class: 'grow food-edit-fields' }, text, el('span', { class: 'row' }, time, kcal)),
-    el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
-    el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'));
+  requestAnimationFrame(() => {
+    autoGrow(text);
+    text.focus({ preventScroll: true });
+    text.setSelectionRange(text.value.length, text.value.length); // cursor at the end of the text
+    row.scrollIntoView({ block: 'nearest' }); // the whole edit row, with Save and Cancel, is visible in the card
+  });
+  // text box over the full width, below it time, kcal and the buttons
+  const row = el('li', { class: 'food-edit' }, el('div', { class: 'food-edit-fields' }, text,
+    el('div', { class: 'food-edit-bar' }, time, kcal,
+      el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
+      el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'))));
+  return row;
 }
 
 function initFood() {

@@ -1368,3 +1368,12 @@ body[data-tab="body"] { --card-h: 700px; }
 .chip-k { color: var(--muted); font-variant-numeric: tabular-nums; }
 .now-x li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* long labels shorten, the value stays whole */
 .now-x li.fit span { color: var(--text); }
+
+/* editing a meal: the text box takes the full width and grows with the text; time, kcal and buttons sit below */
+.food-list li.food-edit { display: block; padding: 8px 0; }
+.food-edit-fields { display: grid; gap: 8px; width: 100%; }
+.food-edit-text { width: 100%; min-height: 72px; max-height: 260px; resize: vertical; box-sizing: border-box; font: inherit; font-size: 16px; line-height: 1.4; padding: 10px 12px; overflow-y: auto; }
+.food-edit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.food-edit-bar input[type="time"] { width: 110px; }
+.food-edit-bar input[inputmode="numeric"] { width: 90px; }
+.food-list .meal-t { cursor: pointer; }

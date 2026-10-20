@@ -37,7 +37,7 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 
 - AI models (food.js): `AI_MODEL` = Haiku 5.5 for estimates, sugar, cook ideas, weekly text, tolerance and the event scan; `TIPS_MODEL` = Sonnet 5.5 for "Missing today" and the Body / Nutrition Summary tips. `aiJSON` gives the default model 3x the token budget (thinking counts against max_tokens) and falls back to Haiku 4.5 (`AI_FALLBACK`) on any error except the key. Estimate errors show in the meal row.
 - Macros: the Trends charts show a day only if EVERY meal of that day has protein, carbs and fat. `fillMacros` / `backfillMacros` fill missing ones at start (30 per start); meals with own kcal keep them and the estimate is scaled to it. The hover text of an empty bar names the meals without macros (`missingNote`).
-- Food meal row: text (up to 3 lines, field limit 1500 characters), buttons at its right, below it time, kcal and P/C/F/S chips. The meal list shows the last two meals, the rest scrolls.
+- Food meal row: text (up to 3 lines, field limit 1500 characters), buttons at its right, below it time, kcal and P/C/F/S chips. The meal list shows the last two meals, the rest scrolls. Editing (pencil or tap on the text, `foodEditRow`): a full-width text box that grows with the text (`autoGrow`, no sideways scrolling, 16 px so iOS does not zoom), below it time, kcal, Save and Cancel; Enter saves, Escape cancels; while editing the list shows the whole edit row.
 
 ## Ideas for later
 - Strategy signal panel (for example price versus 200-day average)
