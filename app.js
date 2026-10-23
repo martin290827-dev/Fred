@@ -277,10 +277,19 @@ function shopEditRow(it) {
 /* ---------- Notes (free text, saved in this browser while you type) ---------- */
 let notesTimer = null;
 
+// The note box grows with its text (up to 60 % of the screen), for browsers without CSS field-sizing
+function growNotes() {
+  const box = $('notes');
+  if (!box || CSS.supports('field-sizing', 'content')) return;
+  box.style.height = 'auto';
+  box.style.height = Math.min(box.scrollHeight + 2, Math.round(innerHeight * 0.6)) + 'px';
+}
+
 function initNotes() {
   const box = $('notes');
   box.value = store.get('notes', '');
   box.addEventListener('input', () => {
+    growNotes();
     $('notes-status').textContent = 'Saving...';
     clearTimeout(notesTimer);
     notesTimer = setTimeout(() => {
@@ -290,6 +299,8 @@ function initNotes() {
   });
   // save at once when leaving the page, so nothing typed is lost
   window.addEventListener('beforeunload', () => { if (notesTimer) store.set('notes', box.value); });
+  box.addEventListener('focus', growNotes); // also after the tab with the note became visible
+  requestAnimationFrame(growNotes);
   $('notes-share').addEventListener('click', shareNote);
   $('notes-clear').addEventListener('click', clearNote);
   $('notes-mic').addEventListener('click', toggleDictation);
@@ -397,6 +408,11 @@ async function shareNote() {
 }
 
 /* ---------- Settings ---------- */
+
+// Compact "this needs a setting" line with a button that opens Settings (instead of a big empty card)
+function setupLine(text, tag) {
+  return el(tag || 'p', { class: 'setup' }, el('span', {}, text), el('button', { type: 'button', class: 'ghost small', onclick: openSettings }, 'Open Settings'));
+}
 
 function openSettings() {
   $('set-geo').checked = useGeo;

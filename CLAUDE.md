@@ -39,6 +39,13 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 - Macros: the Trends charts show a day only if EVERY meal of that day has protein, carbs and fat. `fillMacros` / `backfillMacros` fill missing ones at start (30 per start); meals with own kcal keep them and the estimate is scaled to it. The hover text of an empty bar names the meals without macros (`missingNote`).
 - Food meal row: text (up to 3 lines, field limit 1500 characters), buttons at its right, below it time, kcal and P/C/F/S chips. The meal list shows the last two meals, the rest scrolls. Editing (pencil or tap on the text, `foodEditRow`): a full-width text box that grows with the text (`autoGrow`, no sideways scrolling, 16 px so iOS does not zoom), below it time, kcal, Save and Cancel; Enter saves, Escape cancels; while editing the list shows the whole edit row.
 
+## Look (Oct 2026 visual pass)
+- Phone (max-width 700 px): every card is as tall as its content (no fixed height, no scrolling inside a card, `fitRows` does nothing); only the agenda (`#cal-list`, 65vh) and the market news (75vh) keep their own scroll area. Desktop keeps equal card heights.
+- Summaries: rows built by `bsRow` (now.js, also used by nsum.js); the change is an arrow ▲/▼ with the amount (`chArrow`), green or red for better or worse (title says which), grey for neutral; numbers use `fmtN` (thousands separator). On the phone each row stacks: label + value, below it "before …" and the change.
+- Weight chart: narrower viewBox on the phone (360 wide) so the text stays readable, a middle value on the axis, the goal date under the end point, the first-day label is left out when it would touch "today".
+- Empty states: `setupLine(text)` in app.js = one compact line with an "Open Settings" button (Tasks without Client ID, Tips card / Weekly / summaries without Anthropic key). The Tips refresh button is hidden without a key.
+- Sparklines are green or red by their 30-day change. Weight & Goal: the weight and waist inputs open with "+ Weight" / "+ Waist" (`wOpen`), open by default when there is no value yet; the waist risk text is coloured. Recovery shows the newest night with its date ("Last night with data") instead of a dash when today's row is missing. Heatmap: Refresh and Size sit in the card heading, the snapshot line is plain text. Inner panels use `--card-2` (dark mode: no black holes). Notes grow with the text (`field-sizing: content`, `growNotes` fallback; 140 px to 60vh).
+
 ## Ideas for later
 - Strategy signal panel (for example price versus 200-day average)
 - Edit for tasks and shopping list
