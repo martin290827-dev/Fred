@@ -69,8 +69,8 @@ function weeklyAiBlock(start, cur, prev) {
     ...(r.wins && r.wins.length ? [el('div', { class: 'food-sub' }, 'Went well'), el('ul', { class: 'wk-ul' }, ...r.wins.map((x) => el('li', {}, x)))] : []),
     ...(r.focus && r.focus.length ? [el('div', { class: 'food-sub' }, 'Next week'), el('ul', { class: 'wk-ul' }, ...r.focus.map((x) => el('li', {}, x)))] : []))
     : r && r.err ? el('p', { class: 'food-err small' }, r.err)
-      : el('p', { class: 'muted small' }, anthropicKey ? 'A short written summary of the week. Links between areas are hints, not proof.' : 'Add an Anthropic key in Settings for a written summary.');
-  return el('div', { class: 'wk-sec' }, el('div', { class: 'food-sub' }, 'Summary'), body, el('div', { class: 'pk-btns' }, btn));
+      : anthropicKey ? el('p', { class: 'muted small' }, 'A short written summary of the week. Links between areas are hints, not proof.') : setupLine('A written summary needs your Anthropic key.');
+  return el('div', { class: 'wk-sec' }, el('div', { class: 'food-sub' }, 'Summary'), body, anthropicKey ? el('div', { class: 'pk-btns' }, btn) : '');
 }
 
 function renderWeekly() {

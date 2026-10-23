@@ -584,7 +584,9 @@ function goalPace() {
 // Progress chart: weigh-ins, 7-day average, goal line and a dashed forecast to the goal date.
 function progressChart(g) {
   const pts = [...weight].sort((a, b) => a.d.localeCompare(b.d));
-  const W = 600, H = 200, L = 56, R = 8, B = 24, T = 14;
+  // the phone draws a narrower chart, so the same font size stays readable (the SVG is scaled to the card width)
+  const phone = matchMedia('(max-width: 700px)').matches;
+  const W = phone ? 360 : 600, H = phone ? 210 : 200, L = phone ? 46 : 56, R = 8, B = 24, T = 14;
   const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart pchart', role: 'img', 'aria-label': 'Weight progress and forecast to the goal' });
   const day = (d) => Math.round((new Date(d + 'T00:00') - new Date(pts[0].d + 'T00:00')) / 86400000);
   const todayN = day(toDateStr(new Date()));
@@ -598,6 +600,8 @@ function progressChart(g) {
   const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
   const gl = (v, cls) => svg.append(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: cls }));
   gl(g.start, 'grid'); gl(g.goal, 'wgoal');
+  const mid = Math.round((g.start + g.goal) / 2); // a middle value, so the axis can be read
+  if (Math.abs(y(mid) - y(g.start)) > 24 && Math.abs(y(mid) - y(g.goal)) > 24) { gl(mid, 'grid'); svg.append(svgEl('text', { x: L - 6, y: y(mid) + 4, class: 'ax', 'text-anchor': 'end' }, fmtKg(mid))); }
   svg.append(svgEl('text', { x: L - 6, y: y(g.start) + 4, class: 'ax', 'text-anchor': 'end' }, fmtKg(g.start)), svgEl('text', { x: L - 6, y: y(g.goal) + 4, class: 'ax wgoal-l', 'text-anchor': 'end' }, fmtKg(g.goal)));
   svg.append(svgEl('line', { x1: x(todayN), x2: x(todayN), y1: T, y2: H - B, class: 'grid' })); // today
   if (pts.length > 1) svg.append(svgEl('polyline', { points: pts.map((p) => x(day(p.d)).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline raw' }));
@@ -616,14 +620,17 @@ function progressChart(g) {
   if (pace > 0.05 && left > 0) {
     const endY = Math.max(g.goal, now - (pace / 7) * (endN - todayN));
     svg.append(svgEl('line', { x1: x(todayN), y1: y(now), x2: x(endN), y2: y(endY), class: 'wproj' }), svgEl('circle', { cx: x(endN), cy: y(endY), r: 4, class: 'wproj-dot' }));
-    if (wks !== null && wks <= 104) svg.append(svgEl('text', { x: x(endN), y: y(endY) - 9, class: 'ax', 'text-anchor': endN > span * 0.8 ? 'end' : 'middle' }, addDays(new Date(), wks * 7).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })));
+    // goal date under the end point, clear of the dashed line that comes in from above
+    if (wks !== null && wks <= 104) svg.append(svgEl('text', { x: x(endN), y: Math.min(H - 4, y(endY) + 18), class: 'ax wgoal-l', 'text-anchor': endN > span * 0.8 ? 'end' : 'middle' }, DF_SHORT.format(addDays(new Date(), wks * 7))));
   }
   pts.forEach((p, i) => {
     const gr = svgEl('g', { class: 'wdot' });
     gr.append(svgEl('title', {}, shortDay(p.d) + ': ' + fmtKg(p.kg) + ' kg'), svgEl('circle', { cx: x(day(p.d)), cy: y(p.kg), r: 9, class: 'hit' }), svgEl('circle', { cx: x(day(p.d)), cy: y(p.kg), r: i === pts.length - 1 ? 4 : 3 }));
     svg.append(gr);
   });
-  svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(pts[0].d)), svgEl('text', { x: x(todayN), y: H - 4, class: 'ax', 'text-anchor': todayN > span * 0.9 ? 'end' : 'middle' }, 'today'));
+  // first day and "today" under the axis; the first day is left out when it would touch "today"
+  if (x(todayN) - L > 80) svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(pts[0].d)));
+  svg.append(svgEl('text', { x: x(todayN), y: H - 4, class: 'ax', 'text-anchor': todayN > span * 0.9 ? 'end' : x(todayN) - L < 30 ? 'start' : 'middle' }, 'today'));
   return svg;
 }
 
@@ -938,6 +945,16 @@ function foodHistList() {
   return el('datalist', { id: 'food-hist' }, ...out.map((v) => el('option', { value: v })));
 }
 
+// The weight and waist fields stay closed until you tap their button (saves room); open when there is no value yet.
+let wOpen = ''; // 'wt' | 'wa' | ''
+function wtToggle(kind, label) {
+  const open = wOpen === kind;
+  return el('button', { type: 'button', class: 'ghost small wt-add', 'aria-expanded': String(open), onclick: () => {
+    wOpen = open ? '' : kind; renderFood();
+    if (!open) requestAnimationFrame(() => { const i = $(kind === 'wt' ? 'wt-in' : 'wa-in'); if (i) i.focus(); });
+  } }, open ? 'Close' : label);
+}
+
 // Small form in the Weight & Goal card: type today's weight, Enter or Save.
 function wtForm(w, today) {
   const inp = el('input', { type: 'text', id: 'wt-in', inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight today in kg', placeholder: w && w.d === today ? 'Change today (kg)' : 'Weight today (kg)' });
@@ -946,6 +963,7 @@ function wtForm(w, today) {
     ev.preventDefault();
     if (!saveTodayWeight(inp.value)) { inp.setAttribute('aria-invalid', 'true'); return; }
     inp.blur();
+    wOpen = '';
     renderFood();
   });
   return form;
@@ -959,6 +977,7 @@ function waForm(w, today) {
     ev.preventDefault();
     if (!saveTodayWaist(inp.value)) { inp.setAttribute('aria-invalid', 'true'); return; }
     inp.blur();
+    wOpen = '';
     renderFood();
   });
   return form;
@@ -1019,7 +1038,8 @@ function renderFood() {
         bmi !== null ? ' \u00b7 BMI ' + fmtKg(bmi) : '',
         dw !== null ? ' \u00b7 ' : '',
         dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')),
-    wtForm(w, today));
+    w ? wtToggle('wt', w.d === today ? 'Change' : '+ Weight') : '',
+    !w || wOpen === 'wt' || wtyping !== null ? wtForm(w, today) : '');
 
   // Waist: entered once a week; the change is against the entry before (not against 7 days ago)
   const wa = waistOn(today);
@@ -1027,14 +1047,16 @@ function renderFood() {
   const dwa = wa && waBefore ? wa.cm - waBefore.cm : null;
   const ref = waistRef();
   const refTxt = wa && ref ? (wa.cm < ref[0] ? 'lower risk' : wa.cm < ref[1] ? 'above ' + ref[0] + ' cm: higher risk' : 'above ' + ref[1] + ' cm: high risk') : '';
+  const refCls = wa && ref ? (wa.cm < ref[0] ? 'good' : wa.cm < ref[1] ? 'mid' : 'high') : ''; // colour of the risk text
   const waForBlock = el('div', { class: 'food-weight' },
     el('div', { class: 'grow' },
       el('div', { class: 'wt-v' }, wa ? fmtKg(wa.cm) : '\u2013', el('span', { class: 'wt-u' }, ' cm waist')),
       el('div', { class: 'muted small' }, wa ? (wa.d === today ? 'Today' : shortDay(wa.d)) : 'Enter your waist below, once a week',
-        refTxt ? ' \u00b7 ' + refTxt : '',
+        refTxt ? ' \u00b7 ' : '', refTxt ? el('span', { class: 'wa-risk ' + refCls }, refTxt) : '',
         dwa !== null ? ' \u00b7 ' : '',
         dwa !== null ? el('span', { class: 'wt-d ' + (dwa < -0.05 ? 'good' : dwa > 0.05 ? 'bad' : '') }, Math.abs(dwa) < 0.05 ? 'same as before' : (dwa > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dwa)) + ' cm vs ' + shortDay(waBefore.d)) : '')),
-    waForm(wa, today));
+    wa ? wtToggle('wa', wa.d === today ? 'Change' : '+ Waist') : '',
+    !wa || wOpen === 'wa' || watyping !== null ? waForm(wa, today) : '');
 
   const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %' + (dataStatus().ok ? ' \u00b7 \u2713 measured' : ''), goalBlock());
   // Trends: one range for all charts, like Apple Health (W / M / 3M)

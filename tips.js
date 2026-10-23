@@ -184,10 +184,11 @@ function renderTips(force) {
   const box = $('tips');
   if (!box) return;
   if (!force && box.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return; // typing: do not redraw
+  const btn = $('tips-refresh');
+  if (btn) { btn.hidden = !anthropicKey; btn.disabled = allBusy; btn.classList.toggle('busy', allBusy); } // no key: no refresh button
+  if (!anthropicKey) { box.replaceChildren(setupLine('“Missing today” and “What shall I cook?” need your Anthropic key.')); return; }
   const p2 = hcard('check', 'green', 'Missing today', '', gapsBlock());
   const p3 = hcard('meals', 'pink', 'What shall I cook?', '', cookBlock());
-  const btn = $('tips-refresh');
-  if (btn) { btn.disabled = allBusy; btn.classList.toggle('busy', allBusy); }
   const keep = document.activeElement && document.activeElement.id === 'cook-text' ? [document.activeElement.selectionStart] : null;
   box.replaceChildren(el('div', { class: 'food-col' }, p2, p3)); // missing today, cook
   if (keep) { const i = $('cook-text'); i.focus(); i.setSelectionRange(keep[0], keep[0]); }

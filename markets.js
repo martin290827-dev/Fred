@@ -284,7 +284,7 @@ function sparkSVG(values, name) {
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);
-  svg.setAttribute('class', 'spark');
+  svg.setAttribute('class', 'spark ' + (pct >= 0 ? 'up' : 'down')); // the line is green or red by the 30-day change
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', text);
   const title = document.createElementNS(NS, 'title');
@@ -412,6 +412,7 @@ function poll(fn, ms) {
 }
 
 function fitRows(ul, n) {
+  if (matchMedia('(max-width: 700px)').matches) { ul.style.maxHeight = ''; return; } // phone: cards grow with their content
   requestAnimationFrame(() => {
     const rows = [...ul.children];
     if (rows.length <= n) { ul.style.maxHeight = ''; return; }

@@ -191,7 +191,7 @@ function renderCalendar() {
     else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
   }
   const items = gAgendaItems();
-  if (!googleClientId) ul.append(el('li', { class: 'muted empty' }, 'Add your Google Client ID in Settings to see your calendar.'));
+  if (!googleClientId) ul.append(setupLine('Your calendar shows here once a Google Client ID is set.', 'li'));
   else if (!gHasToken() && !gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Not connected.'));
   if (!items.length && gHasToken()) ul.append(el('li', { class: 'muted' }, 'Nothing coming up.'));
   if (!items.length && gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Google session ended. Use the Reconnect button.'));

@@ -1377,3 +1377,53 @@ body[data-tab="body"] { --card-h: 700px; }
 .food-edit-bar input[type="time"] { width: 110px; }
 .food-edit-bar input[inputmode="numeric"] { width: 90px; }
 .food-list .meal-t { cursor: pointer; }
+
+/* ---------- phone: every card is as tall as its content (no fixed height, no scrolling inside a card) ----------
+   Only very long lists keep their own scroll area: the agenda (a year of events) and the market news. */
+@media (max-width: 700px) {
+  .card, .card-wide, #card-news, .grid > :is(#card-bodysum, #card-nutsum) { height: auto !important; max-height: none !important; overflow: visible; }
+  .card .cardbody { flex: none !important; overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
+  .cardbody > ul.list { flex: none !important; overflow: visible !important; min-height: 0 !important; }
+  .food-list, .fpanel .food-list { max-height: none !important; overflow: visible !important; }
+  #cal-list { max-height: 65vh !important; overflow-y: auto !important; overscroll-behavior: contain; }
+  #news { max-height: 75vh; overflow-y: auto; overscroll-behavior: contain; }
+  .bs-seg { position: static; } /* nothing scrolls inside the card any more */
+  #notes { min-height: 160px; }
+}
+
+/* summaries on the phone: label left, value right; below it small the value before and the change */
+@media (max-width: 700px) {
+  .bs-head { display: none; }
+  .bs-line.bs-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l v" "o c"; row-gap: 2px; align-items: baseline; }
+  .bs-row .bs-l { grid-area: l; font-size: 0.9rem; color: var(--text); padding-top: 0; }
+  .bs-row .bs-v { grid-area: v; text-align: right; font-size: 1rem; }
+  .bs-row .bs-o { grid-area: o; font-size: 0.78rem; }
+  .bs-row .bs-o:not(:empty)::before { content: "before "; }
+  .bs-row .bs-ch { grid-area: c; text-align: right; font-size: 0.8rem; }
+}
+
+/* compact "needs a setting" line with a button (setupLine in app.js) */
+.setup { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--card-2); color: var(--muted); font-size: 0.88rem; line-height: 1.35; list-style: none; }
+.setup span { flex: 1 1 180px; }
+.setup button { flex: none; }
+.empty { min-height: 120px; }
+
+/* sparklines take the colour of their 30-day change */
+.spark.up polyline { stroke: var(--up); } .spark.down polyline { stroke: var(--down); }
+.spark.up circle { fill: var(--up); } .spark.down circle { fill: var(--down); }
+
+/* Weight & Goal: the input opens with a small button; the waist risk text is coloured */
+.wt-add { flex: none; align-self: center; }
+.wa-risk.good { color: var(--up); font-weight: 600; } .wa-risk.mid { color: var(--warn); font-weight: 600; } .wa-risk.high { color: var(--down); font-weight: 600; }
+
+/* dark mode: inner panels one step lighter than the card (black looked like holes); light mode is unchanged (same colour) */
+.food { --panel: var(--card-2); }
+
+/* Notes: the card grows with the text instead of a fixed tall box (field-sizing where the browser has it, JS otherwise) */
+#card-notes { height: auto !important; }
+#card-notes .cardbody { overflow: visible; }
+#notes { flex: none; field-sizing: content; min-height: 140px; max-height: 60vh; overflow-y: auto; }
+
+/* heatmap: the period buttons use the full width (up to 420 px) now that Refresh and Size sit in the heading */
+.heat-row { align-self: stretch; }
+.heat-row .heat-seg { margin: 0 auto; }

@@ -120,14 +120,18 @@ function renderHeat(load) {
   if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted small' }, 'Add tickers with the + in the Tickers card first.')); return; }
   const seg = el('div', { class: 'heat-seg', role: 'tablist', 'aria-label': 'Period' }, ...Object.keys(HEAT_INFO).map((p) =>
     el('button', { type: 'button', role: 'tab', class: 'heat-btn' + (p === heat.period ? ' on' : ''), 'aria-selected': String(p === heat.period), onclick: () => { heat = Object.assign({}, heat, { period: p }); store.set('heat', heat); renderHeat(false); } }, p)));
-  const ctl = el('div', { class: 'heat-row' }, seg,
-    el('button', { type: 'button', class: 'heat-btn', onclick: () => { for (const k in heatFail) delete heatFail[k]; loadQuotes(); } }, 'Refresh'),
-    el('button', { type: 'button', class: 'heat-btn', onclick: () => { heat = Object.assign({}, heat, { size: heat.size === 'move' ? 'equal' : 'move' }); store.set('heat', heat); renderHeat(false); } }, 'Size: ' + (heat.size === 'move' ? 'Move' : 'Equal')));
-  const snap = el('div', { class: 'heat-snap small' }, el('span', { class: 'heat-badge' }, 'Snapshot'), HEAT_INFO[heat.period].title + ' \u00b7 ' +
+  const sz = $('heat-size'); if (sz) sz.textContent = 'Size: ' + (heat.size === 'move' ? 'Move' : 'Equal'); // Refresh and Size sit in the card heading
+  const ctl = el('div', { class: 'heat-row' }, seg);
+  const snap = el('div', { class: 'heat-snap small' }, HEAT_INFO[heat.period].title + ' \u00b7 prices from ' +
     (lastQuotesAt ? new Date(lastQuotesAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'loading...'));
   box.replaceChildren(ctl, snap,
     el('div', { class: 'heat-grid' + (heat.size === 'move' ? ' move' : '') }, ...tickers.map((s) => heatTile(s, heat.period))));
   if (load) heatLoad();
 }
 
-function initHeat() { renderHeat(true); }
+function initHeat() {
+  const r = $('heat-refresh'), sz = $('heat-size');
+  if (r) r.addEventListener('click', () => { for (const k in heatFail) delete heatFail[k]; loadQuotes(); });
+  if (sz) sz.addEventListener('click', () => { heat = Object.assign({}, heat, { size: heat.size === 'move' ? 'equal' : 'move' }); store.set('heat', heat); renderHeat(false); });
+  renderHeat(true);
+}

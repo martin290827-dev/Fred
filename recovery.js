@@ -346,7 +346,8 @@ function renderRecovery() {
   const lastD = new Date(endStr + 'T00:00');
   const dayList = Array.from({ length: N }, (_, i) => toDateStr(addDays(lastD, -(N - 1 - i))));
   const byDate = new Map(scored.map((r) => [r.d, r]));
-  const last = byDate.get(endStr) || { d: endStr, missing: true }; // no row for today: every figure of the day shows a dash
+  const stale = !byDate.has(endStr); // no row for today: the newest night is shown, with its date and a hint to import
+  const last = byDate.get(endStr) || newest;
   const winRows = dayList.map((d) => byDate.get(d)).filter(Boolean);
   const series = (fn) => dayList.map((d) => ({ d, v: byDate.has(d) ? fn(byDate.get(d)) : null }));
   const avgOf = (list, key) => { const v = list.map((r) => r[key]).filter((x) => x != null); return v.length ? rcMean(v) : null; };
@@ -356,15 +357,14 @@ function renderRecovery() {
   // average score over the last n nights (only nights that have a score)
   const avgScore = (n) => { const from = toDateStr(addDays(lastD, -(n - 1))); const v = scored.filter((r) => r.d >= from && r.score != null).map((r) => r.score); return v.length ? Math.round(rcMean(v)) : null; };
   const avgChip = (label, v) => el('span', { class: 'rc-avg' }, label + ' ', el('b', { class: v != null ? 'rc-t-' + RC_RULES.score(v) : '' }, v != null ? String(v) : '–'));
-  const scoreBlock = last.missing
-    ? el('div', { class: 'rc-nodata' }, el('div', { class: 'rc-score' }, '\u2013'), el('div', { class: 'muted small' }, 'No data for today yet \u2013 load the latest Whoop CSVs (Data, below).'))
-    : last.score == null
+  const staleNote = stale ? el('p', { class: 'small rc-hint' }, 'Newest night: ' + rcShort(last.d) + '. Load the latest Whoop CSVs for today (Data, below).') : '';
+  const scoreBlock = last.score == null
     ? el('div', { class: 'muted small' }, Math.max(1, RC_BASELINE_MIN - rows.length + 1) + ' more nights until the first baseline.')
     : el('div', {},
       el('div', { class: 'rc-hero' },
         el('div', { class: 'rc-score rc-t-' + RC_RULES.score(last.score) }, String(last.score)),
         el('div', { class: 'muted small' }, BAND_LABEL[scoreBand(last.score)])),
-      el('div', { class: 'rc-avgs' }, avgChip('Ø 7 days', avgScore(7)), avgChip('Ø 15 days', avgScore(15)), avgChip('Ø 30 days', avgScore(30))));
+      el('div', { class: 'rc-avgs' }, avgChip('Ø 7 days', avgScore(7)), avgChip('Ø 15 days', avgScore(15)), avgChip('Ø 30 days', avgScore(30))), staleNote);
   const tiles = el('div', { class: 'kpis' },
     rcTile('HRV', last.hrv != null ? last.hrv + ' ms' : '–', rcDelta(last.hrv, last.baseHrv, 'ms', true)),
     rcTile('Resting HR', last.rhr != null ? last.rhr + ' bpm' : '–', rcDelta(last.rhr, last.baseRhr, 'bpm', false)),
@@ -432,7 +432,7 @@ function renderRecovery() {
     rcLegend(['g', '67 and more'], ['o', '34–66'], ['r', 'under 34']));
 
   box.replaceChildren(el('div', { class: 'food-col' }, rcStaleNote(newest), rcRangeSeg(),
-    rcPanel('pulse', 'indigo', 'Today', 'night to ' + rcShort(last.d), scoreBlock, tiles, strainHint),
+    rcPanel('pulse', 'indigo', stale ? 'Last night with data' : 'Today', 'night to ' + rcShort(last.d), scoreBlock, tiles, strainHint),
     trendPanel,
     rcPanel('tray', 'gray', 'Data', '', importRow(),
       el('p', { class: 'muted small' }, 'The Fred Score is our own estimate (HRV and resting heart rate versus your rolling baseline, minus sleep debt), not a Whoop value. After a device change the baseline settles within about 1–2 weeks.'))));

@@ -246,7 +246,7 @@ const BS_ROWS = [
   // training volume is not "better" or "worse" (up = null): only the change is shown
   ['Workouts', 'sessions', (v) => String(Math.round(v)), 1, null],
   ['Training time', 'trMin', (v) => rcHmShort(v), 20, null],
-  ['Training energy', 'trKcal', (v) => Math.round(v) + ' kcal', 100, null],
+  ['Training energy', 'trKcal', (v) => fmtN(v) + ' kcal', 100, null],
 ];
 
 // Change against last week: { text, cls } cls = better | worse | same
@@ -255,10 +255,15 @@ function bsChange(key, cur, old, step, up) {
   const d = cur - old;
   if (Math.abs(d) < step) return { text: 'same', cls: 'same' };
   const unit = { score: '', hrv: ' ms', rhr: ' bpm', sleep: ' min', debt: ' min', eff: ' %', deep: ' pp', spread: ' min', sessions: '', trMin: ' min', trKcal: ' kcal' }[key];
-  const text = (d > 0 ? '+' : '−') + Math.round(Math.abs(d)) + unit;
-  if (up === null) return { text, cls: 'same' };
-  return { text: text + (d > 0 === up ? ' better' : ' worse'), cls: d > 0 === up ? 'better' : 'worse' };
+  const text = chArrow(d) + fmtN(Math.abs(d)) + unit;
+  if (up === null) return { text, cls: 'same', title: '' };
+  return { text, cls: d > 0 === up ? 'better' : 'worse', title: d > 0 === up ? 'better' : 'worse' };
 }
+// Direction of the change (up / down); green or red says whether that is better or worse.
+const chArrow = (d) => (d > 0 ? '\u25b2 ' : '\u25bc ');
+// One summary row: label, this period, the period before, change. On the phone the CSS stacks it into two lines.
+const bsRow = (r) => el('div', { class: 'bs-line bs-row' }, el('span', { class: 'bs-l' }, r.label), el('b', { class: 'bs-v' }, r.value),
+  el('span', { class: 'muted bs-o' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls, title: r.change.title || '' }, r.change.text));
 
 function bsSummary(f) {
   return BS_ROWS.filter(([, k]) => f.week[k] != null).map(([label, k, fmt, step, up]) => ({
@@ -363,10 +368,10 @@ function renderBodySum() {
     ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
     el('div', { class: 'bs-col' }, el('h3', {}, 'Last ' + f.n + ' nights' + (f.week.from ? ' \u00b7 ' + rcShort(f.week.from) + '\u2013' + rcShort(f.week.to) : '')),
       f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'Last ' + f.n), el('span', {}, 'Before'), el('span', {}, 'Change')) : '',
-      ...bsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text))),
+      ...bsSummary(f).map(bsRow),
       ...bsWorkoutList(f)),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
-      note ? el('p', { class: 'muted small' }, note) : '',
+      note ? (anthropicKey ? el('p', { class: 'muted small' }, note) : setupLine('AI tips need your Anthropic key. These are fixed rules.')) : '',
       f.prev ? '' : el('p', { class: 'muted small' }, 'No comparison: only ' + f.prevRows.length + ' night' + (f.prevRows.length === 1 ? '' : 's') + ' before these ' + f.n + ' nights, 4 are needed.'),
       el('p', { class: 'muted small' }, 'Not medical advice. Wrist-band data is an estimate.')));
   bsLoadAi(false);

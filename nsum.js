@@ -42,7 +42,7 @@ function nsBad(key, v, f) {
 
 const NS_ROWS = [
   ['Days logged', 'logged', (v) => Math.round(v) + ' of ' + nsRange, 1],
-  ['Calories per day', 'kcal', (v) => Math.round(v) + ' kcal', 50],
+  ['Calories per day', 'kcal', (v) => fmtN(v) + ' kcal', 50],
   ['Protein per day', 'p', (v) => Math.round(v) + ' g', 5],
   ['Carbs per day', 'c', (v) => Math.round(v) + ' g', 8],
   ['Fat per day', 'f', (v) => Math.round(v) + ' g', 4],
@@ -58,13 +58,13 @@ function nsChange(key, cur, old, step, f) {
   if (Math.abs(d) < step) return { text: 'same', cls: 'same' };
   const unit = { logged: ' days', kcal: ' kcal', p: ' g', c: ' g', f: ' g', s: ' g', kg: ' kg', bmi: '', waist: ' cm' }[key];
   const decimal = key === 'kg' || key === 'bmi' || key === 'waist'; // one decimal for body values
-  const num = (d > 0 ? '+' : '−') + (decimal ? Math.abs(d).toFixed(1) : Math.round(Math.abs(d))) + unit;
+  const num = chArrow(d) + (decimal ? Math.abs(d).toFixed(1) : fmtN(Math.abs(d))) + unit;
   let better = null;
   if (key === 'logged') better = d > 0;
   else if (key === 'kg' || key === 'bmi') better = f.g ? (f.g.goal < f.g.start ? d < 0 : d > 0) : null; // BMI follows the weight goal
   else if (key === 'waist') better = d < 0; // a smaller waist is better
   else { const a = nsBad(key, cur, f), b = nsBad(key, old, f); better = a == null || b == null ? null : a < b; }
-  return { text: num + (better == null ? '' : better ? ' better' : ' worse'), cls: better == null ? 'same' : better ? 'better' : 'worse' };
+  return { text: num, cls: better == null ? 'same' : better ? 'better' : 'worse', title: better == null ? '' : better ? 'better' : 'worse' };
 }
 
 function nsSummary(f) {
@@ -161,9 +161,9 @@ function renderNutSum() {
     ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
     el('div', { class: 'bs-col' }, el('h3', {}, 'Last ' + f.n + ' days · ' + rcShort(f.week.from) + '–' + rcShort(f.week.to) + (f.week.cheat ? ' · ' + f.week.cheat + ' cheat day' + (f.week.cheat > 1 ? 's' : '') : '')),
       f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'Last ' + f.n), el('span', {}, 'Before'), el('span', {}, 'Change')) : '',
-      ...nsSummary(f).map((r) => el('div', { class: 'bs-line' }, el('span', { class: 'bs-l' }, r.label), el('b', {}, r.value), el('span', { class: 'muted' }, r.old), el('span', { class: 'bs-ch ' + r.change.cls }, r.change.text)))),
+      ...nsSummary(f).map(bsRow)),
     el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
-      note ? el('p', { class: 'muted small' }, note) : '',
+      note ? (anthropicKey ? el('p', { class: 'muted small' }, note) : setupLine('AI tips need your Anthropic key. These are fixed rules.')) : '',
       f.prev ? '' : el('p', { class: 'muted small' }, 'No comparison: the ' + f.n + ' days before (' + rcShort(f.prevAll.from) + '–' + rcShort(f.prevAll.to) + ') have only ' + f.prevAll.logged + ' logged day' + (f.prevAll.logged === 1 ? '' : 's') + ', 3 are needed.'),
       el('p', { class: 'muted small' }, 'Averages count only days with entries. Calories and macros are estimates.')));
   nsLoadAi(false);
