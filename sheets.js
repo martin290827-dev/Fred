@@ -290,20 +290,40 @@ async function shSyncSet(set, read) {
   }
 }
 
-async function shSync() {
+/* Cheap check first: the minute timer only asks Drive when the Sheet was last changed (a tiny answer). If nothing
+   changed here or there since the last full sync, the full download of all tabs is skipped. A full sync still runs
+   when something changed here, when you come back to Fred, and at least every 10 minutes. */
+let shDirty = true, shMod = '', shFullAt = 0;
+const SH_FULL_EVERY = 10 * 60000;
+const shCanSkip = (full, dirty, fullAt, now) => !full && !dirty && now - fullAt < SH_FULL_EVERY;
+async function shModTime() {
+  const r = await (await driveFetch(DRIVE + '/' + shId + '?fields=modifiedTime')).json();
+  return r.modifiedTime || '';
+}
+
+// full: true (or an event) = always read all tabs; nothing = the minute timer, may stop after the cheap check
+async function shSync(full) {
   clearTimeout(shTimer);
   if (!shReady()) { shMsg = gHasToken() ? 'Sheet: Google needs one more permission. Press Connect.' : 'Sheet: waiting for Google (press Connect).'; shStatus(); return; }
   if (shBusy) { shAgain = true; return; }
   shBusy = true;
   try {
     await shOpen();
+    if (shCanSkip(full, shDirty, shFullAt, Date.now()) && shMod && (await shModTime()) === shMod) {
+      store.set('shOkAt', Date.now()); // checked: this copy is up to date
+      return;
+    }
+    shDirty = false; // a change made while this runs sets it again (shTouch)
     const remote = await shReadAll();
     shWarn = [];
     for (const set of SH_KEYS) await shSyncSet(set, remote[set]);
     if (shWarn.length && typeof banner === 'function') banner('Google Sheet: the tab ' + shWarn.join(', ') + ' was empty. Fred kept the data of this device and wrote it back.', true);
-    store.set('shOkAt', Date.now());
+    shMod = await shModTime(); // after our own writes, so they do not count as a change from elsewhere
+    shFullAt = Date.now();
+    store.set('shOkAt', shFullAt);
     shMsg = 'Saved to Google Sheet ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
+    shDirty = true; // try the full sync again next time
     shMsg = /has not been used|disabled|SERVICE_DISABLED/i.test(e.message)
       ? 'Sheet: turn on the "Google Sheets API" in your Google Cloud project (same project as the Client ID).'
       : 'Sheet: ' + e.message;
@@ -335,14 +355,15 @@ function syncLineUpdate() {
 // Called by store.set: a data set changed here, send it a few seconds later.
 function shTouch(key) {
   if (shApplying || !shSetOf(key)) return;
+  shDirty = true;
   clearTimeout(shTimer);
   shTimer = setTimeout(shSync, 3000);
 }
 
 function shInit() {
-  setInterval(() => { if (!document.hidden) shSync(); syncLineUpdate(); }, 60000);
-  document.addEventListener('visibilitychange', shSync);
-  setTimeout(shSync, 2500);
+  setInterval(() => { if (!document.hidden) shSync(); syncLineUpdate(); }, 60000); // cheap check, full sync only when needed
+  document.addEventListener('visibilitychange', () => shSync(true));
+  setTimeout(() => shSync(true), 2500);
 }
 
 /* ---------- raw Whoop history (all columns of the CSV files) ---------- */

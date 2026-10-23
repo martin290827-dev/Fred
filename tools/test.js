@@ -67,6 +67,21 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
     assert.ok(calls.some((c) => c.startsWith('PUT')));
   });
 
+  await test('the minute check skips the full download when nothing changed', async () => {
+    const keep = { shReady: ctx.shReady, shOpen: ctx.shOpen, shModTime: ctx.shModTime, shReadAll: ctx.shReadAll, shStatus: ctx.shStatus };
+    let reads = 0;
+    Object.assign(ctx, { shReady: () => true, shOpen: async () => 'X', shModTime: async () => 'm1', shReadAll: async () => { reads++; throw new Error('stop after the read'); }, shStatus: noop });
+    run("shMod = 'm1'; shDirty = false; shFullAt = Date.now();");
+    await ctx.shSync(); assert.strictEqual(reads, 0, 'unchanged: no download');
+    run("shDirty = true;"); await ctx.shSync(); assert.strictEqual(reads, 1, 'changed here: full sync');
+    run("shDirty = false; shFullAt = Date.now();"); ctx.shModTime = async () => 'm2';
+    await ctx.shSync(); assert.strictEqual(reads, 2, 'changed elsewhere: full sync');
+    run("shDirty = false; shFullAt = Date.now() - 11 * 60000;"); ctx.shModTime = async () => 'm1'; run("shMod = 'm1'");
+    await ctx.shSync(); assert.strictEqual(reads, 3, 'older than 10 min: full sync');
+    run("shDirty = false; shFullAt = Date.now();"); await ctx.shSync(true); assert.strictEqual(reads, 4, 'back in the app: full sync');
+    Object.assign(ctx, keep);
+  });
+
   /* ---- before you eat ---- */
   run("food = []; nutri = { kcal: 2200 };");
   ctx.food.push({ id: '1', at: day(1) + 'T12:00', text: 'Pizza', kcal: 900, p: 35 }, { id: '2', at: day(2) + 'T12:00', text: 'Skyr', kcal: 200, p: 25 }, { id: '3', at: day(0) + 'T08:00', text: 'Brot', kcal: 1500, p: 20 });
@@ -74,6 +89,14 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
     assert.strictEqual(ctx.knownMeal(' pizza ').kcal, 900);
     assert.strictEqual(ctx.knownMeal('Salat 350 kcal').kcal, 350);
     assert.strictEqual(ctx.knownMeal('etwas Neues'), null);
+  });
+  await test('meals grouped by day see new and changed meals', () => {
+    const n0 = ctx.dayTotals(day(2)).n;
+    ctx.food.push({ id: 'x', at: day(2) + 'T20:00', text: 'Nuss', kcal: 100, p: 3 });
+    assert.strictEqual(ctx.dayTotals(day(2)).n, n0 + 1); // the list got longer: grouping is rebuilt
+    ctx.food[ctx.food.length - 1].kcal = 150;
+    assert.ok(ctx.dayTotals(day(2)).kcal >= 150); // an edit in place is seen
+    ctx.food.pop(); run('saveFood = saveFood'); // keep the list as it was
   });
   await test('meal ideas fit the calories left, most protein per kcal first', () => {
     const ideas = ctx.mealIdeas(700, 3).map((e) => e.text);

@@ -30,7 +30,7 @@ const AI_SYSTEM = 'You estimate nutrition for a personal food diary. The input i
   'If the text is not about food or drink, reply with kcal 0 and an empty items list. ' +
   'If a number with kcal is given for an item (for example "Frankfurter 240 kcal"), it belongs only to the item right before it: use exactly that value for this item, estimate every other item, and make the totals the sum of all items. A "#", "+" or comma separates items.';
 
-function saveFood() { store.set('food', food); } // goes to the Sheet tab "Food" (sheets.js)
+function saveFood() { dayIdx = null; store.set('food', food); } // goes to the Sheet tab "Food" (sheets.js)
 function saveWeight() { store.set('weight', weight); } // Sheet tab "Weight"
 function saveWaist() { store.set('waist', waist); } // goes to the Sheet tab "Waist" (sheets.js)
 
@@ -299,10 +299,22 @@ function setCheat(d, on) {
 
 /* ---------- numbers ---------- */
 
+// Meals grouped by day. Built at the first use and kept only while the same list (same array, same length) is in
+// use and until the current task ends, so it can never be stale for long; edits change the meals in place, which it sees.
+let dayIdx = null;
+function foodByDay() {
+  if (dayIdx && dayIdx.src === food && dayIdx.n === food.length) return dayIdx.map;
+  const map = new Map();
+  for (const e of food) { const k = e.at.slice(0, 10); let a = map.get(k); if (!a) map.set(k, (a = [])); a.push(e); }
+  dayIdx = { src: food, n: food.length, map };
+  setTimeout(() => { dayIdx = null; }, 0);
+  return map;
+}
+
 function dayTotals(d) {
   const t = { kcal: 0, p: 0, c: 0, f: 0, s: 0, n: 0, m: 0, ms: 0 };
-  for (const e of food) {
-    if (e.at.slice(0, 10) !== d) continue;
+  for (const e of foodByDay().get(d) || []) {
+    if (e.at.slice(0, 10) !== d) continue; // a time changed in this task
     t.n++;
     if (e.p == null) t.m++; // no protein/carbs/fat known for this entry
     if (e.s == null && (e.kcal != null || e.src === 'manual')) t.ms++; // sugar unknown: meals from before sugar existed, or your own calories
@@ -344,9 +356,13 @@ function waistRef() {
   return nutri.sex === 'm' ? [94, 102] : nutri.sex === 'f' ? [80, 88] : null;
 }
 
-const fmtN = (v) => Math.round(v).toLocaleString('en-US');
-const fmtKg = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const shortDay = (d) => new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+// One formatter each, made once: toLocaleString with options builds a new formatter on every call, which is slow in charts with hundreds of points
+const NF0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const NF1 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const DF_SHORT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+const fmtN = (v) => NF0.format(Math.round(v));
+const fmtKg = (v) => NF1.format(v);
+const shortDay = (d) => DF_SHORT.format(new Date(d + 'T00:00'));
 
 /* ---------- goal and targets ----------
    Protein 1.8 g per kg of goal weight (keeps muscle while losing fat), fat 28 % of calories
@@ -586,7 +602,13 @@ function progressChart(g) {
   svg.append(svgEl('line', { x1: x(todayN), x2: x(todayN), y1: T, y2: H - B, class: 'grid' })); // today
   if (pts.length > 1) svg.append(svgEl('polyline', { points: pts.map((p) => x(day(p.d)).toFixed(1) + ',' + y(p.kg).toFixed(1)).join(' '), class: 'wline raw' }));
   // 7-day average (when weighed often) is the real trend without the daily water swings
-  const avg = pts.map((p) => { const w = pts.filter((q) => q.d <= p.d && q.d >= toDateStr(addDays(new Date(p.d + 'T00:00'), -6))); return [day(p.d), w.reduce((a, q) => a + q.kg, 0) / w.length]; });
+  // sliding window over the sorted weigh-ins (one pass, not every point against every other one)
+  const avg = []; let from = 0, sum = 0;
+  pts.forEach((p, i) => {
+    sum += p.kg;
+    while (day(p.d) - day(pts[from].d) > 6) sum -= pts[from++].kg;
+    avg.push([day(p.d), sum / (i - from + 1)]);
+  });
   const gap = pts.length > 1 ? (day(pts[pts.length - 1].d) / (pts.length - 1)) : 99;
   if (gap <= 2.5 && avg.length > 1) svg.append(svgEl('polyline', { points: avg.map(([n, v]) => x(n).toFixed(1) + ',' + y(v).toFixed(1)).join(' '), class: 'wavg' }));
   // forecast: from where you are now, at your pace, down to the goal
