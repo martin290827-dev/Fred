@@ -98,7 +98,7 @@ header {
   z-index: 10;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  grid-template-areas: "title date btn" "jump jump jump";
+  grid-template-areas: "title date btn" "jump jump jump" "cards cards cards";
   align-items: center;
   gap: 6px 12px;
   /* line the bar up with the card grid (max width 1200px) */
@@ -631,7 +631,7 @@ button.linkbtn:hover { text-decoration: underline; opacity: 1; }
 }
 
 /* ---------- banners ---------- */
-#banners { position: sticky; top: 64px; z-index: 9; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+#banners { position: sticky; top: var(--head-h, 64px); z-index: 9; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .banner {
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
   margin-top: 12px; padding: 12px 16px; border-radius: 16px;
@@ -686,7 +686,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 @media (max-width: 700px) {
   header {
     grid-template-columns: 1fr auto;
-    grid-template-areas: "title btn" "date date";
+    grid-template-areas: "title btn" "date date" "cards cards";
     row-gap: 6px;
     padding: 10px 16px;
     padding-top: max(10px, env(safe-area-inset-top));
@@ -703,7 +703,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
   .cardbody > ul.list { min-height: 0; }
   #card-weather, #card-cal { max-height: none; } /* one common height, set in app.js */
   .card-wide { max-height: none; }
-  #banners { top: 96px; padding: 0 16px; }
+  #banners { top: var(--head-h, 96px); padding: 0 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1427,3 +1427,13 @@ body[data-tab="body"] { --card-h: 700px; }
 /* heatmap: the period buttons use the full width (up to 420 px) now that Refresh and Size sit in the heading */
 .heat-row { align-self: stretch; }
 .heat-row .heat-seg { margin: 0 auto; }
+
+/* jump bar: small buttons to the cards of the open group (in the sticky header) */
+.jumpbar { grid-area: cards; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; justify-content: safe center; padding: 2px 0; margin: 0 -4px; }
+.jumpbar::-webkit-scrollbar { display: none; }
+.jumpbar[hidden] { display: none; }
+.jumpbar button { flex: none; min-height: 0; padding: 5px 12px; border-radius: 999px; background: var(--fill); color: var(--text); font-size: 0.8rem; font-weight: 600; box-shadow: none; white-space: nowrap; }
+.jumpbar button.on { background: var(--text); color: var(--bg); }
+@media (max-width: 700px) {
+  .jumpbar { justify-content: flex-start; margin: 0 -16px; padding: 2px 16px; } /* runs edge to edge, swipe sideways for more */
+}

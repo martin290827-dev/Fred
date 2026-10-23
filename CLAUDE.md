@@ -41,6 +41,7 @@ Sparklines (30 days; Binance for crypto, Twelve Data key for stocks), second wea
 
 ## Look (Oct 2026 visual pass)
 - Phone (max-width 700 px): every card is as tall as its content (no fixed height, no scrolling inside a card, `fitRows` does nothing); only the agenda (`#cal-list`, 65vh) and the market news (75vh) keep their own scroll area. Desktop keeps equal card heights.
+- Jump bar (`#jumpbar`, app.js `renderJumpbar` / `jumpbarMark`, called from `applyLayout`): a row of small buttons in the sticky header, one per visible card of the open group (shown from 3 cards on); tap = `jumpTo` that card; the card at the top of the screen is marked and its button scrolls into view (phone: the row runs edge to edge and swipes sideways). Same on phone and desktop. Banners sit below the header (`--head-h`).
 - Summaries: rows built by `bsRow` (now.js, also used by nsum.js); the change is an arrow ▲/▼ with the amount (`chArrow`), green or red for better or worse (title says which), grey for neutral; numbers use `fmtN` (thousands separator). On the phone each row stacks: label + value, below it "before …" and the change.
 - Weight chart: narrower viewBox on the phone (360 wide) so the text stays readable, a middle value on the axis, the goal date under the end point, the first-day label is left out when it would touch "today".
 - Empty states: `setupLine(text)` in app.js = one compact line with an "Open Settings" button (Tasks without Client ID, Tips card / Weekly / summaries without Anthropic key). The Tips refresh button is hidden without a key.

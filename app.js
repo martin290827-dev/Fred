@@ -562,8 +562,32 @@ function applyLayout() {
   });
   renderLayoutBar();
   renderTabbar();
+  renderJumpbar(visible);
   setHeadHeight();
 }
+
+/* Jump bar: one small button per card of the open group, in the header (it stays at the top while you scroll).
+   Tap = jump to that card; the card you are looking at is marked. Shown from 3 cards on. */
+function renderJumpbar(visible) {
+  const bar = $('jumpbar');
+  if (!bar) return;
+  bar.hidden = visible.length < 3;
+  bar.replaceChildren(...visible.map((id) => el('button', { type: 'button', 'data-card': id, onclick: () => jumpTo($(id)) }, cardTitle($(id)))));
+  jumpbarMark();
+}
+// Mark the card at the top of the screen (the last one whose top has passed under the header)
+function jumpbarMark() {
+  const bar = $('jumpbar');
+  if (!bar || bar.hidden) return;
+  const line = document.querySelector('header').offsetHeight + 40;
+  const btns = [...bar.children];
+  let cur = btns[0];
+  for (const b of btns) { const c = $(b.dataset.card); if (c && c.getBoundingClientRect().top <= line) cur = b; }
+  if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = btns[btns.length - 1]; // at the very end: the last card
+  for (const b of btns) { const on = b === cur; if (b.classList.contains('on') !== on) { b.classList.toggle('on', on); if (on) bar.scrollTo({ left: b.offsetLeft - bar.clientWidth / 2 + b.offsetWidth / 2, behavior: 'smooth' }); } }
+}
+let jumpRaf = 0;
+function initJumpbar() { addEventListener('scroll', () => { if (!jumpRaf) jumpRaf = requestAnimationFrame(() => { jumpRaf = 0; jumpbarMark(); }); }, { passive: true }); }
 
 function setHeadHeight() { document.documentElement.style.setProperty('--head-h', document.querySelector('header').offsetHeight + 'px'); }
 
@@ -831,6 +855,7 @@ function initChartTips() {
 function init() {
   initChartTips();
   initCards();
+  initJumpbar();
   renderEvents();
   initFx();
   renderShop();
