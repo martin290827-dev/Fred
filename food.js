@@ -71,15 +71,32 @@ function matchEnd(str, s) {
   return -1;
 }
 
-// The default model gets triple the token budget (its thinking counts against max_tokens). If it fails for any
-// reason except the key, the older Haiku answers, so a meal is never left without an estimate.
-const AI_FALLBACK = 'claude-haiku-4-5-20251001';
+// How each model is asked. Haiku 5.5 thinks by default and thinking counts against max_tokens, which cut answers off
+// (and then the old Haiku 4.5 answered). Haiku: thinking off, low effort (short JSON jobs). Sonnet: thinks, medium effort,
+// with room for it. The token budget is only a ceiling: you pay for the tokens used.
+const AI_OPTS = {
+  'claude-haiku-5-5': { thinking: { type: 'disabled' }, output_config: { effort: 'low' }, room: 2 },
+  'claude-sonnet-5-5': { output_config: { effort: 'medium' }, room: 4 },
+};
+const isKeyError = (e) => /api key|authentication|401|403/i.test(e.message);
+
+// Haiku 5.5 for everything except the tips. One short retry with the same model on a passing problem (network, overload).
 async function aiJSON(system, text, maxTokens, image, model, timeoutMs) {
   if (model) return aiCall(system, text, maxTokens, image, model, timeoutMs);
-  try { return await aiCall(system, text, (maxTokens || 700) * 3, image, AI_MODEL, timeoutMs); } catch (e) {
-    if (/api key|authentication|401|403/i.test(e.message)) throw e;
-    return aiCall(system, text, maxTokens, image, AI_FALLBACK, timeoutMs);
+  try { return await aiCall(system, text, maxTokens, image, AI_MODEL, timeoutMs); } catch (e) {
+    if (isKeyError(e)) throw e;
+    await new Promise((r) => setTimeout(r, 1500));
+    return aiCall(system, text, maxTokens, image, AI_MODEL, timeoutMs);
   }
+}
+
+// The request body: model settings from AI_OPTS, max_tokens with room for thinking (Haiku 5.5 also writes ~30 % more tokens than 4.5).
+function aiBody(system, text, maxTokens, image, model) {
+  const o = AI_OPTS[model] || { room: 1 };
+  const body = { model, max_tokens: Math.round((maxTokens || 700) * o.room), system, messages: [{ role: 'user', content: image ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text }] : text }] };
+  if (o.thinking) body.thinking = o.thinking;
+  if (o.output_config) body.output_config = o.output_config;
+  return body;
 }
 
 async function aiCall(system, text, maxTokens, image, model, timeoutMs) {
@@ -92,11 +109,12 @@ async function aiCall(system, text, maxTokens, image, model, timeoutMs) {
       'anthropic-dangerous-direct-browser-access': 'true', // the key is yours and stays in this browser
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model: model || AI_MODEL, max_tokens: maxTokens || 700, system, messages: [{ role: 'user', content: image ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text }] : text }] }),
+    body: JSON.stringify(aiBody(system, text, maxTokens, image, model || AI_MODEL)),
   });
   const j = await res.json().catch(() => null);
   if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
   aiTrack(j.model || model || AI_MODEL, j.usage); // billed even if the answer cannot be read
+  if (j.stop_reason === 'refusal') throw new Error('the model declined this request');
   const out = (j.content || []).map((x) => x.text || '').join('');
   try { return parseAiJson(out); } catch (e) {
     // say why: cut off by the token limit, or what the start of the answer looked like
@@ -109,7 +127,7 @@ async function aiCall(system, text, maxTokens, image, model, timeoutMs) {
    (platform.claude.com/docs/en/about-claude/pricing, checked 17 Oct 2026). Thinking tokens count as output.
    Only tokens are stored, so a price change here corrects the numbers for all months.
    aiUse = this device, aiUseOther = the other kind of device (phone / desktop), read from the Google Sheet. */
-const AI_PRICES = { 'claude-haiku-5-5': [0.10, 0.50, 0.50, 2.50], 'claude-sonnet-5-5': [2, 10, 2, 10], 'claude-haiku-4-5': [1, 5, 1, 5] };
+const AI_PRICES = { 'claude-haiku-5-5': [0.10, 0.50, 0.50, 2.50], 'claude-sonnet-5-5': [2, 10, 2, 10], 'claude-haiku-4-5': [1, 5, 1, 5] }; // 4.5: no longer used, kept so older months still add up
 let aiUse = store.get('aiUse', { since: '', m: {} });
 let aiUseOther = store.get('aiUseOther', null);
 
@@ -166,11 +184,11 @@ function renderAiUse() {
 let tipsModelNote = '';
 async function aiTips(system, text, maxTokens) {
   try {
-    const r = await aiJSON(system, text, maxTokens * 3, null, TIPS_MODEL, 40000); // Sonnet writes more words than Haiku
+    const r = await aiJSON(system, text, maxTokens, null, TIPS_MODEL, 60000); // room for thinking: AI_OPTS
     tipsModelNote = '';
     return r;
   } catch (e) {
-    if (/api key|authentication|401|403/i.test(e.message)) throw e;
+    if (isKeyError(e)) throw e;
     tipsModelNote = 'Sonnet failed (' + e.message + '), answered with Haiku.';
     return aiJSON(system, text, maxTokens);
   }

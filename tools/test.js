@@ -82,6 +82,26 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
     assert.strictEqual(ctx.mealIdeas(700, 3).length, 0); // eaten today already: not suggested again
   });
 
+  /* ---- AI requests ---- */
+  await test('Haiku 5.5: thinking off, low effort; Sonnet 5.5: medium effort with room to think', () => {
+    const h = ctx.aiBody('s', 't', 700, null, 'claude-haiku-5-5');
+    assert.strictEqual(h.thinking.type, 'disabled'); assert.strictEqual(h.output_config.effort, 'low'); assert.strictEqual(h.max_tokens, 1400);
+    const so = ctx.aiBody('s', 't', 700, null, 'claude-sonnet-5-5');
+    assert.strictEqual(so.thinking, undefined); assert.strictEqual(so.output_config.effort, 'medium'); assert.strictEqual(so.max_tokens, 2800);
+  });
+  await test('no Haiku 4.5: a failed call is retried with Haiku 5.5', async () => {
+    const used = []; let n = 0;
+    ctx.anthropicKey = 'k'; ctx.renderAiUse = noop;
+    ctx.fetch = async (url, o) => { const b = JSON.parse(o.body); used.push(b.model); n++;
+      if (n === 1) return { ok: false, status: 529, json: async () => ({ error: { message: 'Overloaded' } }) };
+      return { ok: true, json: async () => ({ model: b.model, usage: { input_tokens: 10, output_tokens: 5 }, stop_reason: 'end_turn', content: [{ type: 'text', text: '{"kcal":500}' }] }) }; };
+    const saved = ctx.setTimeout; ctx.setTimeout = (f, ms) => (ms === 1500 ? f() : 0); // the retry runs at once, other timers do not run
+    const j = await ctx.aiJSON('s', 'pizza', 700);
+    ctx.setTimeout = saved;
+    assert.strictEqual(j.kcal, 500);
+    assert.strictEqual(JSON.stringify(used), '["claude-haiku-5-5","claude-haiku-5-5"]');
+  });
+
   /* ---- Nutrition Summary periods ---- */
   await test('nutrition summary: 7 / 15 / 30 days against the same length before', () => {
     run('food = []');
