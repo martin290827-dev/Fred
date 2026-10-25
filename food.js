@@ -849,7 +849,7 @@ function cheatRow(today) {
   const days = lastDays(7).reverse();
   const name = (d) => (d === today ? 'Heute' : new Date(d + 'T00:00').toLocaleDateString('de-AT', { weekday: 'short', day: 'numeric', month: 'short' }));
   const rows = days.filter(isCheatDay).map((d) => el('div', { class: 'cheat-row' },
-    el('span', { class: 'muted small' }, 'Cheat-Day: ' + name(d) + '. In den Diagrammen markiert.'),
+    el('span', { class: 'muted small' }, 'Cheat-Day: ' + name(d) + ' \u2013 in den Diagrammen markiert.'),
     el('button', { type: 'button', class: 'ghost cheat-btn on', onclick: () => setCheat(d, false) }, 'Rückgängig')));
   const free = days.filter((d) => !cheatOfWeek(d));
   if (free.length) {

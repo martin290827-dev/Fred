@@ -888,7 +888,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 .tip { display: flex; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--line); }
 .tip:last-child { border-bottom: 0; }
 .tip-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--c-yellow) 25%, transparent); color: var(--text); font-size: 0.75rem; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
-.tip-b { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tip-b { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .tip-t { font-weight: 600; font-size: 0.88rem; }
 .tip-x { font-size: 0.84rem; color: var(--muted); line-height: 1.35; }
 #health .food-weight { margin-bottom: 10px; }
@@ -935,7 +935,7 @@ body.editing .card { outline: 2px dashed var(--line-2); outline-offset: 4px; }
 :root[data-theme="dark"] .ctip { background: rgba(72, 72, 74, 0.95); }
 
 /* tip kind label: what to cut, swap, add, or keep */
-.tip-k { flex: none; width: 46px; padding: 0 !important; height: 20px; padding: 0 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; display: grid; place-items: center; margin-top: 1px; box-sizing: border-box; background: color-mix(in srgb, var(--c-yellow) 25%, transparent); color: var(--text); }
+.tip-k { flex: none; width: 76px; padding: 0 6px !important; white-space: nowrap; /* fits the German labels (ERGÄNZEN) */ height: 20px; padding: 0 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; display: grid; place-items: center; margin-top: 1px; box-sizing: border-box; background: color-mix(in srgb, var(--c-yellow) 25%, transparent); color: var(--text); }
 .tip-k.k-cut { background: color-mix(in srgb, var(--down) 18%, transparent); color: var(--down); }
 .tip-k.k-swap { background: color-mix(in srgb, var(--c-orange) 20%, transparent); color: var(--c-orange); }
 .tip-k.k-add { background: color-mix(in srgb, var(--c-p) 18%, transparent); color: var(--c-p); }

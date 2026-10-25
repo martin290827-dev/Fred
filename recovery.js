@@ -302,7 +302,7 @@ function rcStaleNote(newest) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days = Math.floor((today - new Date(newest.d + 'T00:00:00')) / 86400000);
   if (days <= RC_STALE_DAYS) return '';
-  return el('p', { class: 'rc-stale' }, 'Letzte Daten vom ' + newest.d.slice(8, 10) + '.' + newest.d.slice(5, 7) + '. \u2013 ' + days + ' Tagen. Bitte neue Whoop-CSVs laden (Erholung \u2192 Daten).');
+  return el('p', { class: 'rc-stale' }, 'Letzte Daten vom ' + newest.d.slice(8, 10) + '.' + newest.d.slice(5, 7) + '., vor ' + days + ' Tagen. Bitte neue Whoop-CSVs laden (Erholung \u2192 Daten).');
 }
 
 function importRow() {
@@ -357,7 +357,7 @@ function renderRecovery() {
   // average score over the last n nights (only nights that have a score)
   const avgScore = (n) => { const from = toDateStr(addDays(lastD, -(n - 1))); const v = scored.filter((r) => r.d >= from && r.score != null).map((r) => r.score); return v.length ? Math.round(rcMean(v)) : null; };
   const avgChip = (label, v) => el('span', { class: 'rc-avg' }, label + ' ', el('b', { class: v != null ? 'rc-t-' + RC_RULES.score(v) : '' }, v != null ? String(v) : '–'));
-  const staleNote = stale ? el('p', { class: 'small rc-hint' }, 'Neueste Nacht: ' + rcShort(last.d) + '. Lade die neuesten Whoop-CSVs für heute (Daten, unten).') : '';
+  const staleNote = stale ? el('p', { class: 'small rc-hint' }, 'Neueste Nacht: ' + rcShort(last.d) + ' \u2013 lade die neuesten Whoop-CSVs für heute (Daten, unten).') : '';
   const scoreBlock = last.score == null
     ? el('div', { class: 'muted small' }, Math.max(1, RC_BASELINE_MIN - rows.length + 1) + ' weitere Nächte bis zur ersten Basislinie.')
     : el('div', {},
