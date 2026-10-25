@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://www.googleapis.com https://sheets.googleapis.com https://api.anthropic.com https://finnhub.io https://api.twelvedata.com https://data-api.binance.vision https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.frankfurter.dev https://api.bigdatacloud.net; frame-src https://accounts.google.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'">
@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Fred">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="theme.js?v=233"></script>
-  <link rel="stylesheet" href="style.css?v=233">
+  <script src="theme.js?v=234"></script>
+  <link rel="stylesheet" href="style.css?v=234">
 </head>
 <body>
   <header>
@@ -21,19 +21,19 @@
     <div id="today" class="today"></div>
     <div class="hright">
       <div class="hbtns">
-        <button id="btn-quick" class="ghost hbtn" type="button" aria-label="Add a meal" title="Add a meal">
+        <button id="btn-quick" class="ghost hbtn" type="button" aria-label="Mahlzeit hinzufügen" title="Mahlzeit hinzufügen">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          <span>Meal</span></button>
-        <button id="btn-layout" class="ghost hbtn" type="button" aria-label="Rearrange or hide cards" title="Layout">
+          <span>Mahlzeit</span></button>
+        <button id="btn-layout" class="ghost hbtn" type="button" aria-label="Kacheln ordnen oder ausblenden" title="Layout">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span>Layout</span></button>
-        <button id="btn-settings" class="ghost hbtn" aria-label="Settings" title="Settings">
+        <button id="btn-settings" class="ghost hbtn" aria-label="Einstellungen" title="Einstellungen">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-          <span>Settings</span></button>
+          <span>Einstellungen</span></button>
       </div>
     </div>
-    <nav id="tabbar" class="tabbar" aria-label="Card groups"></nav>
-    <nav id="jumpbar" class="jumpbar" aria-label="Jump to a card" hidden></nav>
+    <nav id="tabbar" class="tabbar" aria-label="Bereiche"></nav>
+    <nav id="jumpbar" class="jumpbar" aria-label="Zu einer Kachel springen" hidden></nav>
   </header>
 
   <div id="layoutbar" class="layoutbar" hidden></div>
@@ -42,65 +42,65 @@
   <main class="grid">
 
     <section class="card" id="card-now">
-      <h2>Now</h2>
+      <h2>Jetzt</h2>
       <div id="now"></div>
     </section>
 
     <section class="card" id="card-weather">
-      <h2>Weather <span id="weather-place" class="muted"></span> <span class="hacts"><button id="wx-add" class="hicon" type="button" aria-label="Set weather places" title="Places"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></svg></button></span></h2>
+      <h2>Wetter <span id="weather-place" class="muted"></span> <span class="hacts"><button id="wx-add" class="hicon" type="button" aria-label="Wetter-Orte festlegen" title="Orte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></svg></button></span></h2>
       <div id="wx-edit" hidden></div>
-      <div id="weather">Loading...</div>
+      <div id="weather">Lädt…</div>
       <div id="weather2" class="wx2"></div>
     </section>
 
     <section class="card" id="card-cal">
-      <h2>Tasks &amp; Events <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="New task or appointment" title="New" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-scan" class="hicon" type="button" aria-label="Add appointment from a photo" title="Photo" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button><input id="cal-photo" type="file" accept="image/*" hidden><button id="cal-btn" class="ghost small" type="button">Connect</button></span></h2>
+      <h2>Termine &amp; Ereignisse <span class="hacts"><button id="cal-add" class="hicon" type="button" aria-label="Neuer Termin" title="Neu" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="cal-scan" class="hicon" type="button" aria-label="Termin aus einem Foto" title="Foto" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button><input id="cal-photo" type="file" accept="image/*" hidden><button id="cal-btn" class="ghost small" type="button">Verbinden</button></span></h2>
       <div id="cal-edit" hidden></div>
       <ul id="cal-list" class="list"></ul>
       <p class="muted small" id="cal-status" aria-live="polite"></p>
     </section>
 
     <section class="card" id="card-notes">
-      <h2>Notes <span class="hacts"><span id="notes-status" aria-live="polite" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="Dictate into the note" title="Dictate" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Clear note" title="Clear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Share note (for example to Apple Notes)" title="Share to Notes, Mail, ..."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
+      <h2>Notizen <span class="hacts"><span id="notes-status" aria-live="polite" class="muted small"></span><button id="notes-mic" class="hicon" type="button" aria-label="In die Notiz diktieren" title="Diktieren" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button id="notes-clear" class="hicon" type="button" aria-label="Notiz leeren" title="Leeren"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button><button id="notes-share" class="hicon" type="button" aria-label="Notiz teilen (z. B. in Apple Notizen)" title="Teilen: Notizen, Mail, …"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3 8 7M12 3l4 4M6 11H5v10h14V11h-1"/></svg></button></span></h2>
       <p id="notes-hint" class="notes-hint" hidden></p>
-      <textarea id="notes" placeholder="Write anything. It saves by itself." aria-label="Notes" spellcheck="true"></textarea>
+      <textarea id="notes" placeholder="Schreib, was du willst. Es speichert sich selbst." aria-label="Notizen" spellcheck="true"></textarea>
     </section>
 
     <section class="card" id="card-shop">
-      <h2>Shopping List <button id="shop-clear" class="ghost small" type="button">Clear Done</button></h2>
+      <h2>Einkaufsliste <button id="shop-clear" class="ghost small" type="button">Erledigte löschen</button></h2>
       <ul id="shop" class="list"></ul>
       <form id="shop-form" class="row">
-        <input id="shop-text" type="text" placeholder="Add item" required maxlength="60">
-        <button type="submit">Add</button>
+        <input id="shop-text" type="text" placeholder="Eintrag hinzufügen" required maxlength="60">
+        <button type="submit" class="add-btn" aria-label="Hinzufügen" title="Hinzufügen">+</button>
       </form>
     </section>
 
     <section class="card" id="card-tickers">
-      <h2>Tickers <span class="hacts"><button id="tk-add" class="hicon" type="button" aria-label="Add or remove tickers" title="Add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="btn-refresh" class="ghost small">Refresh</button></span></h2>
+      <h2>Ticker <span class="hacts"><button id="tk-add" class="hicon" type="button" aria-label="Ticker hinzufügen oder entfernen" title="Hinzufügen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button id="btn-refresh" class="ghost small">Aktualisieren</button></span></h2>
       <div id="tk-edit" hidden></div>
-      <div id="tickers">Loading...</div>
+      <div id="tickers">Lädt…</div>
       <p class="muted small" id="tickers-status" aria-live="polite"></p>
     </section>
 
     <section class="card card-wide" id="card-heat">
-      <h2>Heatmap <span class="hacts"><button id="heat-size" class="ghost small" type="button" title="Tile size: all equal, or bigger for bigger moves">Size: Equal</button><button id="heat-refresh" class="hicon" type="button" aria-label="Refresh prices" title="Refresh prices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
-      <div id="heat">Loading...</div>
+      <h2>Heatmap <span class="hacts"><button id="heat-size" class="ghost small" type="button" title="Kachelgröße: alle gleich oder größer bei größerer Bewegung">Größe: Gleich</button><button id="heat-refresh" class="hicon" type="button" aria-label="Kurse aktualisieren" title="Kurse aktualisieren"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
+      <div id="heat">Lädt…</div>
     </section>
 
     <section class="card" id="card-calc">
-      <h2>Currency</h2>
+      <h2>Währung</h2>
       <p class="muted small" id="fx-date-line"><span id="fx-date"></span></p>
       <div class="fx-box">
         <div class="fx-row">
-          <input id="fx-amount" type="number" step="any" value="100" aria-label="Amount">
-          <select id="fx-from" aria-label="From currency"></select>
+          <input id="fx-amount" type="number" step="any" value="100" aria-label="Betrag">
+          <select id="fx-from" aria-label="Von Währung"></select>
         </div>
-        <button id="fx-swap" class="fx-swap" type="button" aria-label="Swap currencies" title="Swap">
+        <button id="fx-swap" class="fx-swap" type="button" aria-label="Währungen tauschen" title="Tauschen">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M8 4 4.5 7.5M8 4l3.5 3.5M16 20V4M16 20l-3.5-3.5M16 20l3.5-3.5"/></svg>
         </button>
         <div class="fx-row">
           <div id="fx-result" aria-live="polite">&ndash;</div>
-          <select id="fx-to" aria-label="To currency"></select>
+          <select id="fx-to" aria-label="In Währung"></select>
         </div>
       </div>
       <p class="muted small fx-rate" id="fx-rate"></p>
@@ -108,68 +108,68 @@
     </section>
 
     <section class="card" id="card-nutsum">
-      <h2>Nutrition Summary <span class="hacts"><button id="ns-refresh" class="hicon" type="button" hidden aria-label="New tips" title="New AI tips"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
+      <h2>Ernährung – Übersicht <span class="hacts"><button id="ns-refresh" class="hicon" type="button" hidden aria-label="Neue Tipps" title="Neue KI-Tipps"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
       <div id="nutsum" class="bs"></div>
     </section>
 
     <section class="card" id="card-food">
-      <h2>Food <span id="food-status" aria-live="polite" class="muted small"></span></h2>
+      <h2>Essen <span id="food-status" aria-live="polite" class="muted small"></span></h2>
       <p id="sync-age" class="sync-age" aria-live="polite"></p>
       <div id="food" class="food"></div>
     </section>
 
     <section class="card" id="card-health">
-      <h2>Weight &amp; Goal</h2>
+      <h2>Gewicht &amp; Ziel</h2>
       <div id="health" class="food"></div>
     </section>
 
     <section class="card" id="card-tips">
-      <h2>Health &amp; Nutrition Tips <span class="hacts"><button id="tips-refresh" class="hicon" type="button" aria-label="New tips" title="New tips and check today again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
+      <h2>Gesundheits- &amp; Ernährungstipps <span class="hacts"><button id="tips-refresh" class="hicon" type="button" aria-label="Neue Tipps" title="Neue Tipps und heute neu prüfen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
       <div id="tips" class="food"></div>
     </section>
 
     <section class="card" id="card-trends">
-      <h2>Nutrition Trends</h2>
+      <h2>Ernährung – Verlauf</h2>
       <div id="trends" class="food"></div>
     </section>
 
     <section class="card" id="card-bodysum">
-      <h2>Body Summary <span class="hacts"><button id="bs-refresh" class="hicon" type="button" hidden aria-label="New tips" title="New AI tips"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
+      <h2>Körper – Übersicht <span class="hacts"><button id="bs-refresh" class="hicon" type="button" hidden aria-label="Neue Tipps" title="Neue KI-Tipps"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></svg></button></span></h2>
       <div id="bodysum" class="bs"></div>
     </section>
 
     <section class="card" id="card-recovery">
-      <h2>Recovery</h2>
+      <h2>Erholung</h2>
       <div id="recovery" class="food"></div>
     </section>
 
     <section class="card" id="card-sleep">
-      <h2>Sleep</h2>
+      <h2>Schlaf</h2>
       <div id="sleep" class="food"></div>
     </section>
 
     <section class="card" id="card-habits">
-      <h2>Sleep Habits</h2>
+      <h2>Schlafgewohnheiten</h2>
       <div id="habits" class="food"></div>
     </section>
 
     <section class="card" id="card-patterns">
-      <h2>Patterns</h2>
+      <h2>Muster</h2>
       <div id="patterns"></div>
     </section>
 
     <section class="card" id="card-poker">
-      <h2>Poker Piggy Bank <span class="hacts"><button id="pk-add" class="hicon" type="button" aria-label="New session" title="New session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
+      <h2>Poker-Sparschwein <span class="hacts"><button id="pk-add" class="hicon" type="button" aria-label="Neue Session" title="Neue Session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></h2>
       <div id="poker" class="food"></div>
     </section>
 
     <section class="card" id="card-weekly">
-      <h2>Weekly Review</h2>
+      <h2>Wochenrückblick</h2>
       <div id="weekly" class="food"></div>
     </section>
 
     <section class="card card-wide" id="card-news">
-      <h2>Market News <button id="news-refresh" class="ghost small" type="button">Refresh</button></h2>
+      <h2>Markt-News <button id="news-refresh" class="ghost small" type="button">Aktualisieren</button></h2>
       <div id="news" class="news"></div>
       <p class="muted small" id="news-status" aria-live="polite"></p>
     </section>
@@ -178,100 +178,100 @@
 
   <dialog id="dlg-quick" class="quick">
     <form id="quick-form" class="row">
-      <input id="quick-text" type="text" list="food-hist" maxlength="1500" autocomplete="off" placeholder="What did you eat?" aria-label="What did you eat">
-      <button type="submit">Add</button>
+      <input id="quick-text" type="text" list="food-hist" maxlength="1500" autocomplete="off" placeholder="Was hast du gegessen?" aria-label="Was hast du gegessen">
+      <button type="submit" class="add-btn" aria-label="Hinzufügen" title="Hinzufügen">+</button>
     </form>
     <div id="quick-recent" class="quick-recent"></div>
     <p id="quick-note" class="muted small" aria-live="polite"></p>
-    <button id="quick-close" type="button" class="ghost">Close</button>
+    <button id="quick-close" type="button" class="ghost">Schließen</button>
   </dialog>
 
   <dialog id="dlg-settings">
     <form method="dialog" id="settings-form">
-      <h2>Settings</h2>
+      <h2>Einstellungen</h2>
 
-      <label class="check"><input id="set-geo" type="checkbox"> Use my current location as the main place (this device only)</label>
+      <label class="check"><input id="set-geo" type="checkbox"> Meinen aktuellen Standort als Hauptort verwenden (nur dieses Gerät)</label>
       <span class="muted small" id="set-place-status"></span>
 
-      <label>Finnhub API key (stock prices)
-        <input id="set-key" type="password" autocomplete="off" placeholder="Stored in this browser and your Google Drive sync">
-        <span class="muted small">Free key at finnhub.io. Never put it in the code or the repo.</span>
+      <label>Finnhub-API-Key (Aktienkurse)
+        <input id="set-key" type="password" autocomplete="off" placeholder="Gespeichert in diesem Browser und deinem Google-Drive-Sync">
+        <span class="muted small">Kostenloser Key auf finnhub.io. Nie in den Code oder ins Repo schreiben.</span>
       </label>
 
-      <label>Twelve Data API key (optional, for stock charts)
-        <input id="set-twelve" type="password" autocomplete="off" placeholder="Stored in this browser and your Google Drive sync">
-        <span class="muted small">Free key at twelvedata.com. Without it, only crypto shows a chart.</span>
+      <label>Twelve-Data-API-Key (optional, für Aktiencharts)
+        <input id="set-twelve" type="password" autocomplete="off" placeholder="Gespeichert in diesem Browser und deinem Google-Drive-Sync">
+        <span class="muted small">Kostenloser Key auf twelvedata.com. Ohne ihn zeigt nur Krypto einen Chart.</span>
       </label>
 
-      <h3>Nutrition goal</h3>
+      <h3>Ernährungsziel</h3>
       <div class="nutri-grid">
-        <label>Calories per day <input id="set-kcal" type="text" inputmode="numeric" placeholder="2500"></label>
-        <label>Lose weight by (%) <input id="set-goalpct" type="text" inputmode="decimal" placeholder="10"></label>
-        <label>Start weight kg (optional) <input id="set-startkg" type="text" inputmode="decimal" placeholder="first logged weight"></label>
-        <label>Height cm <input id="set-height" type="text" inputmode="numeric"></label>
-        <label>Birth year <input id="set-birth" type="text" inputmode="numeric"></label>
-        <label>Sex <select id="set-sex"><option value="">–</option><option value="m">male</option><option value="f">female</option></select></label>
-        <label class="wide">Activity <select id="set-activity">
-          <option value="1.3">Mostly sitting</option><option value="1.45">Light activity (walks, 1–2 workouts a week)</option>
-          <option value="1.6">Active (3–5 workouts a week)</option><option value="1.75">Very active (daily sport or physical job)</option></select></label>
-        <label class="check wide"><input id="set-cheaton" type="checkbox"> Cheat day: let me mark one day per week in Food (left out of the tips)</label>
+        <label>Kalorien pro Tag <input id="set-kcal" type="text" inputmode="numeric" placeholder="2500"></label>
+        <label>Abnehmen um (%) <input id="set-goalpct" type="text" inputmode="decimal" placeholder="10"></label>
+        <label>Startgewicht kg (optional) <input id="set-startkg" type="text" inputmode="decimal" placeholder="erstes eingetragenes Gewicht"></label>
+        <label>Größe cm <input id="set-height" type="text" inputmode="numeric"></label>
+        <label>Geburtsjahr <input id="set-birth" type="text" inputmode="numeric"></label>
+        <label>Geschlecht <select id="set-sex"><option value="">–</option><option value="m">männlich</option><option value="f">weiblich</option></select></label>
+        <label class="wide">Aktivität <select id="set-activity">
+          <option value="1.3">Überwiegend sitzend</option><option value="1.45">Leicht aktiv (Spaziergänge, 1–2 Trainings pro Woche)</option>
+          <option value="1.6">Aktiv (3–5 Trainings pro Woche)</option><option value="1.75">Sehr aktiv (täglich Sport oder körperliche Arbeit)</option></select></label>
+        <label class="check wide"><input id="set-cheaton" type="checkbox"> Cheat-Day: einen Tag pro Woche unter Essen markieren können</label>
       </div>
-      <span class="muted small">Used for your protein, carbs and fat targets and the time to your goal. Stored only in your browser and your own Google Drive sync.</span>
+      <span class="muted small">Für deine Ziele bei Protein, Kohlenhydraten und Fett und die Zeit bis zum Ziel. Gespeichert nur in deinem Browser und deinem eigenen Google-Drive-Sync.</span>
 
-      <label>Anthropic API key (optional, for calorie estimates)
-        <input id="set-anthropic" type="password" autocomplete="off" placeholder="Stored only in your browser and your Google Drive sync">
-        <span class="muted small">From console.anthropic.com. Sent to Anthropic: each meal text, your meals of the last 14 days (tips), today&rsquo;s meals and the foods you list when you ask what to cook, photos you scan, and weekly totals for the Weekly Review (sleep, recovery, weight, poker result). Not sent: raw Whoop files, your Sheet, your calendar. Without a key, say "... 500 kcal" yourself.</span>
+      <label>Anthropic-API-Key (optional, für Kalorienschätzungen)
+        <input id="set-anthropic" type="password" autocomplete="off" placeholder="Gespeichert nur in deinem Browser und deinem Google-Drive-Sync">
+        <span class="muted small">Von console.anthropic.com. An Anthropic gesendet: jeder Mahlzeitentext, deine Mahlzeiten der gewählten Tage (Übersicht und Tipps), die heutigen Mahlzeiten und die Lebensmittel, die du beim Kochen-Vorschlag nennst, gescannte Fotos und Wochenwerte für den Wochenrückblick (Schlaf, Erholung, Gewicht, Poker-Ergebnis). Nicht gesendet: Whoop-Rohdateien, dein Sheet, dein Kalender. Ohne Key selbst "... 500 kcal" sagen.</span>
       </label>
       <div id="ai-use" class="muted small ai-use" aria-live="polite"></div>
 
-      <h3>Google Calendar</h3>
+      <h3>Google Kalender</h3>
       <label>Google Client ID
         <input id="set-gclient" type="text" autocomplete="off" placeholder="123456-abc.apps.googleusercontent.com">
-        <span class="muted small">Your own OAuth Client ID. It is not a secret, but it stays in this browser only. Setup steps are in the README.</span>
+        <span class="muted small">Deine eigene OAuth Client ID. Sie ist nicht geheim, bleibt aber nur in diesem Browser. Die Einrichtung steht im README.</span>
       </label>
       <div class="row wrap">
-        <button type="button" id="g-connect" class="ghost">Connect</button>
-        <button type="button" id="g-disconnect" class="ghost">Disconnect</button>
+        <button type="button" id="g-connect" class="ghost">Verbinden</button>
+        <button type="button" id="g-disconnect" class="ghost">Trennen</button>
         <span class="muted small" id="g-status" aria-live="polite"></span>
       </div>
-      <label class="check"><input id="set-sync" type="checkbox" checked> Sync notes and keys between my devices (hidden file in my Google Drive)</label>
+      <label class="check"><input id="set-sync" type="checkbox" checked> Notizen und Keys zwischen meinen Geräten synchronisieren (versteckte Datei in meinem Google Drive)</label>
       <div class="row wrap">
-        <button type="button" id="sync-now" class="ghost small">Sync now</button>
+        <button type="button" id="sync-now" class="ghost small">Jetzt synchronisieren</button>
         <span class="muted small" id="sync-status" aria-live="polite"></span>
         <span class="muted small" id="sheet-status" aria-live="polite"></span>
       </div>
 
       <h3>Backup</h3>
-      <p class="muted small">Your data (tickers, food, weight, poker, Whoop, goals) is saved in the Google Sheet "Fred Daten". This file is a second copy of it, plus your settings and keys. Load it if the Sheet or this browser is ever lost.</p>
-      <label class="check"><input id="bk-keys" type="checkbox" checked> Include API keys and Client ID (keep the file private)</label>
+      <p class="muted small">Deine Daten (Ticker, Essen, Gewicht, Poker, Whoop, Ziele) sind im Google Sheet "Fred Daten" gespeichert. Diese Datei ist eine zweite Kopie davon, dazu Einstellungen und Keys. Lade sie, falls das Sheet oder dieser Browser einmal verloren geht.</p>
+      <label class="check"><input id="bk-keys" type="checkbox" checked> API-Keys und Client ID mitspeichern (Datei privat halten)</label>
       <div class="row wrap">
-        <button type="button" id="bk-export" class="ghost">Download settings</button>
-        <button type="button" id="bk-import" class="ghost">Load settings from file</button>
+        <button type="button" id="bk-export" class="ghost">Einstellungen herunterladen</button>
+        <button type="button" id="bk-import" class="ghost">Einstellungen aus Datei laden</button>
         <input id="bk-file" type="file" accept="application/json,.json" hidden>
         <span class="muted small" id="bk-status" aria-live="polite"></span>
       </div>
 
       <div class="row end">
-        <button type="button" id="set-cancel" class="ghost">Cancel</button>
-        <button id="set-save" value="ok">Save</button>
+        <button type="button" id="set-cancel" class="ghost">Abbrechen</button>
+        <button id="set-save" value="ok">Speichern</button>
       </div>
     </form>
   </dialog>
 
-  <script src="app.js?v=233"></script>
-  <script src="weather.js?v=233"></script>
-  <script src="markets.js?v=233"></script>
-  <script src="gcal.js?v=233"></script>
-  <script src="sync.js?v=233"></script>
-  <script src="food.js?v=233"></script>
-  <script src="tips.js?v=233"></script>
-  <script src="archive.js?v=233"></script>
-  <script src="recovery.js?v=233"></script>
-  <script src="poker.js?v=233"></script>
-  <script src="weekly.js?v=233"></script>
-  <script src="heatmap.js?v=233"></script>
-  <script src="now.js?v=233"></script>
-  <script src="nsum.js?v=233"></script>
-  <script src="sheets.js?v=233"></script>
+  <script src="app.js?v=234"></script>
+  <script src="weather.js?v=234"></script>
+  <script src="markets.js?v=234"></script>
+  <script src="gcal.js?v=234"></script>
+  <script src="sync.js?v=234"></script>
+  <script src="food.js?v=234"></script>
+  <script src="tips.js?v=234"></script>
+  <script src="archive.js?v=234"></script>
+  <script src="recovery.js?v=234"></script>
+  <script src="poker.js?v=234"></script>
+  <script src="weekly.js?v=234"></script>
+  <script src="heatmap.js?v=234"></script>
+  <script src="now.js?v=234"></script>
+  <script src="nsum.js?v=234"></script>
+  <script src="sheets.js?v=234"></script>
 </body>
 </html>

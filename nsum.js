@@ -41,30 +41,30 @@ function nsBad(key, v, f) {
 }
 
 const NS_ROWS = [
-  ['Days logged', 'logged', (v) => Math.round(v) + ' of ' + nsRange, 1],
-  ['Calories per day', 'kcal', (v) => fmtN(v) + ' kcal', 50],
-  ['Protein per day', 'p', (v) => Math.round(v) + ' g', 5],
-  ['Carbs per day', 'c', (v) => Math.round(v) + ' g', 8],
-  ['Fat per day', 'f', (v) => Math.round(v) + ' g', 4],
-  ['Sugar per day', 's', (v) => Math.round(v) + ' g', 3],
-  ['Weight', 'kg', (v) => v.toFixed(1) + ' kg', 0.2],
-  ['BMI', 'bmi', (v) => v.toFixed(1), 0.1], // needs the height in Settings
-  ['Waist', 'waist', (v) => v.toFixed(1) + ' cm', 0.5],
+  ['Tage eingetragen', 'logged', (v) => Math.round(v) + ' von ' + nsRange, 1],
+  ['Kalorien pro Tag', 'kcal', (v) => fmtN(v) + ' kcal', 50],
+  ['Protein pro Tag', 'p', (v) => Math.round(v) + ' g', 5],
+  ['Kohlenhydrate pro Tag', 'c', (v) => Math.round(v) + ' g', 8],
+  ['Fett pro Tag', 'f', (v) => Math.round(v) + ' g', 4],
+  ['Zucker pro Tag', 's', (v) => Math.round(v) + ' g', 3],
+  ['Gewicht', 'kg', (v) => fmtD(v, 1) + ' kg', 0.2],
+  ['BMI', 'bmi', (v) => fmtD(v, 1), 0.1], // needs the height in Settings
+  ['Bauchumfang', 'waist', (v) => fmtD(v, 1) + ' cm', 0.5],
 ];
 
 function nsChange(key, cur, old, step, f) {
   if (cur == null || old == null) return { text: '', cls: '' };
   const d = cur - old;
-  if (Math.abs(d) < step) return { text: 'same', cls: 'same' };
-  const unit = { logged: ' days', kcal: ' kcal', p: ' g', c: ' g', f: ' g', s: ' g', kg: ' kg', bmi: '', waist: ' cm' }[key];
+  if (Math.abs(d) < step) return { text: 'gleich', cls: 'same' };
+  const unit = { logged: ' Tage', kcal: ' kcal', p: ' g', c: ' g', f: ' g', s: ' g', kg: ' kg', bmi: '', waist: ' cm' }[key];
   const decimal = key === 'kg' || key === 'bmi' || key === 'waist'; // one decimal for body values
-  const num = chArrow(d) + (decimal ? Math.abs(d).toFixed(1) : fmtN(Math.abs(d))) + unit;
+  const num = chArrow(d) + (decimal ? fmtD(Math.abs(d), 1) : fmtN(Math.abs(d))) + unit;
   let better = null;
   if (key === 'logged') better = d > 0;
   else if (key === 'kg' || key === 'bmi') better = f.g ? (f.g.goal < f.g.start ? d < 0 : d > 0) : null; // BMI follows the weight goal
   else if (key === 'waist') better = d < 0; // a smaller waist is better
   else { const a = nsBad(key, cur, f), b = nsBad(key, old, f); better = a == null || b == null ? null : a < b; }
-  return { text: num, cls: better == null ? 'same' : better ? 'better' : 'worse', title: better == null ? '' : better ? 'better' : 'worse' };
+  return { text: num, cls: better == null ? 'same' : better ? 'better' : 'worse', title: better == null ? '' : better ? 'besser' : 'schlechter' };
 }
 
 function nsSummary(f) {
@@ -75,20 +75,20 @@ function nsSummary(f) {
 
 // Fixed rules, used when there is no AI answer
 function nsTips(f) {
-  const w = f.week, tg = f.tg, t = [], per = f.n === 7 ? 'this week' : 'in the last ' + f.n + ' days';
-  if (w.logged < f.n * 0.7) t.push('Only ' + w.logged + ' of ' + f.n + ' days are logged. Log every day, otherwise the averages say little.');
+  const w = f.week, tg = f.tg, t = [], per = f.n === 7 ? 'diese Woche' : 'in den letzten ' + f.n + ' Tage';
+  if (w.logged < f.n * 0.7) t.push('Nur ' + w.logged + ' von ' + f.n + ' Tage eingetragen. Trag jeden Tag ein, sonst sagen die Schnitte wenig.');
   if (w.kcal != null && tg.kcal) {
     const d = Math.round(w.kcal - tg.kcal);
-    if (d > 150) t.push('You averaged ' + d + ' kcal over your target. Smaller portions of the biggest meal are the easiest fix.');
-    else if (d < -300) t.push('You averaged ' + Math.abs(d) + ' kcal under your target. Eating too little makes the protein target harder.');
-    else t.push('Calories were close to your target. Keep it up.');
+    if (d > 150) t.push('Du lagst im Schnitt ' + d + ' kcal über deinem Ziel. Kleinere Portionen bei der größten Mahlzeit helfen am einfachsten.');
+    else if (d < -300) t.push('Du lagst im Schnitt ' + Math.abs(d) + ' kcal unter deinem Ziel. Zu wenig essen macht das Protein-Ziel schwerer.');
+    else t.push('Die Kalorien waren nah am Ziel. Weiter so.');
   }
-  if (w.p != null && tg.p && w.p < tg.p - 10) t.push('Protein averaged ' + Math.round(w.p) + ' g, target ' + tg.p + ' g. Add a protein source to breakfast.');
-  if (w.s != null && tg.s && w.s > tg.s) t.push('Sugar averaged ' + Math.round(w.s) + ' g, limit ' + tg.s + ' g. Drinks and sweets are the usual source.');
+  if (w.p != null && tg.p && w.p < tg.p - 10) t.push('Protein im Schnitt ' + Math.round(w.p) + ' g, Ziel ' + tg.p + ' g. Ergänze eine Proteinquelle zum Frühstück.');
+  if (w.s != null && tg.s && w.s > tg.s) t.push('Zucker im Schnitt ' + Math.round(w.s) + ' g, Limit ' + tg.s + ' g. Getränke und Süßes sind die übliche Quelle.');
   if (f.prev && w.kg != null && f.prev.kg != null && f.g) {
     const d = w.kg - f.prev.kg, lose = f.g.goal < f.g.start;
-    if (Math.abs(d) < 0.2) t.push('Your weight did not move (' + per + ').');
-    else if (lose !== d < 0) t.push('Your weight moved away from your goal (' + per + ', ' + (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1) + ' kg).');
+    if (Math.abs(d) < 0.2) t.push('Dein Gewicht hat sich nicht bewegt (' + per + ').');
+    else if (lose !== d < 0) t.push('Dein Gewicht hat sich vom Ziel entfernt (' + per + ', ' + (d > 0 ? '+' : '−') + fmtD(Math.abs(d), 1) + ' kg).');
   }
   return t.slice(0, 5);
 }
@@ -115,7 +115,7 @@ function nsInput(f) {
     return d + (isCheatDay(d) ? ' (cheat day)' : '') + ' | ' + (t.n ? Math.round(t.kcal) + ' kcal, P' + Math.round(t.p) + ' C' + Math.round(t.c) + ' F' + Math.round(t.f) + ' S' + Math.round(t.s) + (t.m ? ' (some macros missing)' : '') + ' | ' + meals : 'nothing logged');
   };
   const avg = (w) => NS_ROWS.filter(([, k]) => w[k] != null).map(([label, k, fmt]) => label + ' ' + fmt(w[k])).join(', ');
-  return 'Language of the answer: ' + (navigator.language || 'de-AT') +
+  return 'Language of the answer: ' + 'de-AT (Deutsch)' +
     '\nTargets per day: ' + tg.kcal + ' kcal' + (tg.p ? ', protein ' + tg.p + ' g, carbs ' + tg.c + ' g, fat ' + tg.f + ' g' : '') + ', sugar max ' + tg.s + ' g.' + (f.g ? ' Goal: ' + (f.g.goal < f.g.start ? 'lose weight' : 'gain weight') + '.' : '') +
     '\n\nPeriod length N = ' + f.n + ' days.' +
     '\n\nTHIS PERIOD averages: ' + avg(f.week) + '\n' + f.days.slice(f.n).map(line).join('\n') +
@@ -131,7 +131,7 @@ async function nsLoadAi(force) {
   nutAiBusy = true; renderNutSum();
   try {
     const j = await aiTips(NS_SYSTEM, nsInput(f), 700);
-    if (!j || typeof j.summary !== 'string' || !Array.isArray(j.tips)) throw new Error('unexpected answer');
+    if (!j || typeof j.summary !== 'string' || !Array.isArray(j.tips)) throw new Error('unerwartete Antwort');
     const list = j.tips.filter((t) => t && t.text).slice(0, 5).map((t) => ({ title: String(t.title || ''), text: String(t.text) }));
     nutAiAll[f.n] = { key: nsKey(f), summary: j.summary, tips: list, prev: list.map((t) => t.title).filter(Boolean).slice(0, 8), err: '' };
   } catch (e) {
@@ -149,23 +149,23 @@ function renderNutSum() {
   if (btn) { btn.hidden = !anthropicKey; btn.disabled = nutAiBusy; btn.classList.toggle('busy', nutAiBusy); }
   const seg = rangeSeg(nsRange, (n) => { nsRange = n; store.set('nsRange', n); renderNutSum(); });
   const f = nsFacts();
-  if (!f) { box.replaceChildren(seg, el('p', { class: 'muted' }, 'Log meals on at least ' + Math.ceil(nsRange * 2 / 7) + ' days (last ' + nsRange + ' days) to see a summary and tips.')); return; }
+  if (!f) { box.replaceChildren(seg, el('p', { class: 'muted' }, 'Trag an mindestens ' + Math.ceil(nsRange * 2 / 7) + ' Tagen Mahlzeiten ein (letzte ' + nsRange + ' Tage), um Übersicht und Tipps zu sehen.')); return; }
   const cur = nutAiOf(f.n), ai = anthropicKey && cur.key === nsKey(f) && !cur.err && cur.tips.length ? cur : null;
   let note = '';
-  if (!anthropicKey) note = 'Add an Anthropic key in Settings for AI tips. These are fixed rules.';
-  else if (nutAiBusy) note = 'Writing tips …';
-  else if (cur.err && cur.key === nsKey(f)) note = 'AI tips failed (' + cur.err + '). Fixed rules shown, press ↻ to try again.';
+  if (!anthropicKey) note = 'Für KI-Tipps einen Anthropic-Key in den Einstellungen eintragen. Das sind feste Regeln.';
+  else if (nutAiBusy) note = 'Schreibt Tipps …';
+  else if (cur.err && cur.key === nsKey(f)) note = 'KI-Tipps fehlgeschlagen (' + cur.err + '). Feste Regeln angezeigt, ↻ für neuen Versuch.';
   const tips = ai ? ai.tips.map((t) => el('p', { class: 'bs-tip' }, t.title ? el('b', {}, t.title + ': ') : '', t.text)) : nsTips(f).map((x) => el('p', { class: 'bs-tip' }, x));
   box.replaceChildren(
     seg,
     ai ? el('p', { class: 'bs-sum' }, ai.summary) : '',
-    el('div', { class: 'bs-col' }, el('h3', {}, 'Last ' + f.n + ' days · ' + rcShort(f.week.from) + '–' + rcShort(f.week.to) + (f.week.cheat ? ' · ' + f.week.cheat + ' cheat day' + (f.week.cheat > 1 ? 's' : '') : '')),
-      f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'Last ' + f.n), el('span', {}, 'Before'), el('span', {}, 'Change')) : '',
+    el('div', { class: 'bs-col' }, el('h3', {}, 'Letzte ' + f.n + ' Tage · ' + rcShort(f.week.from) + '–' + rcShort(f.week.to) + (f.week.cheat ? ' · ' + f.week.cheat + ' Cheat-Day' + (f.week.cheat > 1 ? 's' : '') : '')),
+      f.prev ? el('div', { class: 'bs-line bs-head' }, el('span', {}, ''), el('span', {}, 'Letzte ' + f.n), el('span', {}, 'Davor'), el('span', {}, 'Änderung')) : '',
       ...nsSummary(f).map(bsRow)),
-    el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tips (AI)' : 'Tips'), ...tips,
-      note ? (anthropicKey ? el('p', { class: 'muted small' }, note) : setupLine('AI tips need your Anthropic key. These are fixed rules.')) : '',
-      f.prev ? '' : el('p', { class: 'muted small' }, 'No comparison: the ' + f.n + ' days before (' + rcShort(f.prevAll.from) + '–' + rcShort(f.prevAll.to) + ') have only ' + f.prevAll.logged + ' logged day' + (f.prevAll.logged === 1 ? '' : 's') + ', 3 are needed.'),
-      el('p', { class: 'muted small' }, 'Averages count only days with entries. Calories and macros are estimates.')));
+    el('div', { class: 'bs-col' }, el('h3', {}, ai ? 'Tipps (KI)' : 'Tipps'), ...tips,
+      note ? (anthropicKey ? el('p', { class: 'muted small' }, note) : setupLine('KI-Tipps brauchen deinen Anthropic-Key. Das sind feste Regeln.')) : '',
+      f.prev ? '' : el('p', { class: 'muted small' }, 'Kein Vergleich: Die ' + f.n + ' Tage davor (' + rcShort(f.prevAll.from) + '–' + rcShort(f.prevAll.to) + ') haben nur ' + f.prevAll.logged + ' eingetragene' + (f.prevAll.logged === 1 ? 'n Tag' : ' Tage') + ', 3 sind nötig.'),
+      el('p', { class: 'muted small' }, 'Schnitte zählen nur Tage mit Einträgen. Kalorien und Makros sind Schätzungen.')));
   nsLoadAi(false);
 }
 

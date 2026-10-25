@@ -36,7 +36,7 @@ async function driveFetch(url, opts = {}) {
   }));
   if (!res.ok) {
     const j = await res.json().catch(() => null);
-    throw Object.assign(new Error((j && j.error && j.error.message) || 'Drive error ' + res.status), { status: res.status });
+    throw Object.assign(new Error((j && j.error && j.error.message) || 'Drive-Fehler ' + res.status), { status: res.status });
   }
   return res;
 }
@@ -80,10 +80,10 @@ async function syncNow() {
   clearTimeout(syncTimer);
   if (!syncReady()) {
     // say plainly why nothing happens
-    if (!syncOn()) syncStatus('Sync is off on this device.');
-    else if (!googleClientId) syncStatus('Not synced: enter the Google Client ID above, Save, then Connect.');
-    else if (!gHasToken()) syncStatus('Not synced: Google is not connected on this device. Press Connect.');
-    else if (!gHasDriveScope()) syncStatus('Not synced: Drive access missing. Press Connect and allow access to app data.');
+    if (!syncOn()) syncStatus('Sync ist auf diesem Gerät aus.');
+    else if (!googleClientId) syncStatus('Nicht synchronisiert: oben die Google Client ID eintragen, speichern, dann Verbinden.');
+    else if (!gHasToken()) syncStatus('Nicht synchronisiert: Google ist auf diesem Gerät nicht verbunden. Tippe auf Verbinden.');
+    else if (!gHasDriveScope()) syncStatus('Nicht synchronisiert: Drive-Zugriff fehlt. Tippe auf Verbinden und erlaube den Zugriff auf App-Daten.');
     return;
   }
   if (syncBusy) { syncAgain = true; return; }
@@ -115,8 +115,8 @@ async function syncNow() {
     store.set('syncMeta', syncMeta);
     if (push) { out.t = Date.now(); await syncWrite(out); }
     if (applied.length) syncApply(applied);
-    syncStatus('Synced ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) +
-      (applied.length ? ' · updated ' + applied.length : ''));
+    syncStatus('Synchronisiert ' + new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) +
+      (applied.length ? ' · aktualisiert: ' + applied.length : ''));
   } catch (e) {
     syncStatus('Sync: ' + e.message);
   } finally {
@@ -163,5 +163,5 @@ function syncInit() {
   document.addEventListener('visibilitychange', () => { syncNow(); }); // back to Fred: fetch; leaving: send
   $('sync-now').addEventListener('click', syncNow);
   $('set-sync').checked = syncOn();
-  $('set-sync').addEventListener('change', () => { store.set('syncOn', $('set-sync').checked); syncStatus(syncOn() ? '' : 'Sync is off on this device.'); syncNow(); });
+  $('set-sync').addEventListener('change', () => { store.set('syncOn', $('set-sync').checked); syncStatus(syncOn() ? '' : 'Sync ist auf diesem Gerät aus.'); syncNow(); });
 }

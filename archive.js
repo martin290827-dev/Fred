@@ -149,7 +149,7 @@ async function arcMigrate() {
 
 async function arcFlush() {
   if (arcBusy || (!Object.keys(arcQueue).length && store.get('arcMigrated2', false))) return;
-  if (typeof shReady === 'function' && !shReady()) { if (gHasToken()) { arcMsg = 'History needs one more Google permission: press Connect.'; renderRecovery(); } return; } // later, when connected
+  if (typeof shReady === 'function' && !shReady()) { if (gHasToken()) { arcMsg = 'Der Verlauf braucht noch eine Google-Berechtigung: Tippe auf Verbinden.'; renderRecovery(); } return; } // later, when connected
   arcBusy = true;
   try {
     await arcMigrate();
@@ -160,9 +160,9 @@ async function arcFlush() {
     arcInfo = { at: Date.now(), counts: await shRawCounts() };
     store.set('arcInfo', arcInfo);
     arcMsg = '';
-    if (arcNote) arcNote = 'Saved \u2713';
+    if (arcNote) arcNote = 'Gespeichert \u2713';
   } catch (e) {
-    arcMsg = 'History: ' + e.message;
+    arcMsg = 'Verlauf: ' + e.message;
   }
   arcBusy = false;
   renderRecovery();
@@ -171,17 +171,17 @@ async function arcFlush() {
 
 /* ---------- status line for the Recovery card ---------- */
 
-const ARC_LABELS = { cycles: 'cycles', sleep: 'sleep', workouts: 'workouts' };
+const ARC_LABELS = { cycles: 'Zyklen', sleep: 'Schlaf', workouts: 'Trainings' };
 
 function arcStatus() {
   if (arcMsg) return arcMsg;
-  if (arcBusy) return 'Saving archive \u2026';
+  if (arcBusy) return 'Speichert Archiv \u2026';
   const open = Object.keys(arcQueue).length;
   const parts = [];
   if (arcNote) parts.push(arcNote);
-  if (arcInfo) parts.push('History in Google Sheet, last saved ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
-  else parts.push('History: nothing saved to the Google Sheet yet');
-  if (open) parts.push(open + ' change' + (open > 1 ? 's' : '') + ' waiting' + (gHasToken() ? '' : ' \u2013 Google is not connected (press Connect)'));
+  if (arcInfo) parts.push('Verlauf im Google Sheet, zuletzt gespeichert ' + new Date(arcInfo.at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ': ' + Object.keys(ARC_LABELS).map((s) => ARC_LABELS[s] + ' ' + (arcInfo.counts[s] || 0)).join(' \u00b7 '));
+  else parts.push('Verlauf: noch nichts im Google Sheet gespeichert');
+  if (open) parts.push(open + (open > 1 ? ' Änderungen' : ' Änderung') + ' wartend' + (gHasToken() ? '' : ' \u2013 Google ist nicht verbunden (tippe auf Verbinden)'));
   return parts.join(' \u00b7 ');
 }
 
@@ -190,7 +190,7 @@ function arcNow() {
   arcMsg = '';
   arcScan();
   const nothing = !Object.keys(arcQueue).length;
-  arcNote = !gHasToken() ? 'Not saved: Google is not connected.' : nothing ? 'Nothing new: everything is saved already.' : 'Saving \u2026';
+  arcNote = !gHasToken() ? 'Nicht gespeichert: Google ist nicht verbunden.' : nothing ? 'Nichts Neues: alles ist schon gespeichert.' : 'Speichert \u2026';
   setTimeout(() => { arcNote = ''; renderRecovery(); }, 8000);
   arcFlush();
   renderRecovery();

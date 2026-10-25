@@ -5,13 +5,13 @@
 
 // scale = the change (in %) that gets the full colour; smaller moves stay closer to grey, like in a market heatmap
 const HEAT_INFO = {
-  '1D': { title: 'Last 24 Hours', scale: 3 },
-  '1W': { title: 'Last 7 Days', scale: 10 },
-  '1M': { title: 'Last 30 Days', scale: 20 },
-  '3M': { title: 'Last 3 Months', scale: 30 },
-  '6M': { title: 'Last 6 Months', scale: 40 },
-  YTD: { title: 'Year to Date', scale: 40 },
-  '1Y': { title: 'Last 12 Months', scale: 50 },
+  '1D': { title: 'Letzte 24 Stunden', scale: 3 },
+  '1W': { title: 'Letzte 7 Tage', scale: 10 },
+  '1M': { title: 'Letzte 30 Tage', scale: 20 },
+  '3M': { title: 'Letzte 3 Monate', scale: 30 },
+  '6M': { title: 'Letzte 6 Monate', scale: 40 },
+  YTD: { title: 'Seit Jahresbeginn', scale: 40 },
+  '1Y': { title: 'Letzte 12 Monate', scale: 50 },
 };
 const HEAT_TTL = 6 * 3600 * 1000;
 const HEAT_PER_MIN = 6; // Twelve Data free plan: 8 per minute (a clash with the sparklines is retried after a minute)
@@ -31,9 +31,9 @@ async function heatSeries(sym) {
     const r = await getJSON('https://data-api.binance.vision/api/v3/klines?symbol=' + sym.slice(2).toUpperCase() + 'USDT&interval=1d&limit=400');
     return r.map((k) => [new Date(k[0]).toISOString().slice(0, 10), parseFloat(k[4])]);
   }
-  if (!twelveKey) throw new Error('add a Twelve Data key in Settings');
+  if (!twelveKey) throw new Error('Twelve-Data-Key in den Einstellungen eintragen');
   const r = await getJSON('https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(sym) + '&interval=1day&outputsize=400&apikey=' + encodeURIComponent(twelveKey));
-  if (r.status === 'error' || !r.values) throw new Error(r.message || 'no data');
+  if (r.status === 'error' || !r.values) throw new Error(r.message || 'keine Daten');
   return r.values.map((v) => [v.datetime.slice(0, 10), parseFloat(v.close)]).reverse();
 }
 
@@ -96,7 +96,7 @@ function heatPct(sym, period) {
   return base && price ? (price / base - 1) * 100 : null;
 }
 
-const heatPrice = (p) => (p >= 1 ? p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : p.toPrecision(3));
+const heatPrice = (p) => (p >= 1 ? p.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : p.toPrecision(3));
 
 function heatTile(sym, period) {
   const info = HEAT_INFO[period];
@@ -104,10 +104,10 @@ function heatTile(sym, period) {
   const price = q ? q.price : b && b.last;
   const pct = heatPct(sym, period);
   const t = pct === null ? 0 : heatStrength(pct, info.scale);
-  const why = pct !== null ? '' : q || b ? 'Not enough history for this period' : heatFail[sym] ? heatFail[sym].msg : !sym.startsWith('c:') && !twelveKey && period !== '1D' ? 'Add a Twelve Data key in Settings for this period' : 'Loading...';
-  const tile = el('div', { class: 'heat-tile' + (pct === null ? ' none' : ''), title: tickerLabel(sym) + (pct === null ? ': ' + why : ': ' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '% · ' + info.title.toLowerCase()) },
+  const why = pct !== null ? '' : q || b ? 'Zu wenig Verlauf für diesen Zeitraum' : heatFail[sym] ? heatFail[sym].msg : !sym.startsWith('c:') && !twelveKey && period !== '1D' ? 'Für diesen Zeitraum einen Twelve-Data-Key in den Einstellungen eintragen' : 'Lädt…';
+  const tile = el('div', { class: 'heat-tile' + (pct === null ? ' none' : ''), title: tickerLabel(sym) + (pct === null ? ': ' + why : ': ' + (pct >= 0 ? '+' : '') + fmtD(pct, 2) + '% · ' + info.title.toLowerCase()) },
     el('b', { class: 'ht-s' }, tickerLabel(sym)),
-    el('span', { class: 'ht-p' }, pct === null ? (why === 'Loading...' ? '…' : '–') : (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'),
+    el('span', { class: 'ht-p' }, pct === null ? (why === 'Lädt…' ? '…' : '–') : (pct >= 0 ? '+' : '') + fmtD(pct, 2) + '%'),
     el('span', { class: 'ht-v' }, price ? '$' + heatPrice(price) : ''));
   if (pct !== null) tile.style.background = 'color-mix(in srgb, ' + (pct >= 0 ? HEAT_GREEN : HEAT_RED) + ' ' + Math.round(t * 100) + '%, ' + HEAT_NEUTRAL + ')';
   tile.style.setProperty('--w', heat.size === 'move' ? (1 + 3 * t).toFixed(2) : '1'); // "Size: Move": bigger movers get wider tiles
@@ -117,13 +117,13 @@ function heatTile(sym, period) {
 function renderHeat(load) {
   const box = $('heat');
   if (!box) return;
-  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted small' }, 'Add tickers with the + in the Tickers card first.')); return; }
-  const seg = el('div', { class: 'heat-seg', role: 'tablist', 'aria-label': 'Period' }, ...Object.keys(HEAT_INFO).map((p) =>
+  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted small' }, 'Zuerst Ticker mit dem + in der Ticker-Kachel hinzufügen.')); return; }
+  const seg = el('div', { class: 'heat-seg', role: 'tablist', 'aria-label': 'Zeitraum' }, ...Object.keys(HEAT_INFO).map((p) =>
     el('button', { type: 'button', role: 'tab', class: 'heat-btn' + (p === heat.period ? ' on' : ''), 'aria-selected': String(p === heat.period), onclick: () => { heat = Object.assign({}, heat, { period: p }); store.set('heat', heat); renderHeat(false); } }, p)));
-  const sz = $('heat-size'); if (sz) sz.textContent = 'Size: ' + (heat.size === 'move' ? 'Move' : 'Equal'); // Refresh and Size sit in the card heading
+  const sz = $('heat-size'); if (sz) sz.textContent = 'Größe: ' + (heat.size === 'move' ? 'Bewegung' : 'Gleich'); // Refresh and Size sit in the card heading
   const ctl = el('div', { class: 'heat-row' }, seg);
-  const snap = el('div', { class: 'heat-snap small' }, HEAT_INFO[heat.period].title + ' \u00b7 prices from ' +
-    (lastQuotesAt ? new Date(lastQuotesAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'loading...'));
+  const snap = el('div', { class: 'heat-snap small' }, HEAT_INFO[heat.period].title + ' \u00b7 Kurse vom ' +
+    (lastQuotesAt ? new Date(lastQuotesAt).toLocaleString('de-AT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'lädt…'));
   box.replaceChildren(ctl, snap,
     el('div', { class: 'heat-grid' + (heat.size === 'move' ? ' move' : '') }, ...tickers.map((s) => heatTile(s, heat.period))));
   if (load) heatLoad();

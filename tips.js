@@ -98,8 +98,8 @@ async function loadAll(force) {
   allBusy = true; gapsBusy = true;
   renderTips(true);
   try {
-    const j = await aiTips(ALL_SYSTEM, 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n\nDATENBLOCK HEUTE:\n' + dayContext(), 700);
-    if (!j || !Array.isArray(j.today)) throw new Error('unexpected answer');
+    const j = await aiTips(ALL_SYSTEM, 'Language of the answer: ' + 'de-AT (Deutsch)' + '\n\nDATENBLOCK HEUTE:\n' + dayContext(), 700);
+    if (!j || !Array.isArray(j.today)) throw new Error('unerwartete Antwort');
     const good = j.today.filter((x) => x && x.type === 'GOOD' && x.text).slice(0, 1), add = j.today.filter((x) => x && x.type === 'ADD' && x.text).slice(0, 3);
     gaps = { day: today, sig, err: '', empty: !good.length && !add.length, list: good.concat(add).map((x) => ({ kind: x.type === 'GOOD' ? 'good' : 'add', title: String(x.title || ''), text: String(x.text) })) };
   } catch (e) {
@@ -111,21 +111,21 @@ async function loadAll(force) {
   if (allQueued) { allQueued = false; loadAll(false); }
 }
 
-const GAP_KINDS = { add: 'Add', good: 'Good' };
+const GAP_KINDS = { add: 'Ergänzen', good: 'Gut' };
 const GAP_CLS = { add: 'add', good: 'good' };
 
 function gapsBlock() {
-  if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings.');
+  if (!anthropicKey) return el('p', { class: 'muted small' }, 'Anthropic-Key in den Einstellungen eintragen.');
   const today = toDateStr(new Date());
-  if (!dayTotals(today).n) return el('p', { class: 'muted small' }, 'Log a meal to see what is still missing today.');
-  if (gaps.day === today && gaps.empty && !gapsBusy) return el('p', { class: 'muted small' }, 'Nothing to add right now.');
-  if (gaps.day !== today || !gaps.list.length) return el('p', { class: 'muted small' }, gapsBusy ? 'Looking at today’s meals…' : gaps.err ? 'Tips: ' + gaps.err : 'Tap ↻ to check today.');
+  if (!dayTotals(today).n) return el('p', { class: 'muted small' }, 'Trag eine Mahlzeit ein, um zu sehen, was heute noch fehlt.');
+  if (gaps.day === today && gaps.empty && !gapsBusy) return el('p', { class: 'muted small' }, 'Gerade nichts zu ergänzen.');
+  if (gaps.day !== today || !gaps.list.length) return el('p', { class: 'muted small' }, gapsBusy ? 'Prüft die heutigen Mahlzeiten…' : gaps.err ? 'Tipps: ' + gaps.err : 'Tippe auf ↻, um heute zu prüfen.');
   const old = gaps.sig !== todaySig();
   return el('div', {},
     el('ul', { class: 'tips' }, ...gaps.list.map((t) => el('li', { class: 'tip' },
       el('span', { class: 'tip-k k-' + (GAP_CLS[t.kind] || 'none') }, GAP_KINDS[t.kind] || '•'),
       el('span', { class: 'tip-b' }, t.title ? el('span', { class: 'tip-t' }, t.title) : '', el('span', { class: 'tip-x' }, t.text))))),
-    old ? el('p', { class: 'muted small' }, 'Out of date (new meals or a later time of day). Tap ↻ to update.') : '',
+    old ? el('p', { class: 'muted small' }, 'Veraltet (neue Mahlzeiten oder spätere Tageszeit). Tippe auf ↻ zum Aktualisieren.') : '',
     tipsModelNote ? el('p', { class: 'muted small' }, tipsModelNote) : '');
 }
 
@@ -156,25 +156,25 @@ async function askCook(text) {
 }
 
 function cookBlock() {
-  if (!anthropicKey) return el('p', { class: 'muted small' }, 'Add an Anthropic key in Settings.');
+  if (!anthropicKey) return el('p', { class: 'muted small' }, 'Anthropic-Key in den Einstellungen eintragen.');
   const l = leftToday();
-  const left = 'Left today: ' + fmtN(l.kcal) + ' kcal' + (l.p !== null ? ' · P ' + l.p + ' g · C ' + l.c + ' g · F ' + l.f + ' g' : '') + (l.over ? ' · above target' : '');
-  const input = el('textarea', { id: 'cook-text', rows: '4', placeholder: 'What do you have at home? e.g. chicken, rice, broccoli, eggs', maxlength: '600', 'aria-label': 'Food at home' });
+  const left = 'Heute übrig: ' + fmtN(l.kcal) + ' kcal' + (l.p !== null ? ' · P ' + l.p + ' g · KH ' + l.c + ' g · F ' + l.f + ' g' : '') + (l.over ? ' · über dem Ziel' : '');
+  const input = el('textarea', { id: 'cook-text', rows: '4', placeholder: 'Was hast du zu Hause? z. B. Huhn, Reis, Brokkoli, Eier', maxlength: '600', 'aria-label': 'Lebensmittel zu Hause' });
   input.value = cookText;
   input.addEventListener('input', () => { cookText = input.value; });
-  const form = el('form', { class: 'cook-form' }, input, el('button', cookBusy ? { type: 'submit', disabled: '' } : { type: 'submit' }, cookBusy ? '\u2026' : 'Suggest'));
+  const form = el('form', { class: 'cook-form' }, input, el('button', cookBusy ? { type: 'submit', disabled: '' } : { type: 'submit' }, cookBusy ? '\u2026' : 'Vorschlagen'));
   form.addEventListener('submit', (ev) => { ev.preventDefault(); askCook(input.value); });
   input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); askCook(input.value); } });
   const out = [];
-  if (cook.err) out.push(el('p', { class: 'muted small' }, 'Cook: ' + cook.err));
+  if (cook.err) out.push(el('p', { class: 'muted small' }, 'Kochen: ' + cook.err));
   if (cook.note && cook.day === toDateStr(new Date())) out.push(el('p', { class: 'small cook-note' }, cook.note));
   if (cook.ideas.length && cook.day === toDateStr(new Date())) {
     out.push(el('ul', { class: 'tips cook-ideas' }, ...cook.ideas.map((x) => el('li', { class: 'tip' },
       el('span', { class: 'tip-b' },
         el('span', { class: 'tip-t' }, x.name),
-        el('span', { class: 'muted small' }, '~' + x.kcal + ' kcal · P ' + x.p + ' · C ' + x.c + ' · F ' + x.f),
+        el('span', { class: 'muted small' }, '~' + x.kcal + ' kcal · P ' + x.p + ' · KH ' + x.c + ' · F ' + x.f),
         el('span', { class: 'tip-x' }, x.how),
-        x.extra ? el('span', { class: 'tip-x' }, 'Extra: ' + x.extra) : '')))));
+        x.extra ? el('span', { class: 'tip-x' }, 'Dazu: ' + x.extra) : '')))));
   }
   return el('div', {}, el('p', { class: 'muted small cook-left' }, left), form, ...out);
 }
@@ -186,9 +186,9 @@ function renderTips(force) {
   if (!force && box.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return; // typing: do not redraw
   const btn = $('tips-refresh');
   if (btn) { btn.hidden = !anthropicKey; btn.disabled = allBusy; btn.classList.toggle('busy', allBusy); } // no key: no refresh button
-  if (!anthropicKey) { box.replaceChildren(setupLine('“Missing today” and “What shall I cook?” need your Anthropic key.')); return; }
-  const p2 = hcard('check', 'green', 'Missing today', '', gapsBlock());
-  const p3 = hcard('meals', 'pink', 'What shall I cook?', '', cookBlock());
+  if (!anthropicKey) { box.replaceChildren(setupLine('„Fehlt heute“ und „Was soll ich kochen?“ brauchen deinen Anthropic-Key.')); return; }
+  const p2 = hcard('check', 'green', 'Fehlt heute', '', gapsBlock());
+  const p3 = hcard('meals', 'pink', 'Was soll ich kochen?', '', cookBlock());
   const keep = document.activeElement && document.activeElement.id === 'cook-text' ? [document.activeElement.selectionStart] : null;
   box.replaceChildren(el('div', { class: 'food-col' }, p2, p3)); // missing today, cook
   if (keep) { const i = $('cook-text'); i.focus(); i.setSelectionRange(keep[0], keep[0]); }

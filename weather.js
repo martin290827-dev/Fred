@@ -4,12 +4,12 @@
 
 /* ---------- 3) Weather (Open-Meteo, no key) ---------- */
 const WMO = {
-  0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Fog', 48: 'Rime fog',
-  51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 56: 'Freezing drizzle', 57: 'Freezing drizzle',
-  61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Freezing rain',
-  71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
-  80: 'Rain showers', 81: 'Rain showers', 82: 'Violent showers', 85: 'Snow showers', 86: 'Snow showers',
-  95: 'Thunderstorm', 96: 'Thunderstorm, hail', 99: 'Thunderstorm, hail',
+  0: 'Klar', 1: 'Überwiegend klar', 2: 'Teils bewölkt', 3: 'Bedeckt', 45: 'Nebel', 48: 'Raureifnebel',
+  51: 'Leichter Niesel', 53: 'Nieselregen', 55: 'Starker Niesel', 56: 'Gefrierender Niesel', 57: 'Gefrierender Niesel',
+  61: 'Leichter Regen', 63: 'Regen', 65: 'Starker Regen', 66: 'Gefrierender Regen', 67: 'Gefrierender Regen',
+  71: 'Leichter Schnee', 73: 'Schnee', 75: 'Starker Schnee', 77: 'Schneegriesel',
+  80: 'Regenschauer', 81: 'Regenschauer', 82: 'Heftige Schauer', 85: 'Schneeschauer', 86: 'Schneeschauer',
+  95: 'Gewitter', 96: 'Gewitter, Hagel', 99: 'Gewitter, Hagel',
 };
 
 async function fetchWeather(p) {
@@ -39,14 +39,14 @@ function weatherWarnings(w) {
     const cold = h.temperature_2m[wet[0]] <= 1;
     const last = wet[wet.length - 1];
     const endH = String(Math.min(24, +hhmm(last).slice(0, 2) + 1)).padStart(2, '0') + ':00';
-    const start = h.time[wet[0]].slice(0, 13) === hourNow ? 'now' : hhmm(wet[0]);
-    out.push({ kind: 'rain', text: (cold ? 'Snow today ' : 'Rain today ') + start + '\u2013' + endH + ' \u00b7 ' + mm.toFixed(1) + ' mm' });
+    const start = h.time[wet[0]].slice(0, 13) === hourNow ? 'jetzt' : hhmm(wet[0]);
+    out.push({ kind: 'rain', text: (cold ? 'Schnee heute ' : 'Regen heute ') + start + '\u2013' + endH + ' \u00b7 ' + fmtD(mm, 1) + ' mm' });
   }
   const icy = next12.filter((i) => h.temperature_2m[i] <= 0);
   if (icy.length) {
     const low = Math.min(...icy.map((i) => h.temperature_2m[i]));
-    const start = h.time[icy[0]].slice(0, 13) === hourNow ? 'now' : 'from ' + hhmm(icy[0]);
-    out.push({ kind: 'frost', text: 'Frost ' + start + ', down to ' + Math.round(low) + '°' });
+    const start = h.time[icy[0]].slice(0, 13) === hourNow ? 'jetzt' : 'ab ' + hhmm(icy[0]);
+    out.push({ kind: 'frost', text: 'Frost ' + start + ', bis ' + Math.round(low) + '°' });
   }
   return out;
 }
@@ -90,11 +90,11 @@ function hourStrip(w) {
   const cells = [];
   for (let i = from; i < Math.min(from + 8, h.time.length); i++) {
     cells.push(el('div', { class: 'wx-hour' },
-      el('span', { class: 'wx-h-t' }, i === from ? 'Now' : h.time[i].slice(11, 13)),
+      el('span', { class: 'wx-h-t' }, i === from ? 'Jetzt' : h.time[i].slice(11, 13)),
       wxIcon(h.weather_code[i], 'sm'),
       el('span', { class: 'wx-h-v' }, Math.round(h.temperature_2m[i]) + '\u00b0')));
   }
-  return el('div', { class: 'wx-hours', 'aria-label': 'Next hours' }, ...cells);
+  return el('div', { class: 'wx-hours', 'aria-label': 'Nächste Stunden' }, ...cells);
 }
 
 function renderWeatherMain(box, w) {
@@ -105,17 +105,17 @@ function renderWeatherMain(box, w) {
       el('span', { class: 'muted' }, ' / ' + Math.round(w.daily.temperature_2m_min[i]) + '°')),
     el('div', { class: 'muted small' }, WMO[w.daily.weather_code[i]] || '?',
       // rain chance only when it matters; a dry day shows no rain info
-      (w.daily.precipitation_probability_max[i] ?? 0) >= 20 ? el('span', { class: 'wx-rain' }, ' · rain ' + w.daily.precipitation_probability_max[i] + '%') : ''));
+      (w.daily.precipitation_probability_max[i] ?? 0) >= 20 ? el('span', { class: 'wx-rain' }, ' · Regen ' + w.daily.precipitation_probability_max[i] + '%') : ''));
   box.replaceChildren(
     ...warn,
     el('div', { class: 'wx-now' },
       wxIcon(w.current.weather_code, 'lg'),
       el('div', { class: 'wx-temp' }, Math.round(w.current.temperature_2m) + '°'),
       el('div', { class: 'wx-cond' },
-        el('div', { class: 'wx-cond-t' }, WMO[w.current.weather_code] || 'Unknown'),
-        el('div', { class: 'muted small' }, 'Feels ' + Math.round(w.current.apparent_temperature) + '\u00b0'),
+        el('div', { class: 'wx-cond-t' }, WMO[w.current.weather_code] || 'Unbekannt'),
+        el('div', { class: 'muted small' }, 'Gefühlt ' + Math.round(w.current.apparent_temperature) + '\u00b0'),
         el('div', { class: 'muted small' }, 'Wind ' + Math.round(w.current.wind_speed_10m) + ' km/h'))),
-    el('div', { class: 'wx-days' }, day('Today', 0), day('Tomorrow', 1)),
+    el('div', { class: 'wx-days' }, day('Heute', 0), day('Morgen', 1)),
     hourStrip(w));
 }
 
@@ -124,7 +124,7 @@ function renderWeatherAlt(box, p, w) {
   const warn = weatherWarnings(w)[0];
   const desc = (WMO[w.current.weather_code] || '?') + ' · ' +
     Math.round(w.daily.temperature_2m_min[0]) + '° / ' + Math.round(w.daily.temperature_2m_max[0]) + '°' + (warn ? ' · ' + warn.text.split(' \u00b7 ')[0].split(',')[0] : '');
-  box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: p.name + ' – click to show as the main place', onclick: swapPlaces },
+  box.replaceChildren(el('button', { type: 'button', class: 'wx-alt', title: p.name + ' – klicken, um es als Hauptort zu zeigen', onclick: swapPlaces },
     wxIcon(w.current.weather_code, 'md'),
     el('span', { class: 'wx-alt-text' },
       el('span', { class: 'wx-alt-name' }, p.name.split(',')[0]),
@@ -141,7 +141,7 @@ let geoNote = '';
 
 function geoPosition() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error('no location in this browser')); return; }
+    if (!navigator.geolocation) { reject(new Error('kein Standort in diesem Browser')); return; }
     navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 12000, maximumAge: 15 * 60000 });
   });
 }
@@ -155,11 +155,11 @@ async function currentPlace() {
   let name = geoPlace && Math.abs(geoPlace.lat - lat) < 0.05 && Math.abs(geoPlace.lon - lon) < 0.05 ? geoPlace.name : '';
   if (!name) {
     try {
-      const r = await getJSON('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en');
+      const r = await getJSON('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=de');
       name = [r.city || r.locality, r.countryCode].filter(Boolean).join(', ');
     } catch { /* no name: fine */ }
   }
-  geoPlace = { name: name || 'Current location', lat, lon, t: Date.now() };
+  geoPlace = { name: name || 'Aktueller Standort', lat, lon, t: Date.now() };
   store.set('geoPlace', geoPlace);
   return geoPlace;
 }
@@ -168,7 +168,7 @@ function hereIcon() {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', '0 0 24 24');
   s.setAttribute('class', 'here-ico');
-  s.setAttribute('aria-label', 'Current location');
+  s.setAttribute('aria-label', 'Aktueller Standort');
   const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   p.setAttribute('d', 'M21 3 3 10.5l7.5 3L13.5 21z');
   s.append(p);
@@ -193,24 +193,24 @@ function wxEditor() {
   if (!wxOpen) { box.replaceChildren(); box.hidden = true; return; }
   const msg = el('p', { class: 'muted small gform-msg' });
   const row = (label, current, which) => {
-    const input = el('input', { type: 'text', placeholder: which === 1 ? 'City name' : 'Optional', value: current ? current.name : '', 'aria-label': label });
+    const input = el('input', { type: 'text', placeholder: which === 1 ? 'Ortsname' : 'Optional', value: current ? current.name : '', 'aria-label': label });
     const go = async () => {
       const name = input.value.trim();
       if (!name && which === 1) return;
-      msg.textContent = 'Searching...';
+      msg.textContent = 'Sucht…';
       try {
         const p = name ? await geocode(name) : null;
         if (which === 1) { place = p; store.set('place', place); } else { place2 = p; store.set('place2', place2); }
         input.value = p ? p.name : '';
-        msg.textContent = p ? 'Saved: ' + p.name : 'Second place removed.';
+        msg.textContent = p ? 'Gespeichert: ' + p.name : 'Zweiter Ort entfernt.';
         loadWeather();
       } catch (e) { msg.textContent = e.message; }
     };
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
-    return el('div', { class: 'row' }, el('span', { class: 'muted small wx-lbl' }, label), input, el('button', { type: 'button', class: 'ghost small', onclick: go }, 'Set'));
+    return el('div', { class: 'row' }, el('span', { class: 'muted small wx-lbl' }, label), input, el('button', { type: 'button', class: 'ghost small', onclick: go }, 'Setzen'));
   };
-  box.replaceChildren(el('div', { class: 'gform' }, row('Main', place, 1), row('Second', place2, 2), msg,
-    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { wxOpen = false; wxEditor(); } }, 'Done'))));
+  box.replaceChildren(el('div', { class: 'gform' }, row('Hauptort', place, 1), row('Zweiter Ort', place2, 2), msg,
+    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { wxOpen = false; wxEditor(); } }, 'Fertig'))));
   box.hidden = false;
 }
 
@@ -228,26 +228,26 @@ async function loadWeather() {
       here = true;
       low = place2 || place; // with no second place, your saved place shows small below
     } catch (e) {
-      geoNote = e && e.code === 1 ? 'Location not allowed' : 'Location not available';
+      geoNote = e && e.code === 1 ? 'Standort nicht erlaubt' : 'Standort nicht verfügbar';
     }
   }
   if (here && geoSwapped && low) { const t = top; top = low; low = t; }
-  if (!top) { $('weather-place').textContent = ''; box.replaceChildren(el('p', { class: 'empty' }, 'Tap the pencil to set a place.')); return; }
+  if (!top) { $('weather-place').textContent = ''; box.replaceChildren(el('p', { class: 'empty' }, 'Tippe auf den Stift, um einen Ort festzulegen.')); return; }
   const title = $('weather-place');
   title.replaceChildren(here && !geoSwapped ? hereIcon() : '', top.name, geoNote ? el('span', { class: 'small' }, ' \u00b7 ' + geoNote) : '');
   const [main, second] = await Promise.allSettled([fetchWeather(top), low ? fetchWeather(low) : Promise.resolve(null)]);
   if (main.status === 'fulfilled') renderWeatherMain(box, main.value);
-  else box.textContent = 'Weather not available. ' + main.reason.message;
+  else box.textContent = 'Wetter nicht verfügbar. ' + main.reason.message;
   if (low) {
     if (second.status === 'fulfilled') renderWeatherAlt(alt, low, second.value);
-    else alt.textContent = 'Second place not available.';
+    else alt.textContent = 'Zweiter Ort nicht verfügbar.';
   }
   matchWeatherHeight();
 }
 
 async function geocode(name) {
   const r = await getJSON('https://geocoding-api.open-meteo.com/v1/search?count=1&name=' + encodeURIComponent(name));
-  if (!r.results || !r.results.length) throw new Error('Place not found');
+  if (!r.results || !r.results.length) throw new Error('Ort nicht gefunden');
   const p = r.results[0];
   return { name: [p.name, p.admin1, p.country_code].filter(Boolean).join(', '), lat: p.latitude, lon: p.longitude };
 }

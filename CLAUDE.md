@@ -12,6 +12,7 @@ Personal dashboard PWA. Hosted on GitHub Pages (static only, public repo).
 - After changing app files, bump `CACHE` in `sw.js` AND every `?v=` number in index.html and in `SHELL` in sw.js (GitHub Pages caches files for 10 minutes). All files share one number.
 - Before every push run `node tools/check.js` (SHELL list, `?v=` numbers, every API host in the CSP) and `node tools/test.js` (logic tests without a browser: Sheet sync safety, summaries, meal preview, heatmap bases, AI request settings). Add a test when you change one of these rules.
 - Phone and desktop always have the same features. Only the layout may differ.
+- The app speaks GERMAN (all visible text, titles, aria-labels, messages). Code, comments, identifiers and this file stay English; labels quoted below may still show the old English wording. Dates use 'de-AT' (e.g. "25. Okt."), numbers use German style via 'de-DE' (`fmtN` "2.283", `fmtKg` / `fmtD` "106,0"). Values that are STORED stay English so old data keeps working: Sheet tab and column names, tolerance levels and symptoms (`TOL_LEVELS`, `TOL_SYMPTOMS`; shown via `TOL_LEVELS_DE`, `symDe`), poker games (`POKER_GAMES`; shown via `gameDe`), class names and keys. AI system prompts stay English; every AI request asks for the answer in German ('de-AT (Deutsch)').
 
 ## Files
 - index.html, style.css: page and styles. theme.js runs first (frame check).

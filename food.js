@@ -55,7 +55,7 @@ function parseAiJson(out) {
     if (e < 0) continue;
     try { return JSON.parse(out.slice(s, e + 1)); } catch { /* not JSON, try the next start */ }
   }
-  throw new Error('The answer was not valid JSON');
+  throw new Error('Die Antwort war kein gültiges JSON');
 }
 
 // Index of the bracket that closes the one at position s (strings are skipped), or -1.
@@ -112,13 +112,13 @@ async function aiCall(system, text, maxTokens, image, model, timeoutMs) {
     body: JSON.stringify(aiBody(system, text, maxTokens, image, model || AI_MODEL)),
   });
   const j = await res.json().catch(() => null);
-  if (!res.ok) throw new Error((j && j.error && j.error.message) || 'AI error ' + res.status);
+  if (!res.ok) throw new Error((j && j.error && j.error.message) || 'KI-Fehler ' + res.status);
   aiTrack(j.model || model || AI_MODEL, j.usage); // billed even if the answer cannot be read
-  if (j.stop_reason === 'refusal') throw new Error('the model declined this request');
+  if (j.stop_reason === 'refusal') throw new Error('das Modell hat die Anfrage abgelehnt');
   const out = (j.content || []).map((x) => x.text || '').join('');
   try { return parseAiJson(out); } catch (e) {
     // say why: cut off by the token limit, or what the start of the answer looked like
-    throw new Error(j.stop_reason === 'max_tokens' ? 'answer cut off (token limit)' : 'not valid JSON, starts with: ' + out.replace(/\s+/g, ' ').slice(0, 60));
+    throw new Error(j.stop_reason === 'max_tokens' ? 'Antwort abgeschnitten (Token-Limit)' : 'kein gültiges JSON, beginnt mit: ' + out.replace(/\s+/g, ' ').slice(0, 60));
   }
 }
 
@@ -170,13 +170,13 @@ function aiSum(month) {
 function renderAiUse() {
   const box = $('ai-use');
   if (!box) return;
-  const line = (c) => '~$' + c.usd.toFixed(2) + ' \u00b7 ' + c.calls + ' requests' + (c.unknown ? ' (a model without price is not counted)' : '');
+  const line = (c) => '~$' + fmtD(c.usd, 2) + ' \u00b7 ' + c.calls + ' Anfragen' + (c.unknown ? ' (ein Modell ohne Preis wird nicht gezählt)' : '');
   const since = [aiUse.since, aiUseOther && aiUseOther.since].filter(Boolean).sort()[0];
-  const sinceTxt = since ? ' since ' + new Date(since + 'T00:00').toLocaleDateString('en-GB') : '';
+  const sinceTxt = since ? ' seit ' + new Date(since + 'T00:00').toLocaleDateString('de-AT') : '';
   box.replaceChildren(
-    el('div', {}, 'AI cost this month: ' + line(aiSum(toDateStr(new Date()).slice(0, 7)))),
-    el('div', {}, 'AI cost in total' + sinceTxt + ': ' + line(aiSum(''))),
-    el('div', {}, 'Counted from the answers of Anthropic (phone and desktop together), at list prices. Your Anthropic console shows the exact bill.'));
+    el('div', {}, 'KI-Kosten diesen Monat: ' + line(aiSum(toDateStr(new Date()).slice(0, 7)))),
+    el('div', {}, 'KI-Kosten gesamt' + sinceTxt + ': ' + line(aiSum(''))),
+    el('div', {}, 'Gezählt aus den Antworten von Anthropic (Handy und Desktop zusammen), zu Listenpreisen. Die genaue Rechnung zeigt deine Anthropic-Konsole.'));
 }
 
 // Tips use the stronger model; if it is not available for this key, fall back to the default one.
@@ -189,7 +189,7 @@ async function aiTips(system, text, maxTokens) {
     return r;
   } catch (e) {
     if (isKeyError(e)) throw e;
-    tipsModelNote = 'Sonnet failed (' + e.message + '), answered with Haiku.';
+    tipsModelNote = 'Sonnet fehlgeschlagen (' + e.message + '), Antwort von Haiku.';
     return aiJSON(system, text, maxTokens);
   }
 }
@@ -244,7 +244,7 @@ async function estimateEntry(e) {
     fillMacros(e).then(() => { saveFood(); renderFood(); });
     return;
   }
-  if (!anthropicKey) { Object.assign(e, { kcal: null, src: null, err: 'Add an Anthropic key in Settings, or say "... 500 kcal"' }); saveFood(); renderFood(); return; }
+  if (!anthropicKey) { Object.assign(e, { kcal: null, src: null, err: 'Anthropic-Key in den Einstellungen eintragen oder "... 500 kcal" sagen' }); saveFood(); renderFood(); return; }
   e.busy = true;
   renderFood();
   try {
@@ -356,10 +356,10 @@ function waistRef() {
   return nutri.sex === 'm' ? [94, 102] : nutri.sex === 'f' ? [80, 88] : null;
 }
 
-// One formatter each, made once: toLocaleString with options builds a new formatter on every call, which is slow in charts with hundreds of points
-const NF0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const NF1 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const DF_SHORT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+// Numbers in German style (2.283 / 106,0); one formatter each, made once: toLocaleString with options builds a new formatter on every call, which is slow in charts with hundreds of points
+const NF0 = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
+const NF1 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const DF_SHORT = new Intl.DateTimeFormat('de-AT', { day: 'numeric', month: 'short' });
 const fmtN = (v) => NF0.format(Math.round(v));
 const fmtKg = (v) => NF1.format(v);
 const shortDay = (d) => DF_SHORT.format(new Date(d + 'T00:00'));
@@ -456,10 +456,10 @@ function kcalWeekLine() {
   const target = nutri.kcal, w = kcalWeekAvg();
   if (!target || !w) return '';
   const ok = w.avg <= target;
-  return el('p', { class: 'small kcal-wk ' + (ok ? 'ok' : 'bad') }, '7-day average: ' + fmtN(w.avg) + ' kcal · ' + (ok ? fmtN(target - w.avg) + ' under target' : fmtN(w.avg - target) + ' over target') +
-    ' · ' + w.n + ' of 7 days logged' + (w.n < 7 ? ' (days without entries are skipped)' : ''));
+  return el('p', { class: 'small kcal-wk ' + (ok ? 'ok' : 'bad') }, '7-Tage-Schnitt: ' + fmtN(w.avg) + ' kcal · ' + (ok ? fmtN(target - w.avg) + ' unter dem Ziel' : fmtN(w.avg - target) + ' über dem Ziel') +
+    ' · ' + w.n + ' von 7 Tagen eingetragen' + (w.n < 7 ? ' (Tage ohne Einträge zählen nicht)' : ''));
 }
-const NUTRI = [['kcal', 'Calories', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Carbs', 'g'], ['f', 'Fat', 'g'], ['s', 'Sugar', 'g']];
+const NUTRI = [['kcal', 'Kalorien', 'kcal'], ['p', 'Protein', 'g'], ['c', 'Kohlenhydrate', 'g'], ['f', 'Fett', 'g'], ['s', 'Zucker', 'g']];
 
 function macroStatus(key, val, target) {
   if (!target) return 'none';
@@ -471,12 +471,12 @@ function macroStatus(key, val, target) {
 function macroHint(key, val, target, unit) {
   const st = macroStatus(key, val, target);
   if (key === 'p') {
-    if (st === 'high') return { hint: fmtN(val - target) + ' ' + unit + ' over', cls: 'over' };
-    if (st === 'ok') return { hint: 'Reached', cls: 'done' };
-    return { hint: fmtN(target - val) + ' ' + unit + ' to go', cls: '' };
+    if (st === 'high') return { hint: fmtN(val - target) + ' ' + unit + ' drüber', cls: 'over' };
+    if (st === 'ok') return { hint: 'Erreicht', cls: 'done' };
+    return { hint: fmtN(target - val) + ' ' + unit + ' fehlen', cls: '' };
   }
-  if (val > target) return { hint: fmtN(val - target) + ' ' + unit + ' over', cls: st === 'high' ? 'high' : 'over' };
-  return { hint: fmtN(target - val) + ' ' + unit + ' left', cls: '' };
+  if (val > target) return { hint: fmtN(val - target) + ' ' + unit + ' drüber', cls: st === 'high' ? 'high' : 'over' };
+  return { hint: fmtN(target - val) + ' ' + unit + ' übrig', cls: '' };
 }
 
 // Activity-style ring. Past 100 % a second, darker lap starts, like on the Apple Watch.
@@ -538,10 +538,10 @@ function weekCheck() {
   const tg = targets();
   const days = lastDays(8).slice(0, 7); // today is not finished, so it does not count yet
   const tot = days.map(dayTotals);
-  if (!tot.some((t) => t.n)) return el('p', { class: 'muted small' }, 'Log a few days to see how you did against your targets.');
+  if (!tot.some((t) => t.n)) return el('p', { class: 'muted small' }, 'Trag ein paar Tage ein, um den Vergleich mit deinen Zielen zu sehen.');
   const MARK = { low: '↓', high: '↑', ok: '', none: '', unk: '' };
-  const grid = el('div', { class: 'mgrid', role: 'table', 'aria-label': 'Last 7 days against targets' });
-  grid.append(el('span', {}), ...days.map((d) => el('span', { class: 'mg-d' }, new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2))));
+  const grid = el('div', { class: 'mgrid', role: 'table', 'aria-label': 'Letzte 7 Tage gegen die Ziele' });
+  grid.append(el('span', {}), ...days.map((d) => el('span', { class: 'mg-d' }, new Date(d + 'T00:00').toLocaleDateString('de-AT', { weekday: 'short' }).slice(0, 2))));
   const notes = [];
   for (const [key, label, unit] of NUTRI) {
     if (!tg[key]) continue;
@@ -553,21 +553,21 @@ function weekCheck() {
       if (t.n) {
         const val = t[key];
         st = key !== 'kcal' && (key === 's' ? t.ms : t.m) ? 'unk' : macroStatus(key, val, tg[key]);
-        txt = key === 'kcal' ? (val / 1000).toFixed(1) + 'k' : fmtN(val);
+        txt = key === 'kcal' ? fmtD(val / 1000, 1) + 'k' : fmtN(val);
         if (st === 'low' || st === 'high') count[st]++;
         if (st !== 'unk') vals.push(val);
       }
-      const why = { low: 'too low', high: 'too high', ok: 'in range', unk: 'some entries without protein/carbs/fat/sugar', none: 'nothing logged' }[st];
-      grid.append(el('span', { class: 'mg-c ' + st, title: shortDay(days[i]) + ' · ' + label + ': ' + (t.n ? fmtN(t[key]) + ' ' + unit + ' of ' + fmtN(tg[key]) + ' · ' : '') + why }, txt + MARK[st]));
+      const why = { low: 'zu niedrig', high: 'zu hoch', ok: 'im Bereich', unk: 'manche Einträge ohne Protein/Kohlenhydrate/Fett/Zucker', none: 'nichts eingetragen' }[st];
+      grid.append(el('span', { class: 'mg-c ' + st, title: shortDay(days[i]) + ' · ' + label + ': ' + (t.n ? fmtN(t[key]) + ' ' + unit + ' von ' + fmtN(tg[key]) + ' · ' : '') + why }, txt + MARK[st]));
     });
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     const n = vals.length;
-    if (count.low && count.low >= count.high) notes.push(label + ': too low on ' + count.low + ' of ' + n + ' days (Ø ' + fmtN(avg) + ' of ' + fmtN(tg[key]) + ' ' + unit + ')');
-    else if (count.high) notes.push(label + ': too high on ' + count.high + ' of ' + n + ' days (Ø ' + fmtN(avg) + ' of ' + fmtN(tg[key]) + ' ' + unit + ')');
+    if (count.low && count.low >= count.high) notes.push(label + ': zu niedrig an ' + count.low + ' von ' + n + ' Tagen (Ø ' + fmtN(avg) + ' von ' + fmtN(tg[key]) + ' ' + unit + ')');
+    else if (count.high) notes.push(label + ': zu hoch an ' + count.high + ' von ' + n + ' Tagen (Ø ' + fmtN(avg) + ' von ' + fmtN(tg[key]) + ' ' + unit + ')');
   }
   return el('div', {}, grid,
-    el('div', { class: 'muted small mg-key' }, '↓ too low · ↑ too high · green = in range'),
-    ...(notes.length ? notes : ['All within range. Well done.']).map((l) => el('p', { class: 'small goal-line' }, l)));
+    el('div', { class: 'muted small mg-key' }, '↓ zu niedrig · ↑ zu hoch · grün = im Bereich'),
+    ...(notes.length ? notes : ['Alles im Bereich. Gut gemacht.']).map((l) => el('p', { class: 'small goal-line' }, l)));
 }
 
 // Where you stand: progress to the goal and four key numbers, like the tiles in Apple Health.
@@ -587,7 +587,7 @@ function progressChart(g) {
   // the phone draws a narrower chart, so the same font size stays readable (the SVG is scaled to the card width)
   const phone = matchMedia('(max-width: 700px)').matches;
   const W = phone ? 360 : 600, H = phone ? 210 : 200, L = phone ? 46 : 56, R = 8, B = 24, T = 14;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart pchart', role: 'img', 'aria-label': 'Weight progress and forecast to the goal' });
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart pchart', role: 'img', 'aria-label': 'Gewichtsverlauf und Prognose bis zum Ziel' });
   const day = (d) => Math.round((new Date(d + 'T00:00') - new Date(pts[0].d + 'T00:00')) / 86400000);
   const todayN = day(toDateStr(new Date()));
   const { pace } = goalPace();
@@ -630,13 +630,13 @@ function progressChart(g) {
   });
   // first day and "today" under the axis; the first day is left out when it would touch "today"
   if (x(todayN) - L > 80) svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(pts[0].d)));
-  svg.append(svgEl('text', { x: x(todayN), y: H - 4, class: 'ax', 'text-anchor': todayN > span * 0.9 ? 'end' : x(todayN) - L < 30 ? 'start' : 'middle' }, 'today'));
+  svg.append(svgEl('text', { x: x(todayN), y: H - 4, class: 'ax', 'text-anchor': todayN > span * 0.9 ? 'end' : x(todayN) - L < 30 ? 'start' : 'middle' }, 'heute'));
   return svg;
 }
 
 function goalBlock() {
   const g = goalInfo();
-  if (!g) return el('p', { class: 'muted small' }, 'Enter your weight above to see your goal and targets.');
+  if (!g) return el('p', { class: 'muted small' }, 'Trag oben dein Gewicht ein, um Ziel und Zielwerte zu sehen.');
   const done = Math.max(0, g.start - g.cur);
   const need = g.start - g.goal;
   const left = Math.max(0, g.cur - g.goal);
@@ -644,25 +644,25 @@ function goalBlock() {
   const kcal = nutri.kcal || 2500;
   const { maint, measured, expected, pace } = goalPace();
   let when = '–';
-  if (left <= 0) when = 'Reached';
+  if (left <= 0) when = 'Erreicht';
   else if (pace > 0.05) {
     const weeks = left / pace;
-    when = weeks > 104 ? '> 2 years' : addDays(new Date(), weeks * 7).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    when = weeks > 104 ? '> 2 Jahre' : addDays(new Date(), weeks * 7).toLocaleDateString('de-AT', { month: 'short', year: 'numeric' });
   }
   const tile = (label, value, sub, cls) => el('div', { class: 'kpi ' + (cls || '') }, el('div', { class: 'kpi-l' }, label), el('div', { class: 'kpi-v' }, value), el('div', { class: 'kpi-s' }, sub));
   const kpis = el('div', { class: 'kpis' },
-    tile('Pace', pace !== null ? (pace >= 0 ? '\u2212' : '+') + Math.abs(pace).toFixed(2) : '\u2013', measured !== null ? 'kg/wk \u00b7 ' + trendWindow().length / 7 + ' wks' : expected !== null ? 'kg/week, expected' : 'needs Settings'),
-    tile('Goal', when, left > 0 ? fmtKg(left) + ' kg to go' : 'well done'),
-    tile('For \u22120.5/wk', maint ? fmtN(Math.round((maint - 550) / 50) * 50) : '\u2013', maint ? 'kcal/day' : 'Settings', 'k-pink'));
+    tile('Tempo', pace !== null ? (pace >= 0 ? '\u2212' : '+') + fmtD(Math.abs(pace), 2) : '\u2013', measured !== null ? 'kg/Wo \u00b7 ' + trendWindow().length / 7 + ' wks' : expected !== null ? 'kg/Woche, erwartet' : 'braucht Einstellungen'),
+    tile('Ziel', when, left > 0 ? fmtKg(left) + ' kg fehlen' : 'gut gemacht'),
+    tile('Für \u22120,5/Wo', maint ? fmtN(Math.round((maint - 550) / 50) * 50) : '\u2013', maint ? 'kcal/Tag' : 'Einstellungen', 'k-pink'));
   const ds = dataStatus();
-  const missing = [ds.needW ? ds.needW + ' more weigh-in' + (ds.needW > 1 ? 's' : '') : '', ds.needF ? ds.needF + ' more logged day' + (ds.needF > 1 ? 's' : '') : ''].filter(Boolean).join(' and ');
-  const data = el('div', { class: 'data-line', title: 'Food logged ' + ds.logged14 + ' of the last 14 days' + (maint ? ' \u00b7 maintenance \u2248 ' + fmtN(maint) + ' kcal' : '') },
-    ds.ok ? '' : el('span', { class: 'dl-state' }, 'Estimated \u00b7 needs ' + missing));
+  const missing = [ds.needW ? ds.needW + (ds.needW > 1 ? ' weitere Wiegungen' : ' weitere Wiegung') : '', ds.needF ? ds.needF + (ds.needF > 1 ? ' weitere eingetragene Tage' : ' weiterer eingetragener Tag') : ''].filter(Boolean).join(' und ');
+  const data = el('div', { class: 'data-line', title: 'Essen eingetragen an ' + ds.logged14 + ' der letzten 14 Tage' + (maint ? ' \u00b7 Erhaltungsbedarf \u2248 ' + fmtN(maint) + ' kcal' : '') },
+    ds.ok ? '' : el('span', { class: 'dl-state' }, 'Geschätzt \u00b7 braucht ' + missing));
   return el('div', { class: 'goal' },
     weight.length ? progressChart(g) : '',
-    weight.length ? el('p', { class: 'muted small pchart-cap' }, 'Dots: weigh-ins \u00b7 line: 7-day average \u00b7 dashed: forecast to your goal') : '',
+    weight.length ? el('p', { class: 'muted small pchart-cap' }, 'Punkte: Wiegungen \u00b7 Linie: 7-Tage-Schnitt \u00b7 gestrichelt: Prognose bis zum Ziel') : '',
     el('div', { class: 'nbar-track' }, el('div', { class: 'nbar-fill done', style: 'width:' + pct.toFixed(1) + '%' })),
-    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start)), el('span', { class: 'lost' }, '\u2212' + fmtKg(done) + ' kg'), el('span', {}, 'Goal ' + fmtKg(g.goal))),
+    el('div', { class: 'goal-ends muted small' }, el('span', {}, 'Start ' + fmtKg(g.start)), el('span', { class: 'lost' }, '\u2212' + fmtKg(done) + ' kg'), el('span', {}, 'Ziel ' + fmtKg(g.goal))),
     kpis,
     data);
 }
@@ -726,7 +726,7 @@ function svgEl(tag, attrs, text) {
 function missingNote(d) {
   const miss = food.filter((e) => e.at.slice(0, 10) === d && e.p == null);
   if (!miss.length) return '';
-  return ' \u00b7 no macros for: ' + miss.map((e) => e.text.slice(0, 40) + (e.kcal == null ? ' (no kcal)' : e.src === 'manual' ? ' (own kcal)' : '')).join('; ');
+  return ' \u00b7 keine Makros für: ' + miss.map((e) => e.text.slice(0, 40) + (e.kcal == null ? ' (keine kcal)' : e.src === 'manual' ? ' (eigene kcal)' : '')).join('; ');
 }
 
 // Bars per day with a dashed target line and the average. get(dayTotals) returns the value or null.
@@ -738,7 +738,7 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
   const step = unit === 'kcal' ? 100 : 10;
   const y = (v) => T + (H - T - B) * (1 - v / max);
   const bw = (W - L) / days.length;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart ' + (cls || ''), role: 'img', 'aria-label': name + ' per day, last ' + days.length + ' days' });
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart ' + (cls || ''), role: 'img', 'aria-label': name + ' pro Tag, letzte ' + days.length + ' Tage' });
   for (const g of [0.5, 1]) {
     const v = Math.round(((max / 1.12) * g) / step) * step;
     svg.append(svgEl('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'grid' }), svgEl('text', { x: L - 6, y: y(v) + 4, class: 'ax', 'text-anchor': 'end' }, fmtN(v)));
@@ -750,10 +750,10 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
     const x = L + i * bw + (bw - w) / 2;
     // judge: green up to the target, yellow inside the tolerance, red above it
     const st = judge && target && v ? kcalDayState(v, target) : '';
-    const why = { under: ' \u00b7 within target', warn: ' \u00b7 ' + fmtN(v - target) + ' over target, within tolerance', over: ' \u00b7 ' + fmtN(v - target) + ' over target' }[st] || '';
+    const why = { under: ' \u00b7 im Ziel', warn: ' \u00b7 ' + fmtN(v - target) + ' über dem Ziel, innerhalb der Toleranz', over: ' \u00b7 ' + fmtN(v - target) + ' über dem Ziel' }[st] || '';
     const cheat = isCheatDay(d);
     const g = svgEl('g', { class: 'bar' + (cheat ? ' cheat' : '') + (i === days.length - 1 ? ' today' : '') + (st ? ' ' + st : '') });
-    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + why : 'no data' + missingNote(d)) + (cheat ? ' \u00b7 cheat day' : '')));
+    g.append(svgEl('title', {}, shortDay(d) + ': ' + (v !== null ? fmtN(v) + ' ' + unit + why : 'keine Daten' + missingNote(d)) + (cheat ? ' \u00b7 Cheat-Day' : '')));
     g.append(svgEl('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
     if (v) g.append(svgEl('rect', { x, y: y(v), width: w, height: Math.max(1, y(0) - y(v)), rx: Math.min(3, w / 2) }));
     if (cheat && v) { // small diamond above the bar
@@ -763,11 +763,11 @@ function barChart(days, { get, target, unit, h, cls, name, judge }) {
     svg.append(g);
     const last = i === days.length - 1;
     if ((days.length - 1 - i) % every === 0) {
-      const lbl = last ? 'today' : days.length <= 7 ? new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2) : shortDay(d);
+      const lbl = last ? 'heute' : days.length <= 7 ? new Date(d + 'T00:00').toLocaleDateString('de-AT', { weekday: 'short' }).slice(0, 2) : shortDay(d);
       svg.append(svgEl('text', { x: last ? x + w : x + w / 2, y: H - 4, class: 'ax', 'text-anchor': last ? 'end' : 'middle' }, lbl));
     }
   });
-  if (target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target), y2: y(target), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(target) - 4, class: 'ax tgtlbl' }, 'target ' + fmtN(target)));
+  if (target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target), y2: y(target), class: 'tgt' }), svgEl('text', { x: L + 4, y: y(target) - 4, class: 'ax tgtlbl' }, 'Ziel ' + fmtN(target)));
   if (judge && target) svg.append(svgEl('line', { x1: L, x2: W, y1: y(target * KCAL_TOL), y2: y(target * KCAL_TOL), class: 'tgt tol' })); // upper edge of the tolerance
   return svg;
 }
@@ -779,10 +779,10 @@ const getCarbs = (t) => (t.n && !t.m ? t.c : null);
 const getFat = (t) => (t.n && !t.m ? t.f : null);
 const getSugar = (t) => (t.n && !t.ms ? t.s : null);
 
-function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Calories', judge: true }); }
-function carbsChart(days, h) { return barChart(days, { get: getCarbs, target: targets().c, unit: 'g', h, cls: 'b-c', name: 'Carbs' }); }
-function fatChart(days, h) { return barChart(days, { get: getFat, target: targets().f, unit: 'g', h, cls: 'b-f', name: 'Fat' }); }
-function sugarChart(days, h) { return barChart(days, { get: getSugar, target: targets().s, unit: 'g', h, cls: 'b-s', name: 'Sugar' }); }
+function kcalChart(days, h) { return barChart(days, { get: getKcal, target: nutri.kcal, unit: 'kcal', h, cls: 'b-kcal', name: 'Kalorien', judge: true }); }
+function carbsChart(days, h) { return barChart(days, { get: getCarbs, target: targets().c, unit: 'g', h, cls: 'b-c', name: 'Kohlenhydrate' }); }
+function fatChart(days, h) { return barChart(days, { get: getFat, target: targets().f, unit: 'g', h, cls: 'b-f', name: 'Fett' }); }
+function sugarChart(days, h) { return barChart(days, { get: getSugar, target: targets().s, unit: 'g', h, cls: 'b-s', name: 'Zucker' }); }
 function proteinChart(days, h) { return barChart(days, { get: getProtein, target: targets().p, unit: 'g', h, cls: 'b-p', name: 'Protein' }); }
 
 function weightChart(all, h) {
@@ -790,8 +790,8 @@ function weightChart(all, h) {
   // start the axis at the first weight (at least 14 days shown), so a new diary does not look empty
   const days = pts.length ? all.slice(Math.min(Math.max(0, all.indexOf(pts[0].d)), all.length - Math.min(14, all.length))) : all;
   const W = 600, H = h || 124, L = 56, B = 24, T = 10;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Weight since ' + days[0] });
-  if (pts.length < 2) { svg.append(svgEl('text', { x: W / 2, y: H / 2, class: 'ax', 'text-anchor': 'middle' }, pts.length ? 'Enter your weight on more days to see a line.' : 'No weight entered yet.')); return svg; }
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'fchart', role: 'img', 'aria-label': 'Gewicht seit ' + days[0] });
+  if (pts.length < 2) { svg.append(svgEl('text', { x: W / 2, y: H / 2, class: 'ax', 'text-anchor': 'middle' }, pts.length ? 'Trag dein Gewicht an mehr Tagen ein, um eine Linie zu sehen.' : 'Noch kein Gewicht eingetragen.')); return svg; }
   const lo = Math.min(...pts.map((p) => p.kg)) - 0.5;
   const hi = Math.max(...pts.map((p) => p.kg)) + 0.5;
   const x = (d) => L + (W - L - 6) * (days.indexOf(d) / (days.length - 1));
@@ -823,7 +823,7 @@ function weightChart(all, h) {
     g.append(svgEl('circle', { cx: x(p.d), cy: y(p.kg), r: i === pts.length - 1 ? 4 : 3 }));
     svg.append(g);
   });
-  svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(days[0])), svgEl('text', { x: W - 2, y: H - 4, class: 'ax', 'text-anchor': 'end' }, 'today'));
+  svg.append(svgEl('text', { x: L, y: H - 4, class: 'ax' }, shortDay(days[0])), svgEl('text', { x: W - 2, y: H - 4, class: 'ax', 'text-anchor': 'end' }, 'heute'));
   return svg;
 }
 
@@ -847,16 +847,16 @@ function growChart(box, draw) {
 function cheatRow(today) {
   if (!nutri.cheatOn) return '';
   const days = lastDays(7).reverse();
-  const name = (d) => (d === today ? 'Today' : new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }));
+  const name = (d) => (d === today ? 'Heute' : new Date(d + 'T00:00').toLocaleDateString('de-AT', { weekday: 'short', day: 'numeric', month: 'short' }));
   const rows = days.filter(isCheatDay).map((d) => el('div', { class: 'cheat-row' },
-    el('span', { class: 'muted small' }, 'Cheat day: ' + name(d) + '. Marked in the charts.'),
-    el('button', { type: 'button', class: 'ghost cheat-btn on', onclick: () => setCheat(d, false) }, 'Undo')));
+    el('span', { class: 'muted small' }, 'Cheat-Day: ' + name(d) + '. In den Diagrammen markiert.'),
+    el('button', { type: 'button', class: 'ghost cheat-btn on', onclick: () => setCheat(d, false) }, 'Rückgängig')));
   const free = days.filter((d) => !cheatOfWeek(d));
   if (free.length) {
-    const pick = el('select', { class: 'cheat-pick', 'aria-label': 'Day' }, ...free.map((d) => el('option', { value: d }, name(d))));
+    const pick = el('select', { class: 'cheat-pick', 'aria-label': 'Tag' }, ...free.map((d) => el('option', { value: d }, name(d))));
     rows.push(el('div', { class: 'cheat-row' }, pick,
-      el('button', { type: 'button', class: 'ghost cheat-btn', onclick: () => setCheat(pick.value, true) }, 'Mark as cheat day')));
-  } else rows.push(el('p', { class: 'muted small cheat-one' }, 'One cheat day per week.'));
+      el('button', { type: 'button', class: 'ghost cheat-btn', onclick: () => setCheat(pick.value, true) }, 'Als Cheat-Day markieren')));
+  } else rows.push(el('p', { class: 'muted small cheat-one' }, 'Ein Cheat-Day pro Woche.'));
   return el('div', { class: 'cheat-box' }, ...rows);
 }
 
@@ -884,7 +884,7 @@ function mealPreview(text) {
   const m = knownMeal(text);
   if (!m) return null;
   const tg = targets(), after = dayTotals(toDateStr(new Date())).kcal + m.kcal;
-  return { over: after > tg.kcal, text: '≈ ' + fmtN(m.kcal) + ' kcal → today ' + fmtN(after) + ' of ' + fmtN(tg.kcal) + (after > tg.kcal ? ' (' + fmtN(after - tg.kcal) + ' over)' : '') };
+  return { over: after > tg.kcal, text: '≈ ' + fmtN(m.kcal) + ' kcal → heute ' + fmtN(after) + ' von ' + fmtN(tg.kcal) + (after > tg.kcal ? ' (' + fmtN(after - tg.kcal) + ' drüber)' : '') };
 }
 function showPreview(node, text) {
   const pv = mealPreview(text);
@@ -919,7 +919,7 @@ function recentMeals(n) {
 function openQuick() {
   const dlg = $('dlg-quick'), input = $('quick-text'), note = $('quick-note');
   input.value = ''; note.textContent = ''; note.classList.remove('over');
-  const add = (text) => { addMeal(text); note.textContent = 'Added: ' + text; note.classList.remove('over'); input.value = ''; setTimeout(() => dlg.close(), 700); };
+  const add = (text) => { addMeal(text); note.textContent = 'Hinzugefügt: ' + text; note.classList.remove('over'); input.value = ''; setTimeout(() => dlg.close(), 700); };
   input.oninput = () => showPreview(note, input.value); // where today would stand, before you add it
   $('quick-recent').replaceChildren(...recentMeals(8).map((t) => {
     const pv = mealPreview(t);
@@ -952,13 +952,13 @@ function wtToggle(kind, label) {
   return el('button', { type: 'button', class: 'ghost small wt-add', 'aria-expanded': String(open), onclick: () => {
     wOpen = open ? '' : kind; renderFood();
     if (!open) requestAnimationFrame(() => { const i = $(kind === 'wt' ? 'wt-in' : 'wa-in'); if (i) i.focus(); });
-  } }, open ? 'Close' : label);
+  } }, open ? 'Schließen' : label);
 }
 
 // Small form in the Weight & Goal card: type today's weight, Enter or Save.
 function wtForm(w, today) {
-  const inp = el('input', { type: 'text', id: 'wt-in', inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight today in kg', placeholder: w && w.d === today ? 'Change today (kg)' : 'Weight today (kg)' });
-  const form = el('form', { class: 'wt-form' }, inp, el('button', { type: 'submit', class: 'ghost small' }, 'Save'));
+  const inp = el('input', { type: 'text', id: 'wt-in', inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Gewicht heute in kg', placeholder: w && w.d === today ? 'Heute ändern (kg)' : 'Gewicht heute (kg)' });
+  const form = el('form', { class: 'wt-form' }, inp, el('button', { type: 'submit', class: 'ghost small' }, 'Speichern'));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     if (!saveTodayWeight(inp.value)) { inp.setAttribute('aria-invalid', 'true'); return; }
@@ -971,8 +971,8 @@ function wtForm(w, today) {
 
 // Same form for the waist (cm), meant for once a week.
 function waForm(w, today) {
-  const inp = el('input', { type: 'text', id: 'wa-in', inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Waist in cm', placeholder: w && w.d === today ? 'Change today (cm)' : 'Waist this week (cm)' });
-  const form = el('form', { class: 'wt-form' }, inp, el('button', { type: 'submit', class: 'ghost small' }, 'Save'));
+  const inp = el('input', { type: 'text', id: 'wa-in', inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Bauchumfang in cm', placeholder: w && w.d === today ? 'Heute ändern (cm)' : 'Bauchumfang diese Woche (cm)' });
+  const form = el('form', { class: 'wt-form' }, inp, el('button', { type: 'submit', class: 'ghost small' }, 'Speichern'));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     if (!saveTodayWaist(inp.value)) { inp.setAttribute('aria-invalid', 'true'); return; }
@@ -996,8 +996,8 @@ function renderFood() {
   const avg7 = avgKcal(lastDays(7));
   const list = food.filter((e) => e.at.slice(0, 10) === today).sort((a, b) => b.at.localeCompare(a.at));
 
-  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'What did you eat?', title: 'Tip: tap the microphone on the iPhone keyboard to dictate', maxlength: '1500', autocomplete: 'off', 'aria-label': 'What did you eat' });
-  const form = el('form', { class: 'row food-add' }, input, foodHistList(), el('button', { type: 'submit' }, 'Add'));
+  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'Was hast du gegessen?', title: 'Tipp: Zum Diktieren auf das Mikrofon der iPhone-Tastatur tippen', maxlength: '1500', autocomplete: 'off', 'aria-label': 'Was hast du gegessen' });
+  const form = el('form', { class: 'row food-add' }, input, foodHistList(), el('button', { type: 'submit', class: 'add-btn', 'aria-label': 'Eintragen', title: 'Eintragen' }, '+'));
   const preview = el('p', { class: 'small meal-prev', 'aria-live': 'polite' });
   input.addEventListener('input', () => showPreview(preview, input.value));
   form.addEventListener('submit', (ev) => {
@@ -1015,16 +1015,16 @@ function renderFood() {
   const legend = el('div', { class: 'lgd' }, ...NUTRI.filter(([k]) => tg[k]).map(([k, label, unit]) => {
     const h = macroHint(k, t[k], tg[k], unit);
     const star = k === 's' && t.ms && t.n ? '*' : ''; // * = some meals have no sugar value, so the sum is a minimum
-    return el('div', { class: 'lg lg-' + k, title: k === 's' ? 'Limit: 10 % of your calories. Total sugar incl. fruit and milk.' + (star ? ' * Some meals have no sugar value.' : '') : '' },
+    return el('div', { class: 'lg lg-' + k, title: k === 's' ? 'Limit: 10 % deiner Kalorien. Gesamtzucker inkl. Obst und Milch.' + (star ? ' * Manche Mahlzeiten haben keinen Zuckerwert.' : '') : '' },
       el('div', { class: 'lg-top' }, el('span', { class: 'lg-l' }, label), el('span', { class: 'lg-h ' + h.cls }, h.hint + star)),
       el('div', { class: 'lg-v' }, fmtN(t[k]), el('span', { class: 'lg-t' }, '/' + fmtN(tg[k])), el('span', { class: 'lg-u' }, unit.toUpperCase())));
   }));
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
-  const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Enter your weight in Weight & Goal to get protein, carb and fat targets.');
+  const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Trag dein Gewicht unter Gewicht & Ziel ein, um Ziele für Protein, Kohlenhydrate und Fett zu bekommen.');
   const head = el('div', { class: 'food-today' }, hero, macros, cheatRow(today));
 
   const ul = el('ul', { class: 'list food-list' });
-  if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Nothing logged yet. Type or dictate what you ate.'));
+  if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Noch nichts eingetragen. Tippe oder diktiere, was du gegessen hast.'));
   for (const e of list) ul.append(foodEditId === e.id ? foodEditRow(e) : foodRow(e));
 
   const w = weightOn(today);
@@ -1034,11 +1034,11 @@ function renderFood() {
   const wForm = el('div', { class: 'food-weight' },
     el('div', { class: 'grow' },
       el('div', { class: 'wt-v' }, w ? fmtKg(w.kg) : '\u2013', el('span', { class: 'wt-u' }, ' kg')),
-      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Today' : shortDay(w.d)) : 'Enter your weight below',
+      el('div', { class: 'muted small' }, w ? (w.d === today ? 'Heute' : shortDay(w.d)) : 'Trag unten dein Gewicht ein',
         bmi !== null ? ' \u00b7 BMI ' + fmtKg(bmi) : '',
         dw !== null ? ' \u00b7 ' : '',
-        dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'same as last week' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg vs last week') : '')),
-    w ? wtToggle('wt', w.d === today ? 'Change' : '+ Weight') : '',
+        dw !== null ? el('span', { class: 'wt-d ' + (dw < -0.05 ? 'good' : dw > 0.05 ? 'bad' : '') }, Math.abs(dw) < 0.05 ? 'wie letzte Woche' : (dw > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dw)) + ' kg zur Vorwoche') : '')),
+    w ? wtToggle('wt', w.d === today ? 'Ändern' : '+ Gewicht') : '',
     !w || wOpen === 'wt' || wtyping !== null ? wtForm(w, today) : '');
 
   // Waist: entered once a week; the change is against the entry before (not against 7 days ago)
@@ -1046,49 +1046,49 @@ function renderFood() {
   const waBefore = wa ? waist.filter((x) => x.d < wa.d).sort((a, b) => b.d.localeCompare(a.d))[0] : null;
   const dwa = wa && waBefore ? wa.cm - waBefore.cm : null;
   const ref = waistRef();
-  const refTxt = wa && ref ? (wa.cm < ref[0] ? 'lower risk' : wa.cm < ref[1] ? 'above ' + ref[0] + ' cm: higher risk' : 'above ' + ref[1] + ' cm: high risk') : '';
+  const refTxt = wa && ref ? (wa.cm < ref[0] ? 'geringeres Risiko' : wa.cm < ref[1] ? 'above ' + ref[0] + ' cm: erhöhtes Risiko' : 'above ' + ref[1] + ' cm: hohes Risiko') : '';
   const refCls = wa && ref ? (wa.cm < ref[0] ? 'good' : wa.cm < ref[1] ? 'mid' : 'high') : ''; // colour of the risk text
   const waForBlock = el('div', { class: 'food-weight' },
     el('div', { class: 'grow' },
-      el('div', { class: 'wt-v' }, wa ? fmtKg(wa.cm) : '\u2013', el('span', { class: 'wt-u' }, ' cm waist')),
-      el('div', { class: 'muted small' }, wa ? (wa.d === today ? 'Today' : shortDay(wa.d)) : 'Enter your waist below, once a week',
+      el('div', { class: 'wt-v' }, wa ? fmtKg(wa.cm) : '\u2013', el('span', { class: 'wt-u' }, ' cm Bauch')),
+      el('div', { class: 'muted small' }, wa ? (wa.d === today ? 'Heute' : shortDay(wa.d)) : 'Trag unten deinen Bauchumfang ein, einmal pro Woche',
         refTxt ? ' \u00b7 ' : '', refTxt ? el('span', { class: 'wa-risk ' + refCls }, refTxt) : '',
         dwa !== null ? ' \u00b7 ' : '',
-        dwa !== null ? el('span', { class: 'wt-d ' + (dwa < -0.05 ? 'good' : dwa > 0.05 ? 'bad' : '') }, Math.abs(dwa) < 0.05 ? 'same as before' : (dwa > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dwa)) + ' cm vs ' + shortDay(waBefore.d)) : '')),
-    wa ? wtToggle('wa', wa.d === today ? 'Change' : '+ Waist') : '',
+        dwa !== null ? el('span', { class: 'wt-d ' + (dwa < -0.05 ? 'good' : dwa > 0.05 ? 'bad' : '') }, Math.abs(dwa) < 0.05 ? 'wie zuvor' : (dwa > 0 ? '+' : '\u2212') + fmtKg(Math.abs(dwa)) + ' cm zum ' + shortDay(waBefore.d)) : '')),
+    wa ? wtToggle('wa', wa.d === today ? 'Ändern' : '+ Bauch') : '',
     !wa || wOpen === 'wa' || watyping !== null ? waForm(wa, today) : '');
 
-  const goalCard = hcard('goal', 'green', 'Goal', '−' + (nutri.goalPct || 10) + ' %' + (dataStatus().ok ? ' \u00b7 \u2713 measured' : ''), goalBlock());
+  const goalCard = hcard('goal', 'green', 'Ziel', '−' + (nutri.goalPct || 10) + ' %' + (dataStatus().ok ? ' \u00b7 \u2713 gemessen' : ''), goalBlock());
   // Trends: one range for all charts, like Apple Health (W / M / 3M)
   const n = trendRange;
   const daysN = lastDays(n);
-  const seg = el('div', { class: 'seg', role: 'tablist', 'aria-label': 'Time range' }, ...[[7, 'W'], [30, 'M'], [90, '3M']].map(([v, l]) =>
+  const seg = el('div', { class: 'seg', role: 'tablist', 'aria-label': 'Zeitraum' }, ...[[7, 'W'], [30, 'M'], [90, '3M']].map(([v, l]) =>
     el('button', { type: 'button', role: 'tab', 'aria-selected': String(v === n), class: v === n ? 'on' : '', onclick: () => { trendRange = v; store.set('trendRange', v); renderFood(); } }, l)));
   const avgK = avgOfDays(daysN, getKcal), avgP = avgOfDays(daysN, getProtein), avgC = avgOfDays(daysN, getCarbs), avgF = avgOfDays(daysN, getFat), avgS = avgOfDays(daysN, getSugar);
-  const rangeTxt = n === 7 ? '7 days' : n === 30 ? '30 days' : '3 months';
+  const rangeTxt = n === 7 ? '7 Tage' : n === 30 ? '30 Tage' : '3 Monate';
   const wRange = weight.filter((p) => p.d >= daysN[0]).sort((a, b) => a.d.localeCompare(b.d));
   const wChange = wRange.length > 1 ? wRange[wRange.length - 1].kg - wRange[0].kg : null;
   const trendCards = [
-    hcard('bars', 'pink', 'Calories', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120), kcalWeekLine()),
+    hcard('bars', 'pink', 'Kalorien', avgK ? 'Ø ' + fmtN(avgK) + ' kcal' : rangeTxt, kcalChart(daysN, 120), kcalWeekLine()),
     tg.p ? hcard('bars', 'indigo', 'Protein', avgP ? 'Ø ' + fmtN(avgP) + ' g' : rangeTxt, proteinChart(daysN, 100)) : '',
-    tg.c !== null ? hcard('bars', 'teal', 'Carbs', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
-    tg.f ? hcard('bars', 'gold', 'Fat', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
-    hcard('bars', 'sugar', 'Sugar', avgS ? 'Ø ' + fmtN(avgS) + ' g' : rangeTxt, sugarChart(daysN, 100)),
-    hcard('line', 'purple', 'Weight', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
+    tg.c !== null ? hcard('bars', 'teal', 'Kohlenhydrate', avgC ? 'Ø ' + fmtN(avgC) + ' g' : rangeTxt, carbsChart(daysN, 100)) : '',
+    tg.f ? hcard('bars', 'gold', 'Fett', avgF ? 'Ø ' + fmtN(avgF) + ' g' : rangeTxt, fatChart(daysN, 100)) : '',
+    hcard('bars', 'sugar', 'Zucker', avgS ? 'Ø ' + fmtN(avgS) + ' g' : rangeTxt, sugarChart(daysN, 100)),
+    hcard('line', 'purple', 'Gewicht', wChange !== null ? (wChange > 0 ? '+' : '−') + fmtKg(Math.abs(wChange)) + ' kg' : rangeTxt, weightChart(daysN, 110),
       el('div', { class: 'muted small food-stats w-cap' }, '')),
-    n === 7 ? hcard('check', 'orange', 'Targets', 'last 7 days', weekCheck()) : '',
+    n === 7 ? hcard('check', 'orange', 'Ziele', 'letzte 7 Tage', weekCheck()) : '',
   ];
 
   // three cards: Food (today), Health (weight and goal), Trends (last days)
   box.replaceChildren(el('div', { class: 'food-col' }, form, preview, head,
-    hcard('meals', 'pink', 'Meals', list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : 'today', ul)));
+    hcard('meals', 'pink', 'Mahlzeiten', list.length ? list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') : 'heute', ul)));
   const wcard = trendCards.find((c) => c && c.classList && c.querySelector('.w-cap'));
   const wsvg = wcard.querySelector('svg.fchart');
   const wcap = wcard.querySelector('.w-cap');
-  if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Dots: each weigh-in \u00b7 line: 7-day average' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Dots: each weigh-in \u00b7 dashed: trend' : '';
+  if (wcap) wcap.textContent = wsvg && wsvg.dataset.mode === 'avg' ? 'Punkte: jede Wiegung \u00b7 Linie: 7-Tage-Schnitt' : wsvg && wsvg.dataset.mode === 'sparse' ? 'Punkte: jede Wiegung \u00b7 gestrichelt: Trend' : '';
   goalCard.querySelector('.fh').after(wForm, waForBlock); // current weight and waist sit at the top of the goal
   $('health').replaceChildren(el('div', { class: 'food-col' }, goalCard, tolCard()));
-  const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat day') : '';
+  const cheatKey = daysN.some(isCheatDay) ? el('p', { class: 'muted small cheat-key' }, el('span', { class: 'cheat-dia' }, '\u25c6'), ' Cheat-Day') : '';
   $('trends').replaceChildren(el('div', { class: 'food-col' }, seg, cheatKey, ...trendCards));
   if (foodEditId) ul.style.maxHeight = ''; else fitRows(ul, 2); // the last two meals; the rest scrolls (while editing the whole row shows)
   requestAnimationFrame(() => {
@@ -1104,22 +1104,22 @@ function renderFood() {
 
 // One row per meal: text (up to 3 lines; tap it to edit) with the buttons at its right, below it time, calories and macro chips.
 function foodRow(e) {
-  const kc = e.busy ? el('span', { class: 'muted small' }, 'Estimating…')
+  const kc = e.busy ? el('span', { class: 'muted small' }, 'Schätzt…')
     : e.kcal !== null && e.kcal !== undefined ? el('span', { class: 'food-kc' }, fmtN(e.kcal), el('span', { class: 'food-kcu' }, ' kcal'))
-      : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Estimate');
+      : el('button', { type: 'button', class: 'ghost small', title: e.err || '', onclick: () => estimateEntry(e) }, 'Schätzen');
   const chip = (cls, letter, v, name) => el('span', { class: 'mchip ' + cls, title: name + ' ' + fmtN(v) + ' g' }, letter + ' ' + fmtN(v));
   const chips = e.p != null
-    ? [chip('mp', 'P', e.p, 'Protein'), chip('mc', 'C', e.c, 'Carbs'), chip('mf', 'F', e.f, 'Fat')].concat(e.s != null ? [chip('ms', 'S', e.s, 'Sugar')] : [])
-    : e.src === 'manual' ? [el('span', { class: 'muted small' }, 'own value')] : [];
+    ? [chip('mp', 'P', e.p, 'Protein'), chip('mc', 'KH', e.c, 'Kohlenhydrate'), chip('mf', 'F', e.f, 'Fett')].concat(e.s != null ? [chip('ms', 'Z', e.s, 'Zucker')] : [])
+    : e.src === 'manual' ? [el('span', { class: 'muted small' }, 'eigener Wert')] : [];
   return el('li', { class: 'meal', title: e.text },
     el('div', { class: 'meal-body' },
-      el('div', { class: 'meal-t', title: 'Tap to edit', onclick: () => { foodEditId = e.id; renderFood(); } }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') }, '!') : '', e.text),
+      el('div', { class: 'meal-t', title: 'Tippen zum Bearbeiten', onclick: () => { foodEditId = e.id; renderFood(); } }, e.bad ? el('span', { class: 'meal-flag lv' + e.bad.lvl, title: TOL_LEVELS_DE[e.bad.lvl] + (e.bad.sym && e.bad.sym.length ? ': ' + e.bad.sym.map(symDe).join(', ') : '') }, '!') : '', e.text),
       el('span', { class: 'meal-act' },
         // estimate this meal again (clears the old numbers first, so a wrong value cannot stay)
-        el('button', { type: 'button', class: 'tip-refresh', title: 'Estimate again', 'aria-label': 'Estimate ' + e.text + ' again',
+        el('button', { type: 'button', class: 'tip-refresh', title: 'Neu schätzen', 'aria-label': 'Neu schätzen: ' + e.text + '',
           onclick: () => { Object.assign(e, { kcal: null, p: null, c: null, f: null, s: null, err: null }); estimateEntry(e); } }, '↻'),
-        iconButton('edit', 'Edit ' + e.text, () => { foodEditId = e.id; renderFood(); }),
-        iconButton('trash', 'Delete ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); })),
+        iconButton('edit', 'Bearbeiten: ' + e.text, () => { foodEditId = e.id; renderFood(); }),
+        iconButton('trash', 'Löschen: ' + e.text, () => { food = food.filter((x) => x.id !== e.id); arcFoodDeleted(e.id); saveFood(); renderFood(); })),
       el('div', { class: 'meal-m' }, el('span', { class: 'food-time muted' }, e.at.slice(11, 16)), kc, ...chips),
       e.err && !e.busy ? el('div', { class: 'food-err small' }, e.err.slice(0, 140)) : ''));
 }
@@ -1129,9 +1129,9 @@ function autoGrow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight 
 
 // Change text, time or calories. A changed text is estimated again (unless you typed the calories).
 function foodEditRow(e) {
-  const text = el('textarea', { rows: '3', maxlength: '1500', 'aria-label': 'Food', class: 'food-edit-text' }); text.value = e.text;
+  const text = el('textarea', { rows: '3', maxlength: '1500', 'aria-label': 'Mahlzeit', class: 'food-edit-text' }); text.value = e.text;
   text.addEventListener('input', () => autoGrow(text));
-  const time = el('input', { type: 'time', 'aria-label': 'Time' }); time.value = e.at.slice(11, 16);
+  const time = el('input', { type: 'time', 'aria-label': 'Uhrzeit' }); time.value = e.at.slice(11, 16);
   const kcal = el('input', { type: 'text', inputmode: 'numeric', 'aria-label': 'kcal', placeholder: 'kcal' }); kcal.value = e.kcal ?? '';
   const leave = () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }; // focus leaves the edit row, so the card may redraw
   const done = () => { leave(); foodEditId = null; renderFood(); };
@@ -1163,8 +1163,8 @@ function foodEditRow(e) {
   // text box over the full width, below it time, kcal and the buttons
   const row = el('li', { class: 'food-edit' }, el('div', { class: 'food-edit-fields' }, text,
     el('div', { class: 'food-edit-bar' }, time, kcal,
-      el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
-      el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'))));
+      el('button', { type: 'button', class: 'small', onclick: save }, 'Speichern'),
+      el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Abbrechen'))));
   return row;
 }
 
@@ -1183,6 +1183,10 @@ function initFood() {
 
 const TOL_LEVELS = ['', 'Mild', 'Medium', 'Strong'];
 const TOL_SYMPTOMS = ['Stomach ache', 'Toilet', 'Bloating', 'Nausea'];
+// Stored values stay English (Sheet column "reaction" / "symptoms", older entries); only the display is German.
+const TOL_LEVELS_DE = ['', 'Leicht', 'Mittel', 'Stark'];
+const TOL_SYM_DE = { 'Stomach ache': 'Bauchweh', Toilet: 'Toilette', Bloating: 'Blähungen', Nausea: 'Übelkeit' };
+const symDe = (s) => TOL_SYM_DE[s] || s;
 const TOL_MIN = 3; // flagged meals needed before an analysis makes sense
 
 function setReaction(e, lvl, sym) {
@@ -1199,11 +1203,11 @@ function setReaction(e, lvl, sym) {
 // One meal: level buttons (none / mild / medium / strong) and, when flagged, symptom chips.
 function tolRow(e) {
   const lvl = e.bad ? e.bad.lvl : 0;
-  const seg = el('div', { class: 'tol-seg', role: 'group', 'aria-label': 'Reaction to ' + e.text }, ...['OK', 'Mild', 'Medium', 'Strong'].map((l, i) =>
+  const seg = el('div', { class: 'tol-seg', role: 'group', 'aria-label': 'Reaktion auf ' + e.text }, ...['OK', 'Leicht', 'Mittel', 'Stark'].map((l, i) =>
     el('button', { type: 'button', class: 'lv' + i + (i === lvl ? ' on' : ''), 'aria-pressed': String(i === lvl), onclick: () => setReaction(e, i) }, l)));
   const chips = lvl ? el('div', { class: 'tol-chips' }, ...TOL_SYMPTOMS.map((s) => {
     const on = e.bad.sym.includes(s);
-    return el('button', { type: 'button', class: 'tol-chip' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: () => setReaction(e, lvl, on ? e.bad.sym.filter((x) => x !== s) : e.bad.sym.concat(s)) }, s);
+    return el('button', { type: 'button', class: 'tol-chip' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: () => setReaction(e, lvl, on ? e.bad.sym.filter((x) => x !== s) : e.bad.sym.concat(s)) }, symDe(s));
   })) : '';
   return el('li', { class: 'tol-meal' },
     el('div', { class: 'tol-t' }, el('span', { class: 'muted small' }, shortDay(e.at.slice(0, 10)) + ' ' + e.at.slice(11, 16)), ' ' + e.text),
@@ -1224,7 +1228,7 @@ function tolInput() {
   const from = toDateStr(addDays(new Date(), -90));
   const rows = food.filter((e) => e.at.slice(0, 10) >= from).sort((a, b) => a.at.localeCompare(b.at));
   const flagged = rows.filter((e) => e.bad).length;
-  return 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' + flagged + ' flagged of ' + rows.length + ' meals in 90 days.\n' +
+  return 'Language of the answer: ' + 'de-AT (Deutsch)' + '\n' + flagged + ' flagged of ' + rows.length + ' meals in 90 days.\n' +
     rows.map((e) => e.at.slice(0, 16).replace('T', ' ') + ' ' + e.text + (e.bad ? ' [REACTION ' + TOL_LEVELS[e.bad.lvl] + (e.bad.sym.length ? ': ' + e.bad.sym.join(', ') : '') + ']' : '')).join('\n');
 }
 
@@ -1256,12 +1260,12 @@ function tolHistory() {
   if (!rows.length) return '';
   const count = {};
   for (const e of rows) for (const s of e.bad.sym) count[s] = (count[s] || 0) + 1;
-  const sum = Object.entries(count).sort((a, b) => b[1] - a[1]).map(([s, n]) => s + ' ' + n).join(' · ');
+  const sum = Object.entries(count).sort((a, b) => b[1] - a[1]).map(([s, n]) => symDe(s) + ' ' + n).join(' · ');
   const ul = el('ul', { class: 'tol-hl' }, ...rows.map((e) => el('li', { class: 'tol-hrow' },
-    el('span', { class: 'tol-lvl lv' + e.bad.lvl }, TOL_LEVELS[e.bad.lvl]),
+    el('span', { class: 'tol-lvl lv' + e.bad.lvl }, TOL_LEVELS_DE[e.bad.lvl]),
     el('span', { class: 'muted small' }, shortDay(e.at.slice(0, 10)) + ' · '), e.text,
-    e.bad.sym.length ? el('span', { class: 'muted small' }, ' · ' + e.bad.sym.join(', ')) : '')));
-  return el('div', { class: 'tol-hist' }, el('p', { class: 'muted small tol-h' }, 'All reactions, last 90 days (' + rows.length + ')' + (sum ? ' · ' + sum : '')), ul);
+    e.bad.sym.length ? el('span', { class: 'muted small' }, ' · ' + e.bad.sym.map(symDe).join(', ')) : '')));
+  return el('div', { class: 'tol-hist' }, el('p', { class: 'muted small tol-h' }, 'Alle Reaktionen, letzte 90 Tage (' + rows.length + ')' + (sum ? ' · ' + sum : '')), ul);
 }
 
 function tolCard() {
@@ -1269,21 +1273,21 @@ function tolCard() {
   const flagged = food.filter((e) => e.bad && e.at.slice(0, 10) >= from).length;
   const recent = food.filter((e) => e.at.slice(0, 10) >= toDateStr(addDays(new Date(), -3))).sort((a, b) => b.at.localeCompare(a.at));
   const ul = el('ul', { class: 'list tol-list' });
-  if (!recent.length) ul.append(el('li', { class: 'muted small' }, 'No meals in the last 3 days.'));
+  if (!recent.length) ul.append(el('li', { class: 'muted small' }, 'Keine Mahlzeiten in den letzten 3 Tagen.'));
   for (const e of recent) ul.append(tolRow(e));
   const can = flagged >= TOL_MIN && anthropicKey;
-  const btn = el('button', { type: 'button', class: 'ghost small', onclick: loadTolerance }, tolBusy ? 'Analysing\u2026' : 'What do I not tolerate?');
+  const btn = el('button', { type: 'button', class: 'ghost small', onclick: loadTolerance }, tolBusy ? 'Analysiert\u2026' : 'Was vertrage ich nicht?');
   btn.disabled = !can || tolBusy;
-  const hint = flagged < TOL_MIN ? 'Flag at least ' + TOL_MIN + ' meals to look for patterns (' + flagged + ' so far). Everything not flagged counts as tolerated.'
-    : !anthropicKey ? 'Add an Anthropic key in Settings to analyse.' : flagged + ' flagged meals in 90 days. Few reactions give only weak hints.';
+  const hint = flagged < TOL_MIN ? 'Markiere mindestens ' + TOL_MIN + ' Mahlzeiten, um Muster zu suchen (' + flagged + ' bisher). Alles nicht Markierte gilt als verträglich.'
+    : !anthropicKey ? 'Für die Analyse einen Anthropic-Key in den Einstellungen eintragen.' : flagged + ' markierte Mahlzeiten in 90 Tagen. Wenige Reaktionen geben nur schwache Hinweise.';
   const safe = tol.safe || [];
-  const stale = tol.day && tol.n !== undefined && tol.n !== flagged ? el('p', { class: 'muted small' }, 'Reactions changed since this analysis (' + shortDay(tol.day) + '). Run it again.') : '';
+  const stale = tol.day && tol.n !== undefined && tol.n !== flagged ? el('p', { class: 'muted small' }, 'Reaktionen haben sich seit dieser Analyse geändert (' + shortDay(tol.day) + '). Bitte neu starten.') : '';
   const res = tol.err ? el('p', { class: 'food-err small' }, tol.err) : tol.day && (tol.list.length || safe.length || tol.note) ? el('div', { class: 'tol-res' },
-    tol.list.length ? el('p', { class: 'muted small tol-h' }, 'May not agree with you') : '',
-    ...tol.list.map((s) => el('div', { class: 'tol-s' }, el('b', {}, s.item), el('span', { class: 'muted small' }, ' \u00b7 flagged ' + s.flagged + ' \u00b7 other ' + s.other), el('div', { class: 'small' }, s.text))),
-    safe.length ? el('p', { class: 'muted small tol-h' }, 'Seems well tolerated') : '',
+    tol.list.length ? el('p', { class: 'muted small tol-h' }, 'Verträgst du eventuell nicht') : '',
+    ...tol.list.map((s) => el('div', { class: 'tol-s' }, el('b', {}, s.item), el('span', { class: 'muted small' }, ' \u00b7 markiert ' + s.flagged + ' \u00b7 sonst ' + s.other), el('div', { class: 'small' }, s.text))),
+    safe.length ? el('p', { class: 'muted small tol-h' }, 'Scheint gut verträglich') : '',
     ...safe.map((s) => el('div', { class: 'tol-s' }, el('b', {}, s.item), el('div', { class: 'small' }, s.text))),
     el('p', { class: 'muted small' }, tol.note), stale) : '';
-  const card = hcard('flag', 'orange', 'Tolerance', flagged ? flagged + ' flagged' : '', el('p', { class: 'muted small' }, 'Did a meal upset you? Set the level. Reactions can come hours later, so you can mark meals of the last 3 days.'), ul, el('div', { class: 'row tol-act' }, btn), el('p', { class: 'muted small' }, hint), res, tolHistory());
+  const card = hcard('flag', 'orange', 'Verträglichkeit', flagged ? flagged + ' markiert' : '', el('p', { class: 'muted small' }, 'Hat dir eine Mahlzeit nicht gutgetan? Stufe wählen. Reaktionen kommen oft Stunden später, darum kannst du Mahlzeiten der letzten 3 Tage markieren.'), ul, el('div', { class: 'row tol-act' }, btn), el('p', { class: 'muted small' }, hint), res, tolHistory());
   return card;
 }

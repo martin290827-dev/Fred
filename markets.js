@@ -24,15 +24,15 @@ async function fetchQuote(sym) {
     const r = await getJSON('https://data-api.binance.vision/api/v3/ticker/24hr?symbol=' + pair);
     return { price: parseFloat(r.lastPrice), pct: parseFloat(r.priceChangePercent), cur: 'USD' };
   }
-  if (!finnhubKey) throw new Error('no Finnhub key');
+  if (!finnhubKey) throw new Error('kein Finnhub-Key');
   const r = await getJSON('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(sym) + '&token=' + encodeURIComponent(finnhubKey));
-  if (!r || !r.c) throw new Error('unknown symbol');
+  if (!r || !r.c) throw new Error('unbekanntes Symbol');
   return { price: r.c, pct: r.dp, cur: 'USD' };
 }
 
 function fmtPrice(p) {
-  if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  if (p >= 1) return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (p >= 1000) return p.toLocaleString('de-DE', { maximumFractionDigits: 0 });
+  if (p >= 1) return p.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return p.toPrecision(3);
 }
 
@@ -59,11 +59,11 @@ function tickerMove(i, d) {
 function tickerEditor() {
   const box = $('tk-edit');
   if (!tkOpen) { box.replaceChildren(); box.hidden = true; return; }
-  const sym = el('input', { type: 'text', placeholder: 'AAPL or BTC', maxlength: '20', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Symbol' });
+  const sym = el('input', { type: 'text', placeholder: 'AAPL oder BTC', maxlength: '20', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Symbol' });
   let kind = 'stock'; // stock | crypto | index
   const idx = el('select', { 'aria-label': 'Index', hidden: '' }, ...Object.entries(INDEX_ETF).map(([k, n]) => el('option', { value: k }, n + ' (' + k + ')')));
-  const hint = el('p', { class: 'muted small', hidden: '' }, 'An index is followed through its ETF: the price is in USD, not index points. The daily change is almost the same.');
-  const stock = el('button', { type: 'button', class: 'on' }, 'Stock'), coin = el('button', { type: 'button' }, 'Crypto'), ix = el('button', { type: 'button' }, 'Index');
+  const hint = el('p', { class: 'muted small', hidden: '' }, 'Ein Index wird über seinen ETF verfolgt: Der Preis ist in USD, nicht in Indexpunkten. Die Tagesänderung ist fast gleich.');
+  const stock = el('button', { type: 'button', class: 'on' }, 'Aktie'), coin = el('button', { type: 'button' }, 'Krypto'), ix = el('button', { type: 'button' }, 'Index');
   const pick = (k) => {
     kind = k;
     stock.classList.toggle('on', k === 'stock'); coin.classList.toggle('on', k === 'crypto'); ix.classList.toggle('on', k === 'index');
@@ -75,21 +75,21 @@ function tickerEditor() {
   const msg = el('p', { class: 'muted small gform-msg' });
   const chips = el('div', { class: 'tk-order' }, ...tickers.map((s, i) => el('div', { class: 'tk-o' },
     el('span', { class: 'tk-name' }, tickerLabel(s)),
-    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + tickerLabel(s) + ' up', title: 'Up', onclick: () => tickerMove(i, -1) }, '\u25b2'),
-    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Move ' + tickerLabel(s) + ' down', title: 'Down', onclick: () => tickerMove(i, 1) }, '\u25bc'),
-    el('button', { type: 'button', class: 'tk-mv tk-rm', 'aria-label': 'Remove ' + tickerLabel(s), title: 'Remove', onclick: () => { tickers = tickers.filter((x) => x !== s); tickerSaved(); tickerEditor(); } }, '\u00d7'))));
+    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Verschieben: ' + tickerLabel(s) + ' up', title: 'Hinauf', onclick: () => tickerMove(i, -1) }, '\u25b2'),
+    el('button', { type: 'button', class: 'tk-mv', 'aria-label': 'Verschieben: ' + tickerLabel(s) + ' down', title: 'Hinunter', onclick: () => tickerMove(i, 1) }, '\u25bc'),
+    el('button', { type: 'button', class: 'tk-mv tk-rm', 'aria-label': 'Entfernen: ' + tickerLabel(s), title: 'Entfernen', onclick: () => { tickers = tickers.filter((x) => x !== s); tickerSaved(); tickerEditor(); } }, '\u00d7'))));
   const f = el('form', { class: 'gform', autocomplete: 'off' },
-    el('div', { class: 'row' }, sym, idx, el('div', { class: 'tk-seg', role: 'group', 'aria-label': 'Type' }, stock, coin, ix)),
+    el('div', { class: 'row' }, sym, idx, el('div', { class: 'tk-seg', role: 'group', 'aria-label': 'Art' }, stock, coin, ix)),
     hint, tickers.length ? chips : '', msg,
-    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { tkOpen = false; tickerEditor(); } }, 'Done'), el('button', { type: 'submit' }, 'Add')));
+    el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => { tkOpen = false; tickerEditor(); } }, 'Fertig'), el('button', { type: 'submit' }, 'Hinzufügen')));
   f.addEventListener('submit', (ev) => {
     ev.preventDefault();
     let s = kind === 'index' ? idx.value : sym.value.trim().toUpperCase().replace(/^C:/, '');
     if (kind === 'crypto') s = s.replace(/(USDT|-USD|USD)$/, '');
     if (kind !== 'crypto') s = normSym(s); // SPX, ^GSPC, S&P 500 ... become the ETF
-    if (!/^[A-Z0-9.\-]{1,15}$/.test(s)) { msg.textContent = 'Use the ticker symbol only, e.g. AAPL or BTC.'; return; }
+    if (!/^[A-Z0-9.\-]{1,15}$/.test(s)) { msg.textContent = 'Nur das Kürzel eingeben, z. B. AAPL oder BTC.'; return; }
     const id = kind === 'crypto' ? 'c:' + s : s;
-    if (tickers.includes(id)) { msg.textContent = s + ' is already in the list.'; return; }
+    if (tickers.includes(id)) { msg.textContent = s + ' ist schon in der Liste.'; return; }
     tickers.push(id);
     tickerSaved();
     tickerEditor();
@@ -115,7 +115,7 @@ async function loadQuotes() {
 
   const box = $('tickers');
   box.replaceChildren();
-  if (!tickers.length) box.append(el('p', { class: 'empty' }, 'No tickers yet. Tap + to add one.'));
+  if (!tickers.length) box.append(el('p', { class: 'empty' }, 'Noch keine Ticker. Tippe auf +, um einen hinzuzufügen.'));
   for (const s of tickers) {
     const q = lastQuotes[s];
     const slot = el('span', { class: 'sparkslot', 'data-sym': s });
@@ -128,9 +128,9 @@ async function loadQuotes() {
       tickerSym(s),
       slot,
       el('span', { class: 'tprice' }, '$' + fmtPrice(q.price)),
-      el('span', { class: 'pct ' + cls }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%')));
+      el('span', { class: 'pct ' + cls }, (q.pct >= 0 ? '+' : '') + fmtD(q.pct ?? 0, 2) + '%')));
   }
-  $('tickers-status').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' \u00b7 stocks may be delayed';
+  $('tickers-status').textContent = 'Aktualisiert ' + new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ' \u00b7 Aktien evtl. verzögert';
   lastQuotesAt = Date.now();
   paintSparks();
   if (typeof renderHeat === 'function') renderHeat(true); // the Heatmap card uses the same quotes
@@ -154,7 +154,7 @@ function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : null; }
 
 function agoText(unixSec) {
   const m = Math.max(1, Math.round((Date.now() / 1000 - unixSec) / 60));
-  return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  return 'vor ' + (m < 60 ? m + ' Min.' : m < 1440 ? Math.round(m / 60) + ' Std.' : Math.round(m / 1440) + ' T.');
 }
 
 function pickNews(list) {
@@ -199,9 +199,9 @@ async function loadNews(force) {
 
 function renderNews() {
   const box = $('news');
-  if (!finnhubKey) { box.replaceChildren(el('p', { class: 'muted' }, 'Add a Finnhub key in Settings to see news for your tickers.')); return; }
-  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Add tickers with the + in the Tickers card first.')); return; }
-  if (!news.t) { box.replaceChildren(el('p', { class: 'muted' }, 'Loading news...')); return; }
+  if (!finnhubKey) { box.replaceChildren(el('p', { class: 'muted' }, 'Für News zu deinen Tickern einen Finnhub-Key in den Einstellungen eintragen.')); return; }
+  if (!tickers.length) { box.replaceChildren(el('p', { class: 'muted' }, 'Zuerst Ticker mit dem + in der Ticker-Kachel hinzufügen.')); return; }
+  if (!news.t) { box.replaceChildren(el('p', { class: 'muted' }, 'Lädt News…')); return; }
   // biggest movers of the day first
   const move = (s) => (lastQuotes[s] ? Math.abs(lastQuotes[s].pct || 0) : -1);
   const order = tickers.filter((s) => !INDEX_ETF[s]).sort((x, y) => move(y) - move(x)); // indices have no company news
@@ -212,21 +212,21 @@ function renderNews() {
     const q = lastQuotes[s];
     const items = news.groups[s];
     const head = el('div', { class: 'news-head' },
-      el('span', { class: 'tsym' }, s === 'crypto' ? 'Crypto market' : tickerLabel(s)),
-      q ? el('span', { class: 'pct ' + (q.pct >= 0 ? 'up' : 'down') }, (q.pct >= 0 ? '+' : '') + (q.pct ?? 0).toFixed(2) + '%') : '');
-    const body = items === null ? [el('p', { class: 'muted small' }, 'News not available right now.')]
-      : !items || !items.length ? [el('p', { class: 'muted small' }, 'No headlines in the last 2 days.')]
+      el('span', { class: 'tsym' }, s === 'crypto' ? 'Kryptomarkt' : tickerLabel(s)),
+      q ? el('span', { class: 'pct ' + (q.pct >= 0 ? 'up' : 'down') }, (q.pct >= 0 ? '+' : '') + fmtD(q.pct ?? 0, 2) + '%') : '');
+    const body = items === null ? [el('p', { class: 'muted small' }, 'News gerade nicht verfügbar.')]
+      : !items || !items.length ? [el('p', { class: 'muted small' }, 'Keine Schlagzeilen in den letzten 2 Tagen.')]
         : items.map((n) => el('a', { class: 'news-item', href: n.url, target: '_blank', rel: 'noopener noreferrer' },
           el('span', { class: 'news-title' }, n.title),
           el('span', { class: 'muted small' }, (n.source ? n.source + ' · ' : '') + agoText(n.at))));
     if (items && items.length > 1) {
       // only the top headline is visible; the others are one scroll (or swipe) away inside the box
-      head.append(el('span', { class: 'news-more muted small', title: 'Scroll inside the box for more' }, '+' + (items.length - 1) + ' \u2193'));
+      head.append(el('span', { class: 'news-more muted small', title: 'Für mehr in der Box scrollen' }, '+' + (items.length - 1) + ' \u2193'));
       return el('div', { class: 'news-group' }, head, el('div', { class: 'news-scroll' }, ...body));
     }
     return el('div', { class: 'news-group' }, head, ...body);
-  }), quiet.length ? el('p', { class: 'muted small news-quiet' }, 'No headlines in the last 2 days: ' + quiet.map(tickerLabel).join(', ')) : '');
-  $('news-status').textContent = 'Updated ' + new Date(news.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' · Finnhub';
+  }), quiet.length ? el('p', { class: 'muted small news-quiet' }, 'Keine Schlagzeilen in den letzten 2 Tagen: ' + quiet.map(tickerLabel).join(', ')) : '');
+  $('news-status').textContent = 'Aktualisiert ' + new Date(news.t).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ' · Finnhub';
 }
 
 /* ---------- Sparklines: 30 daily closes, cached for 6 hours ---------- */
@@ -246,7 +246,7 @@ async function fetchSeries(sym) {
   if (twelveKey) {
     const r = await getJSON('https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(sym) +
       '&interval=1day&outputsize=30&apikey=' + encodeURIComponent(twelveKey));
-    if (r.status === 'error' || !r.values) throw new Error(r.message || 'no data');
+    if (r.status === 'error' || !r.values) throw new Error(r.message || 'keine Daten');
     return r.values.map((v) => parseFloat(v.close)).reverse();
   }
   // Finnhub stock candles are a paid feature on most accounts. Try once, remember a refusal.
@@ -260,7 +260,7 @@ async function fetchSeries(sym) {
       if (/^(401|403)/.test(e.message)) store.set('candleBlocked', true);
     }
   }
-  throw new Error('no chart source for stocks (add a Twelve Data key in Settings)');
+  throw new Error('keine Kursquelle für Aktien (Twelve-Data-Key in den Einstellungen eintragen)');
 }
 
 // Calm line in the muted ink, one accent dot on the latest value. Colour is never the only carrier:
@@ -277,8 +277,8 @@ function sparkSVG(values, name) {
   const first = values[0];
   const last = values[values.length - 1];
   const pct = ((last - first) / first) * 100;
-  const text = name + ': ' + values.length + '-day trend, ' + fmtPrice(first) + ' to ' + fmtPrice(last) +
-    ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%), range ' + fmtPrice(min) + ' to ' + fmtPrice(max);
+  const text = name + ': ' + values.length + '-Tage-Verlauf, ' + fmtPrice(first) + ' bis ' + fmtPrice(last) +
+    ' (' + (pct >= 0 ? '+' : '') + fmtD(pct, 1) + '%), Spanne ' + fmtPrice(min) + ' bis ' + fmtPrice(max);
 
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
@@ -366,8 +366,8 @@ async function loadEarnings() {
         '&symbol=' + encodeURIComponent(s) + '&token=' + encodeURIComponent(finnhubKey));
       const next = (r.earningsCalendar || []).filter((x) => x.date >= from).sort((x, y) => x.date.localeCompare(y.date))[0];
       if (next) {
-        const when = next.hour === 'bmo' ? ' (before open)' : next.hour === 'amc' ? ' (after close)' : '';
-        list.push({ id: 'earn:' + s, label: tickerLabel(s) + ' earnings' + when, at: next.date, earnings: true });
+        const when = next.hour === 'bmo' ? ' (vor Börsenstart)' : next.hour === 'amc' ? ' (nach Börsenschluss)' : '';
+        list.push({ id: 'earn:' + s, label: tickerLabel(s) + ' Quartalszahlen' + when, at: next.date, earnings: true });
       }
     } catch { /* no data for this symbol: skip it */ }
   }
@@ -381,12 +381,12 @@ function isEventNow(e) { return dayDiff(e.at) <= 0 && dayDiff(e.to || e.at) >= 0
 
 // One row for an event (whole days, birthday, earnings): a small calendar leaf, the title and a countdown pill.
 function eventRow(e) {
-  const kind = e.earnings ? 'Earnings' : e.src && e.src.birthday ? 'Birthday' : '';
-  const wd = new Date(e.at + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long' });
+  const kind = e.earnings ? 'Quartalszahlen' : e.src && e.src.birthday ? 'Geburtstag' : '';
+  const wd = new Date(e.at + 'T00:00').toLocaleDateString('de-AT', { weekday: 'long' });
   const li = el('li', { class: 'evr' + (isEventNow(e) ? ' now' : '') + (e.earnings ? ' earn' : '') },
     dateLeaf(e.at),
     el('span', { class: 'grow ev-main' },
-      el('span', { class: 'ev-t' }, e.label, e.src && e.src.series && !e.src.birthday ? el('span', { class: 'rep', title: 'Repeats' }, ' \u21bb') : ''),
+      el('span', { class: 'ev-t' }, e.label, e.src && e.src.series && !e.src.birthday ? el('span', { class: 'rep', title: 'Wiederholt sich' }, ' \u21bb') : ''),
       el('span', { class: 'ev-s' }, [wd, kind].filter(Boolean).join(' \u00b7 '))),
     el('span', { class: 'ev-when', 'data-id': e.id }));
   if (e.src && typeof gRowActions === 'function') gRowActions(li, e.src, 'event');
@@ -398,7 +398,7 @@ function renderEvents() { if (typeof renderCalendar === 'function') renderCalend
 function dateLeaf(dateStr) {
   const d = new Date(dateStr + 'T00:00');
   return el('span', { class: 'dleaf', 'aria-hidden': 'true' },
-    el('span', { class: 'dl-m' }, d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()),
+    el('span', { class: 'dl-m' }, d.toLocaleDateString('de-AT', { month: 'short' }).toUpperCase()),
     el('span', { class: 'dl-d' }, String(d.getDate())));
 }
 

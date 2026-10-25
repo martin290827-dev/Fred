@@ -48,7 +48,7 @@ function wkRow(label, value, delta, unit, good) {
   let d = '';
   if (delta !== null && delta !== undefined && isFinite(delta) && Math.abs(delta) > 1e-9) {
     const cls = !good ? '' : (delta * good > 0 ? 'pk-up' : 'pk-down');
-    d = el('span', { class: 'wk-d ' + cls }, (delta > 0 ? '+' : '−') + unit(Math.abs(delta)) + ' vs prev');
+    d = el('span', { class: 'wk-d ' + cls }, (delta > 0 ? '+' : '−') + unit(Math.abs(delta)) + ' zur Vorwoche');
   }
   return el('div', { class: 'pk-r' }, el('span', { class: 'pk-l' }, label), el('span', { class: 'wk-v' }, value === null ? '–' : value, d));
 }
@@ -62,15 +62,15 @@ const wkNone = (title, text) => el('div', { class: 'wk-sec' }, el('div', { class
 
 function weeklyAiBlock(start, cur, prev) {
   const r = weeklyAi[start];
-  const btn = el('button', { type: 'button', class: 'pk-add', onclick: () => loadWeeklyAi(start, cur, prev) }, weeklyBusy ? 'Writing…' : r && r.summary ? 'Write again' : 'Write summary');
+  const btn = el('button', { type: 'button', class: 'pk-add', onclick: () => loadWeeklyAi(start, cur, prev) }, weeklyBusy ? 'Schreibt…' : r && r.summary ? 'Neu schreiben' : 'Zusammenfassung schreiben');
   btn.disabled = weeklyBusy || !anthropicKey;
   const body = r && r.summary ? el('div', { class: 'wk-ai' },
     el('p', {}, r.summary),
-    ...(r.wins && r.wins.length ? [el('div', { class: 'food-sub' }, 'Went well'), el('ul', { class: 'wk-ul' }, ...r.wins.map((x) => el('li', {}, x)))] : []),
-    ...(r.focus && r.focus.length ? [el('div', { class: 'food-sub' }, 'Next week'), el('ul', { class: 'wk-ul' }, ...r.focus.map((x) => el('li', {}, x)))] : []))
+    ...(r.wins && r.wins.length ? [el('div', { class: 'food-sub' }, 'Lief gut'), el('ul', { class: 'wk-ul' }, ...r.wins.map((x) => el('li', {}, x)))] : []),
+    ...(r.focus && r.focus.length ? [el('div', { class: 'food-sub' }, 'Nächste Woche'), el('ul', { class: 'wk-ul' }, ...r.focus.map((x) => el('li', {}, x)))] : []))
     : r && r.err ? el('p', { class: 'food-err small' }, r.err)
-      : anthropicKey ? el('p', { class: 'muted small' }, 'A short written summary of the week. Links between areas are hints, not proof.') : setupLine('A written summary needs your Anthropic key.');
-  return el('div', { class: 'wk-sec' }, el('div', { class: 'food-sub' }, 'Summary'), body, anthropicKey ? el('div', { class: 'pk-btns' }, btn) : '');
+      : anthropicKey ? el('p', { class: 'muted small' }, 'Eine kurze Zusammenfassung der Woche. Zusammenhänge zwischen Bereichen sind Hinweise, kein Beweis.') : setupLine('Eine Zusammenfassung braucht deinen Anthropic-Key.');
+  return el('div', { class: 'wk-sec' }, el('div', { class: 'food-sub' }, 'Zusammenfassung'), body, anthropicKey ? el('div', { class: 'pk-btns' }, btn) : '');
 }
 
 function renderWeekly() {
@@ -79,33 +79,33 @@ function renderWeekly() {
   const start = wkStart(weeklyOff), prevStart = wkStart(weeklyOff + 1);
   const c = weekData(start), p = weekData(prevStart);
   const range = shortDay(start) + ' – ' + shortDay(c.end);
-  const older = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Earlier week', onclick: () => { weeklyOff++; renderWeekly(); } }, '\u2039');
-  const newer = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Later week', onclick: () => { weeklyOff--; renderWeekly(); } }, '\u203a');
+  const older = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Frühere Woche', onclick: () => { weeklyOff++; renderWeekly(); } }, '\u2039');
+  const newer = el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Spätere Woche', onclick: () => { weeklyOff--; renderWeekly(); } }, '\u203a');
   older.disabled = weeklyOff >= WEEKLY_MAX;
   newer.disabled = weeklyOff <= -1;
-  const nav = el('div', { class: 'wk-nav' }, older, el('span', { class: 'wk-range' }, range, weeklyOff <= 0 ? el('span', { class: 'wk-cap muted small' }, weeklyOff === 0 ? 'Last week' : new Date().getDay() === 0 ? 'This week' : 'This week so far') : ''), newer);
+  const nav = el('div', { class: 'wk-nav' }, older, el('span', { class: 'wk-range' }, range, weeklyOff <= 0 ? el('span', { class: 'wk-cap muted small' }, weeklyOff === 0 ? 'Letzte Woche' : new Date().getDay() === 0 ? 'Diese Woche' : 'Diese Woche bisher') : ''), newer);
   const tg = targets();
   const min = (v) => rcHmShort(v);
   const empty = !c.foodDays && !c.nights && !c.pokerSessions && c.weight === null;
   box.replaceChildren(el('div', { class: 'food-col' }, nav,
     empty ? '' : weeklyAiBlock(start, c, p), // summary first
-    empty ? el('p', { class: 'muted small' }, 'No data in this week.') : el('div', { class: 'wk-all' },
-      !c.foodDays ? wkNone('Food', 'No food logged in this week.') : wkGroup('Food',
-        wkRow('Days logged', c.foodDays ? c.foodDays + ' of 7' : null, null, String, 0),
-        wkRow('Calories per day', c.kcal === null ? null : fmtN(c.kcal) + ' kcal', dlt(c.kcal, p.kcal), (v) => fmtN(v), 0),
-        wkRow('Days above target', c.over === null || !c.foodDays ? null : String(c.over), null, String, 0),
-        wkRow('Protein per day', c.protein === null ? null : fmtN(c.protein) + ' g', dlt(c.protein, p.protein), (v) => fmtN(v), tg.p ? 1 : 0)),
-      c.weight === null ? wkNone('Body', 'No weigh-in in this week.') : wkGroup('Body',
-        wkRow('Weight', c.weight === null ? null : fmtKg(c.weight) + ' kg', c.weightChange, (v) => fmtKg(v), -1)),
-      !c.nights ? wkNone('Sleep', 'No Whoop nights in this week. Import the newest Whoop files in Recovery.') : wkGroup('Sleep',
-        wkRow('Nights', c.nights ? c.nights + ' of 7' : null, null, String, 0),
-        wkRow('Sleep per night', c.sleepMin === null ? null : min(c.sleepMin), dlt(c.sleepMin, p.sleepMin), (v) => Math.round(v) + ' min', 1),
-        wkRow('Fred Score', c.score === null ? null : String(Math.round(c.score)), dlt(c.score, p.score), (v) => String(Math.round(v)), 1),
+    empty ? el('p', { class: 'muted small' }, 'Keine Daten in dieser Woche.') : el('div', { class: 'wk-all' },
+      !c.foodDays ? wkNone('Essen', 'Kein Essen in dieser Woche eingetragen.') : wkGroup('Essen',
+        wkRow('Tage eingetragen', c.foodDays ? c.foodDays + ' von 7' : null, null, String, 0),
+        wkRow('Kalorien pro Tag', c.kcal === null ? null : fmtN(c.kcal) + ' kcal', dlt(c.kcal, p.kcal), (v) => fmtN(v), 0),
+        wkRow('Tage über dem Ziel', c.over === null || !c.foodDays ? null : String(c.over), null, String, 0),
+        wkRow('Protein pro Tag', c.protein === null ? null : fmtN(c.protein) + ' g', dlt(c.protein, p.protein), (v) => fmtN(v), tg.p ? 1 : 0)),
+      c.weight === null ? wkNone('Körper', 'Keine Wiegung in dieser Woche.') : wkGroup('Körper',
+        wkRow('Gewicht', c.weight === null ? null : fmtKg(c.weight) + ' kg', c.weightChange, (v) => fmtKg(v), -1)),
+      !c.nights ? wkNone('Schlaf', 'Keine Whoop-Nächte in dieser Woche. Importiere die neuesten Whoop-Dateien unter Erholung.') : wkGroup('Schlaf',
+        wkRow('Nächte', c.nights ? c.nights + ' von 7' : null, null, String, 0),
+        wkRow('Schlaf pro Nacht', c.sleepMin === null ? null : min(c.sleepMin), dlt(c.sleepMin, p.sleepMin), (v) => Math.round(v) + ' min', 1),
+        wkRow('Fred-Score', c.score === null ? null : String(Math.round(c.score)), dlt(c.score, p.score), (v) => String(Math.round(v)), 1),
         wkRow('HRV', c.hrv === null ? null : Math.round(c.hrv) + ' ms', dlt(c.hrv, p.hrv), (v) => Math.round(v) + ' ms', 1)),
       wkGroup('Poker',
         wkRow('Sessions', c.pokerSessions ? String(c.pokerSessions) : null, null, String, 0),
-        wkRow('Result', c.pokerResult === null ? null : eur(c.pokerResult, true), dlt(c.pokerResult, p.pokerResult), (v) => eur(v), 1)),
-      c.reactions || p.reactions ? wkGroup('Reactions', wkRow('Flagged meals', String(c.reactions), c.reactions - p.reactions, String, -1)) : '',
+        wkRow('Ergebnis', c.pokerResult === null ? null : eur(c.pokerResult, true), dlt(c.pokerResult, p.pokerResult), (v) => eur(v), 1)),
+      c.reactions || p.reactions ? wkGroup('Reaktionen', wkRow('Markierte Mahlzeiten', String(c.reactions), c.reactions - p.reactions, String, -1)) : '',
       )));
 }
 
@@ -129,7 +129,7 @@ async function loadWeeklyAi(start, cur, prev) {
   renderWeekly();
   try {
     const t = tgtLine();
-    const j = await aiJSON(WEEKLY_SYSTEM, 'Language of the answer: ' + (navigator.language || 'de-AT') + '\n' + t + 'THIS WEEK (' + cur.start + ' to ' + cur.end + '):\n' + weekLines(cur) + '\nWEEK BEFORE:\n' + weekLines(prev), 700);
+    const j = await aiJSON(WEEKLY_SYSTEM, 'Language of the answer: ' + 'de-AT (Deutsch)' + '\n' + t + 'THIS WEEK (' + cur.start + ' to ' + cur.end + '):\n' + weekLines(cur) + '\nWEEK BEFORE:\n' + weekLines(prev), 700);
     const list = (a) => (Array.isArray(a) ? a.map(String).filter(Boolean).slice(0, 3) : []);
     weeklyAi[start] = { summary: String(j.summary || ''), wins: list(j.wins), focus: list(j.focus).slice(0, 2), err: '' };
   } catch (e) {

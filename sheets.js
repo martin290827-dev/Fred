@@ -304,7 +304,7 @@ async function shModTime() {
 // full: true (or an event) = always read all tabs; nothing = the minute timer, may stop after the cheap check
 async function shSync(full) {
   clearTimeout(shTimer);
-  if (!shReady()) { shMsg = gHasToken() ? 'Sheet: Google needs one more permission. Press Connect.' : 'Sheet: waiting for Google (press Connect).'; shStatus(); return; }
+  if (!shReady()) { shMsg = gHasToken() ? 'Sheet: Google braucht noch eine Berechtigung. Tippe auf Verbinden.' : 'Sheet: wartet auf Google (tippe auf Verbinden).'; shStatus(); return; }
   if (shBusy) { shAgain = true; return; }
   shBusy = true;
   try {
@@ -317,15 +317,15 @@ async function shSync(full) {
     const remote = await shReadAll();
     shWarn = [];
     for (const set of SH_KEYS) await shSyncSet(set, remote[set]);
-    if (shWarn.length && typeof banner === 'function') banner('Google Sheet: the tab ' + shWarn.join(', ') + ' was empty. Fred kept the data of this device and wrote it back.', true);
+    if (shWarn.length && typeof banner === 'function') banner('Google Sheet: Der Tab ' + shWarn.join(', ') + ' war leer. Fred hat die Daten dieses Geräts behalten und zurückgeschrieben.', true);
     shMod = await shModTime(); // after our own writes, so they do not count as a change from elsewhere
     shFullAt = Date.now();
     store.set('shOkAt', shFullAt);
-    shMsg = 'Saved to Google Sheet ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    shMsg = 'Im Google Sheet gespeichert ' + new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     shDirty = true; // try the full sync again next time
     shMsg = /has not been used|disabled|SERVICE_DISABLED/i.test(e.message)
-      ? 'Sheet: turn on the "Google Sheets API" in your Google Cloud project (same project as the Client ID).'
+      ? 'Sheet: Schalte die "Google Sheets API" in deinem Google-Cloud-Projekt ein (dasselbe Projekt wie die Client ID).'
       : 'Sheet: ' + e.message;
   } finally {
     shApplying = false;
@@ -341,11 +341,11 @@ function shStatus() { const n = $('sheet-status'); if (n) n.textContent = shMsg;
 function syncAge() {
   const at = store.get('shOkAt', 0), min = Math.round((Date.now() - at) / 60000);
   if (!store.get('gConnected', false)) return { text: '', stale: false };
-  if (!at) return { text: 'Not synced yet', stale: true };
-  const hm = new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  if (!gHasToken()) return { text: 'Not connected, saved copy from ' + hm, stale: true };
-  if (min > 10) return { text: 'Not synced since ' + hm, stale: true };
-  return { text: min < 1 ? 'Synced just now' : 'Synced ' + min + ' min ago', stale: false };
+  if (!at) return { text: 'Noch nicht synchronisiert', stale: true };
+  const hm = new Date(at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
+  if (!gHasToken()) return { text: 'Nicht verbunden, gespeicherte Kopie von ' + hm, stale: true };
+  if (min > 10) return { text: 'Nicht synchronisiert seit ' + hm, stale: true };
+  return { text: min < 1 ? 'Gerade synchronisiert' : 'Synchronisiert vor ' + min + ' Min.', stale: false };
 }
 function syncLineUpdate() {
   const a = syncAge(), n = $('sync-age');

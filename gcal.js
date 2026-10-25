@@ -26,8 +26,8 @@ let gTrying = false;     // a silent renewal is running: do not show the button 
 let gPopHidden = false;  // closed with the x; comes back with the next session
 function gPopNeed() {
   if (!googleClientId || !store.get('gConnected', false)) return '';
-  if (!gHasToken()) return 'Google session ended';
-  if (!gScopes.includes('drive.appdata') || !gScopes.includes('drive.file')) return 'Google needs a permission';
+  if (!gHasToken()) return 'Google-Sitzung abgelaufen';
+  if (!gScopes.includes('drive.appdata') || !gScopes.includes('drive.file')) return 'Google braucht eine Berechtigung';
   return '';
 }
 function gPopUpdate() {
@@ -35,14 +35,14 @@ function gPopUpdate() {
   if (!pop) {
     pop = el('div', { id: 'g-pop', class: 'g-pop', role: 'status' },
       el('button', { type: 'button', class: 'g-pop-go' }),
-      el('button', { type: 'button', class: 'g-pop-x', 'aria-label': 'Hide', title: 'Hide' }, '\u00d7'));
+      el('button', { type: 'button', class: 'g-pop-x', 'aria-label': 'Ausblenden', title: 'Ausblenden' }, '\u00d7'));
     pop.querySelector('.g-pop-go').addEventListener('click', () => gConnect());
     pop.querySelector('.g-pop-x').addEventListener('click', () => { gPopHidden = true; gPopUpdate(); });
     document.body.append(pop);
   }
   const need = gPopNeed();
   pop.hidden = !need || gPopHidden || gTrying;
-  if (need) pop.querySelector('.g-pop-go').textContent = need + ' \u00b7 Reconnect';
+  if (need) pop.querySelector('.g-pop-go').textContent = need + ' \u00b7 Neu verbinden';
   if (typeof syncLineUpdate === 'function') syncLineUpdate();
 }
 // Renewal without a window (works while Google still remembers you); the button stays hidden meanwhile.
@@ -62,17 +62,17 @@ function gLoadScript() {
     s.src = 'https://accounts.google.com/gsi/client';
     s.async = true;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Could not load the Google sign-in script.'));
+    s.onerror = () => reject(new Error('Das Google-Anmeldeskript konnte nicht geladen werden.'));
     document.head.append(s);
   });
 }
 
 // prompt: '' = normal (asks only if needed), 'none' = silent renewal without a window
 async function gRequestToken(prompt) {
-  if (!googleClientId) throw new Error('Enter your Google Client ID in Settings first.');
+  if (!googleClientId) throw new Error('Zuerst die Google Client ID in den Einstellungen eintragen.');
   await gLoadScript();
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Google did not answer. Press Connect.')), 20000);
+    const timer = setTimeout(() => reject(new Error('Google antwortet nicht. Tippe auf Verbinden.')), 20000);
     const client = google.accounts.oauth2.initTokenClient({
       client_id: googleClientId,
       scope: G_SCOPE,
@@ -86,11 +86,11 @@ async function gRequestToken(prompt) {
         store.set('gConnected', true);
         clearTimeout(gEndTimer); // 3 minutes before the hour is over: renew without a window; only if Google refuses, the Reconnect button shows
         gEndTimer = setTimeout(() => {
-          gSilentToken().catch(() => { gEndTimer = setTimeout(() => { gStatus('Session ended.'); renderCalendar(); }, Math.max(0, gExpiry - Date.now() - 25000)); });
+          gSilentToken().catch(() => { gEndTimer = setTimeout(() => { gStatus('Sitzung abgelaufen.'); renderCalendar(); }, Math.max(0, gExpiry - Date.now() - 25000)); });
         }, Math.max(0, gExpiry - Date.now() - 180000));
         resolve();
       },
-      error_callback: (err) => { clearTimeout(timer); reject(new Error(err && err.type ? err.type : 'sign-in cancelled')); },
+      error_callback: (err) => { clearTimeout(timer); reject(new Error(err && err.type ? err.type : 'Anmeldung abgebrochen')); },
     });
     client.requestAccessToken({ prompt });
   });
@@ -103,10 +103,10 @@ async function gApi(method, path, body) {
     headers: Object.assign({ Authorization: 'Bearer ' + gToken }, body ? { 'Content-Type': 'application/json' } : {}),
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) { gToken = null; renderCalendar(); throw Object.assign(new Error('Google session ended. Press Connect.'), { status: 401 }); }
+  if (res.status === 401) { gToken = null; renderCalendar(); throw Object.assign(new Error('Google-Sitzung abgelaufen. Tippe auf Verbinden.'), { status: 401 }); }
   if (res.status === 204) return null;
   const j = await res.json().catch(() => null);
-  if (!res.ok) throw Object.assign(new Error((j && j.error && j.error.message) || 'Google error ' + res.status), { status: res.status });
+  if (!res.ok) throw Object.assign(new Error((j && j.error && j.error.message) || 'Google-Fehler ' + res.status), { status: res.status });
   return j;
 }
 
@@ -130,7 +130,7 @@ async function gRefresh() {
       .filter((i) => i.status !== 'cancelled' && i.start)
       .map((i) => ({
         id: i.id,
-        title: i.summary || '(no title)',
+        title: i.summary || '(ohne Titel)',
         allDay: !!i.start.date,
         series: i.recurringEventId || null, // repeating items (birthdays, ...) share this id
         // birthdays from contacts and events of other people cannot be changed here
@@ -143,7 +143,7 @@ async function gRefresh() {
       .sort((x, y) => x.start - y.start);
     gAgenda.forEach((e) => { e.multi = !e.allDay && !!e.end && e.end - e.start >= 24 * 3600000 && gLastDay(e) > startOfDay(e.start); });
     gAgenda = gAgenda.filter((e) => !(e.multi && e.end <= now)); // finished multi-day items do not belong to Events anymore // timed, but lasts a day or more (an overnight event stays a normal appointment)
-    gStatus('Updated ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    gStatus('Aktualisiert ' + now.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }));
   } catch (e) {
     gStatus(e.message);
   }
@@ -187,14 +187,14 @@ function renderCalendar() {
     btn.hidden = gSessionEnded(); // the floating Reconnect button does the job then
     $('cal-add').hidden = !gHasToken();
     $('cal-scan').hidden = !gHasToken();
-    if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Refresh'); btn.title = 'Refresh'; btn.replaceChildren(refreshIcon()); }
-    else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Connect'; }
+    if (gHasToken()) { btn.className = 'hicon'; btn.setAttribute('aria-label', 'Aktualisieren'); btn.title = 'Aktualisieren'; btn.replaceChildren(refreshIcon()); }
+    else { btn.className = 'ghost small'; btn.removeAttribute('aria-label'); btn.title = ''; btn.textContent = 'Verbinden'; }
   }
   const items = gAgendaItems();
-  if (!googleClientId) ul.append(setupLine('Your calendar shows here once a Google Client ID is set.', 'li'));
-  else if (!gHasToken() && !gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Not connected.'));
-  if (!items.length && gHasToken()) ul.append(el('li', { class: 'muted' }, 'Nothing coming up.'));
-  if (!items.length && gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Google session ended. Use the Reconnect button.'));
+  if (!googleClientId) ul.append(setupLine('Dein Kalender erscheint hier, sobald eine Google Client ID eingetragen ist.', 'li'));
+  else if (!gHasToken() && !gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Nicht verbunden.'));
+  if (!items.length && gHasToken()) ul.append(el('li', { class: 'muted' }, 'Nichts geplant.'));
+  if (!items.length && gSessionEnded()) ul.append(el('li', { class: 'muted' }, 'Google-Sitzung abgelaufen. Nutze den Knopf Neu verbinden.'));
   // like the Up Next widget of Apple Calendar: a small header per day, then whole-day events, then the timed items
   const now = new Date();
   let day = '';
@@ -207,7 +207,7 @@ function renderCalendar() {
       el('span', { class: 'ag-bar', 'aria-hidden': 'true' }),
       el('span', { class: 'grow ag-main' },
         el('span', { class: 'ag-t' }, ev.title),
-        el('span', { class: 'ag-s' }, hhmm(ev.start) + (ev.end ? ' \u2013 ' + hhmm(ev.end) : ''), ev.series ? el('span', { class: 'rep', title: 'Repeats' }, ' \u00b7 \u21bb') : '')),
+        el('span', { class: 'ag-s' }, hhmm(ev.start) + (ev.end ? ' \u2013 ' + hhmm(ev.end) : ''), ev.series ? el('span', { class: 'rep', title: 'Wiederholt sich' }, ' \u00b7 \u21bb') : '')),
       state.text ? el('span', { class: 'pill ' + state.cls }, state.text) : '');
     gRowActions(li, ev, 'task');
     ul.append(li);
@@ -243,24 +243,24 @@ function gAgendaItems() {
 
 function agendaDay(d) {
   const n = dayDiff(d);
-  if (n === 0) return 'Today';
-  if (n === 1) return 'Tomorrow';
-  if (n === -1) return 'Yesterday';
-  return new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  if (n === 0) return 'Heute';
+  if (n === 1) return 'Morgen';
+  if (n === -1) return 'Gestern';
+  return new Date(d + 'T00:00').toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
 // 'now' while it runs, 'soon' in the last hour before it starts. Words carry the meaning, colour only helps.
 function gState(ev, now) {
   if ((ev.end || ev.start) <= now) return { cls: 'past', text: '' }; // finished: stays visible, shown quietly
   const mins = Math.round((ev.start - now) / 60000);
-  if (mins <= 0) return { cls: 'now', text: 'Now' };
-  if (mins <= 60) return { cls: 'soon', text: 'in ' + mins + ' min' };
+  if (mins <= 0) return { cls: 'now', text: 'Jetzt' };
+  if (mins <= 60) return { cls: 'soon', text: 'in ' + mins + ' Min.' };
   return { cls: '', text: '' };
 }
 
 async function gConnect() {
   try {
-    gStatus('Waiting for Google...');
+    gStatus('Warte auf Google…');
     await gRequestToken('');
     await gRefresh();
     if (typeof syncNow === 'function') syncNow();
@@ -278,7 +278,7 @@ function gDisconnect() {
   gAgenda = [];
   store.set('gConnected', false);
   try { if (t && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(t, () => {}); } catch { /* ignore */ }
-  gStatus('Disconnected.');
+  gStatus('Getrennt.');
   renderCalendar();
   renderEvents();
 }
@@ -304,7 +304,7 @@ function gcalInit() {
   $('g-disconnect').addEventListener('click', gDisconnect);
   renderCalendar();
   if (googleClientId && store.get('gConnected', false)) {
-    gSilentToken().then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => { gStatus('Session ended. Press Connect.'); renderCalendar(); });
+    gSilentToken().then(gRefresh).then(() => { if (typeof syncNow === 'function') syncNow(); if (typeof shSync === 'function') shSync(); }).catch(() => { gStatus('Sitzung abgelaufen. Tippe auf Verbinden.'); renderCalendar(); });
   }
   setInterval(() => { if (gHasToken()) gRefresh(); }, 5 * 60000);
   // Back in the app after the hour ran out: try a silent renewal once (no window). If Google refuses, the floating Reconnect button stays.
@@ -334,25 +334,25 @@ function gShrink(file) {
       URL.revokeObjectURL(url);
       ok(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('Could not read the photo.')); };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('Das Foto konnte nicht gelesen werden.')); };
     img.src = url;
   });
 }
 
 async function gScanPhoto(file) {
-  if (!anthropicKey) { gStatus('Add an Anthropic key in Settings to read photos.'); return; }
-  gStatus('Reading the photo...');
+  if (!anthropicKey) { gStatus('Zum Lesen von Fotos einen Anthropic-Key in den Einstellungen eintragen.'); return; }
+  gStatus('Liest das Foto…');
   try {
     const data = await gShrink(file);
     const j = await aiJSON(SCAN_SYSTEM, 'Today is ' + toDateStr(new Date()) + '. Extract the event.', 400, data);
     const title = [j.title, j.place].filter(Boolean).join(' \u2013 ');
     const ok = (v, re) => (typeof v === 'string' && re.test(v) ? v : '');
     const date = ok(j.date, /^\d{4}-\d{2}-\d{2}$/), from = ok(j.from, /^\d{2}:\d{2}$/);
-    if (!title && !date) { gStatus('No event found in the photo.'); return; }
-    gStatus('Check the details, then press Add.');
+    if (!title && !date) { gStatus('Kein Termin im Foto gefunden.'); return; }
+    gStatus('Angaben prüfen, dann auf Hinzufügen tippen.');
     if (from) gOpenEditor('task', null, { title, date, from, to: ok(j.until, /^\d{2}:\d{2}$/) || hhmm(new Date(new Date(date + 'T' + from).getTime() + 3600000)) }); // no end printed: 1 hour
     else gOpenEditor('event', null, { title, date, to: ok(j.to, /^\d{4}-\d{2}-\d{2}$/) });
-  } catch (err) { gStatus('Photo: ' + err.message); }
+  } catch (err) { gStatus('Foto: ' + err.message); }
 }
 
 /* ---- Add, edit and delete in Google Calendar (Google is the only copy, Fred keeps none) ----
@@ -369,8 +369,8 @@ function gEditable(ev) { return gHasToken() && ev && !ev.readOnly; }
 function gRowActions(li, ev, kind) {
   if (!gEditable(ev)) return;
   li.append(
-    iconButton('edit', 'Edit ' + ev.title, () => gOpenEditor(ev.multi ? 'titleonly' : kind, ev)),
-    iconButton('trash', 'Delete ' + ev.title, () => gAskDelete(li, ev)));
+    iconButton('edit', 'Bearbeiten: ' + ev.title, () => gOpenEditor(ev.multi ? 'titleonly' : kind, ev)),
+    iconButton('trash', 'Löschen: ' + ev.title, () => gAskDelete(li, ev)));
   gSwipeDelete(li, ev);
 }
 
@@ -418,22 +418,22 @@ function gOpenEditor(kind, item, pre) {
   gEditing = { kind, item };
   const box = $('cal-edit');
   const f = el('form', { class: 'gform', autocomplete: 'off' });
-  const title = el('input', { type: 'text', name: 'title', placeholder: kind === 'event' ? 'Event' : 'Task or appointment', required: '', maxlength: '120', 'aria-label': 'Title' });
+  const title = el('input', { type: 'text', name: 'title', placeholder: kind === 'event' ? 'Ereignis' : 'Aufgabe oder Termin', required: '', maxlength: '120', 'aria-label': 'Titel' });
   title.value = item ? item.title : '';
   if (!item) { // a new entry is a Task (with time) or an Event (whole days); switching keeps what you typed
     const pick = (k, label) => el('button', { type: 'button', class: kind === k ? 'on' : '', onclick: () => { const d = f.elements.date; gOpenEditor(k, null, { title: title.value, date: d ? d.value : '' }); } }, label);
-    f.append(el('div', { class: 'tk-seg gk-seg', role: 'group', 'aria-label': 'Type' }, pick('task', 'Task'), pick('event', 'Event')));
+    f.append(el('div', { class: 'tk-seg gk-seg', role: 'group', 'aria-label': 'Art' }, pick('task', 'Termin'), pick('event', 'Ereignis')));
   }
   f.append(title);
   const now = new Date();
   if (kind === 'task') {
     const start = item ? item.start : new Date(Math.ceil(now.getTime() / 3600000) * 3600000); // next full hour
     const end = item && item.end ? item.end : new Date(start.getTime() + 3600000);
-    const date = el('input', { type: 'date', name: 'date', required: '', 'aria-label': 'Date' }); date.value = toDateStr(start);
-    const from = el('input', { type: 'time', name: 'from', required: '', 'aria-label': 'From' }); from.value = hhmm(start);
-    const to = el('input', { type: 'time', name: 'to', 'aria-label': 'Until' }); to.value = hhmm(end);
-    const rem = el('select', { name: 'rem', 'aria-label': 'Reminder' });
-    for (const [v, t] of (item ? [['keep', 'Reminder: keep']] : []).concat([['default', 'Reminder: calendar default'], ['0', 'Reminder: at start'], ['10', 'Reminder: 10 min before'], ['60', 'Reminder: 1 hour before'], ['none', 'No reminder']])) rem.append(el('option', { value: v }, t));
+    const date = el('input', { type: 'date', name: 'date', required: '', 'aria-label': 'Datum' }); date.value = toDateStr(start);
+    const from = el('input', { type: 'time', name: 'from', required: '', 'aria-label': 'Von' }); from.value = hhmm(start);
+    const to = el('input', { type: 'time', name: 'to', 'aria-label': 'Bis' }); to.value = hhmm(end);
+    const rem = el('select', { name: 'rem', 'aria-label': 'Erinnerung' });
+    for (const [v, t] of (item ? [['keep', 'Erinnerung: beibehalten']] : []).concat([['default', 'Erinnerung: Kalender-Standard'], ['0', 'Erinnerung: zu Beginn'], ['10', 'Erinnerung: 10 Min. vorher'], ['60', 'Erinnerung: 1 Std. vorher'], ['none', 'Keine Erinnerung']])) rem.append(el('option', { value: v }, t));
     // Changing the start moves the end with it: a new entry always lasts 60 minutes, an existing one keeps its length. Once you set the end yourself it stays.
     const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
     const clock = (n) => { n = ((n % 1440) + 1440) % 1440; return String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0'); };
@@ -448,39 +448,39 @@ function gOpenEditor(kind, item, pre) {
   } else if (kind === 'event') {
     const first = item ? item.start : now;
     const last = item ? gLastDay(item) : null;
-    const date = el('input', { type: 'date', name: 'date', required: '', 'aria-label': 'Date' }); date.value = toDateStr(first);
-    const to = el('input', { type: 'date', name: 'to', 'aria-label': 'Until (optional)' });
+    const date = el('input', { type: 'date', name: 'date', required: '', 'aria-label': 'Datum' }); date.value = toDateStr(first);
+    const to = el('input', { type: 'date', name: 'to', 'aria-label': 'Bis (optional)' });
     if (last && last > startOfDay(first)) to.value = toDateStr(last);
     date.addEventListener('change', () => { to.min = date.value; });
-    f.append(el('div', { class: 'grow-row' }, el('label', { class: 'mini' }, 'From', date), el('label', { class: 'mini' }, 'Until (optional)', to)));
+    f.append(el('div', { class: 'grow-row' }, el('label', { class: 'mini' }, 'Von', date), el('label', { class: 'mini' }, 'Bis (optional)', to)));
   }
   if (!item || !item.series) {
     // new or single items can become repeating (Google keeps the rule)
-    const rep = el('select', { name: 'repeat', 'aria-label': 'Repeat' });
-    for (const [v, t] of [['', 'Repeat: never'], ['DAILY', 'Repeat: every day'], ['WEEKLY', 'Repeat: every week'], ['MONTHLY', 'Repeat: every month'], ['YEARLY', 'Repeat: every year']]) rep.append(el('option', { value: v }, t));
+    const rep = el('select', { name: 'repeat', 'aria-label': 'Wiederholen' });
+    for (const [v, t] of [['', 'Wiederholen: nie'], ['DAILY', 'Wiederholen: täglich'], ['WEEKLY', 'Wiederholen: wöchentlich'], ['MONTHLY', 'Wiederholen: monatlich'], ['YEARLY', 'Wiederholen: jährlich']]) rep.append(el('option', { value: v }, t));
     f.append(rep);
   }
   if (item && item.series) {
     const one = el('input', { type: 'radio', name: 'scope', value: 'one' }); one.checked = true;
     const all = el('input', { type: 'radio', name: 'scope', value: 'all' });
     const hint = el('span', { class: 'muted small scope-hint' });
-    const upd = () => { hint.textContent = all.checked && kind !== 'task' ? 'For the whole series only the title changes.' : all.checked ? 'Title and time change for every date; the dates stay.' : ''; };
+    const upd = () => { hint.textContent = all.checked && kind !== 'task' ? 'Für die ganze Serie ändert sich nur der Titel.' : all.checked ? 'Titel und Uhrzeit ändern sich für jeden Termin; die Daten bleiben.' : ''; };
     one.addEventListener('change', upd); all.addEventListener('change', upd);
-    f.append(el('div', { class: 'scope' }, el('span', { class: 'muted small' }, 'Repeats:'),
-      el('label', { class: 'seg' }, one, ' Only this'), el('label', { class: 'seg' }, all, ' All in series')), hint);
+    f.append(el('div', { class: 'scope' }, el('span', { class: 'muted small' }, 'Wiederholt sich:'),
+      el('label', { class: 'seg' }, one, ' Nur diesen'), el('label', { class: 'seg' }, all, ' Alle der Serie')), hint);
   }
   if (pre) for (const [k, v] of Object.entries(pre)) if (v && f.elements[k]) f.elements[k].value = v; // values read from a photo
   const msg = el('p', { class: 'muted small gform-msg' });
-  const save = el('button', { type: 'submit' }, item ? 'Save' : 'Add');
-  f.append(el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => gCloseEditor(true) }, 'Cancel'), save), msg);
+  const save = el('button', { type: 'submit' }, item ? 'Speichern' : 'Hinzufügen');
+  f.append(el('div', { class: 'row end gform-btns' }, el('button', { type: 'button', class: 'ghost', onclick: () => gCloseEditor(true) }, 'Abbrechen'), save), msg);
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     save.disabled = true;
-    msg.textContent = 'Saving...';
+    msg.textContent = 'Speichert…';
     try {
       await gSave(kind, item, new FormData(f));
       gCloseEditor(true);
-      gStatus('Saved.');
+      gStatus('Gespeichert.');
       await gRefresh();
     } catch (err) { msg.textContent = err.message; save.disabled = false; }
   });
@@ -505,7 +505,7 @@ function gReminders(v) {
 
 async function gSave(kind, item, fd) {
   const summary = String(fd.get('title') || '').trim();
-  if (!summary) throw new Error('Please enter a title.');
+  if (!summary) throw new Error('Bitte einen Titel eingeben.');
   const whole = item && item.series && fd.get('scope') === 'all';
   const target = whole ? item.series : item && item.id; // the series master or this one date
   const body = { summary };
@@ -545,20 +545,20 @@ function gAskDelete(li, ev) {
   gAsking = ev.id;
   const done = () => { gAsking = null; renderCalendar(); };
   const del = async (id, what) => {
-    li.replaceChildren(el('span', { class: 'grow muted small' }, 'Deleting ' + what + '...'));
+    li.replaceChildren(el('span', { class: 'grow muted small' }, 'Löscht ' + what + '...'));
     try {
       await gApi('DELETE', gEvPath(id));
-      gStatus('Deleted.');
-    } catch (e) { if (!gIsGone(e)) gStatus('Could not delete: ' + e.message); }
+      gStatus('Gelöscht.');
+    } catch (e) { if (!gIsGone(e)) gStatus('Löschen fehlgeschlagen: ' + e.message); }
     gAsking = null;
     await gRefresh();
     renderCalendar();
   };
   const btns = ev.series
-    ? [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'this date') }, 'Only this'),
-      el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.series, 'the series') }, 'All')]
-    : [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'it') }, 'Delete')];
+    ? [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'diesen Termin') }, 'Nur diesen'),
+      el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.series, 'die Serie') }, 'Alle')]
+    : [el('button', { type: 'button', class: 'small danger', onclick: () => del(ev.id, 'ihn') }, 'Löschen')];
   li.className = 'asking';
-  li.replaceChildren(el('span', { class: 'grow' }, 'Delete “' + ev.title + '”?'), ...btns,
-    el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Cancel'));
+  li.replaceChildren(el('span', { class: 'grow' }, '„' + ev.title + '“ löschen?'), ...btns,
+    el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Abbrechen'));
 }

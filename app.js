@@ -36,8 +36,11 @@ let storeWarned = false;
 function storeFull(key, e) {
   if (storeWarned || typeof banner !== 'function' || !document.getElementById('banners')) return;
   storeWarned = true;
-  banner('This browser could not save "' + key + '" (' + (e && e.name || 'storage error') + '). The Google Sheet still has your data; download a backup in Settings.', true);
+  banner('Dieser Browser konnte "' + key + '" (' + (e && e.name || 'Speicherfehler') + ') nicht speichern. Deine Daten sind im Google Sheet; lade in den Einstellungen ein Backup herunter.', true);
 }
+
+// Decimal numbers in German style (2,50); used for display only
+const fmtD = (v, n) => Number(v).toLocaleString('de-DE', { minimumFractionDigits: n, maximumFractionDigits: n });
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -55,7 +58,7 @@ let googleClientId = store.get('googleClientId', '');
 /* ---------- Banners and notifications ---------- */
 function banner(text, silent) {
   const b = el('div', { class: 'banner' }, el('span', null, text),
-    el('button', { type: 'button', onclick: () => b.remove() }, 'Dismiss'));
+    el('button', { type: 'button', onclick: () => b.remove() }, 'Schließen'));
   $('banners').append(b);
   if (!silent) notify(text);
 }
@@ -99,7 +102,7 @@ async function getJSON(url) {
 // Once a second: the date in the header.
 function tickClocks() {
   const now = new Date();
-  const today = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const today = now.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   if ($('today').textContent !== today) $('today').textContent = today;
 }
 
@@ -124,15 +127,15 @@ function fmtEventWhen(e) {
   if (!e.to) return fmtDaysLeft(e.at);
   const s = dayDiff(e.at);
   const t = dayDiff(e.to);
-  if (t < 0) return 'passed';
-  if (s > 1) return 'in ' + s + ' days';
-  if (s === 1) return 'tomorrow';
-  if (s === 0) return 'starts today';
-  return t === 0 ? 'last day' : 'ongoing, ' + t + 'd left';
+  if (t < 0) return 'vorbei';
+  if (s > 1) return 'in ' + s + ' Tagen';
+  if (s === 1) return 'morgen';
+  if (s === 0) return 'beginnt heute';
+  return t === 0 ? 'letzter Tag' : 'läuft, noch ' + t + ' T.';
 }
 
 function fmtEventDates(e) {
-  const f = (d, withYear) => new Date(d + 'T00:00').toLocaleDateString('en-GB',
+  const f = (d, withYear) => new Date(d + 'T00:00').toLocaleDateString('de-AT',
     withYear ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' });
   if (!e.to || e.google) return f(e.at, true); // Google items: start date only
   return f(e.at, e.at.slice(0, 4) !== e.to.slice(0, 4)) + ' \u2013 ' + f(e.to, true);
@@ -140,7 +143,7 @@ function fmtEventDates(e) {
 
 function fmtDaysLeft(dateStr) {
   const d = dayDiff(dateStr);
-  return d < 0 ? 'passed' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days';
+  return d < 0 ? 'vorbei' : d === 0 ? 'heute' : d === 1 ? 'morgen' : 'in ' + d + ' Tagen';
 }
 
 // Events come from Google Calendar only (all-day and multi-day items). Nothing is typed in here.
@@ -161,7 +164,7 @@ async function loadFx() {
     store.set('fx', fx);
     $('fx-status').textContent = '';
   } catch {
-    $('fx-status').textContent = fx ? 'Offline, showing saved rates.' : 'Rates not available.';
+    $('fx-status').textContent = fx ? 'Offline, gespeicherte Kurse.' : 'Kurse nicht verfügbar.';
   }
   convert();
 }
@@ -171,11 +174,11 @@ function convert() {
   const amt = parseFloat($('fx-amount').value);
   const from = $('fx-from').value;
   const to = $('fx-to').value;
-  $('fx-date').textContent = 'ECB \u00b7 ' + new Date(fx.date + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  $('fx-date').textContent = 'EZB \u00b7 ' + new Date(fx.date + 'T00:00').toLocaleDateString('de-AT', { day: 'numeric', month: 'short', year: 'numeric' });
   if (!fx.rates[from] || !fx.rates[to]) { $('fx-result').textContent = '\u2013'; return; }
   const rate = fx.rates[to] / fx.rates[from];
-  $('fx-rate').textContent = '1 ' + from + ' = ' + rate.toLocaleString('en-US', { maximumFractionDigits: rate < 1 ? 4 : 2 }) + ' ' + to;
-  $('fx-result').textContent = amt >= 0 ? (amt * rate).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '\u2013';
+  $('fx-rate').textContent = '1 ' + from + ' = ' + rate.toLocaleString('de-DE', { maximumFractionDigits: rate < 1 ? 4 : 2 }) + ' ' + to;
+  $('fx-result').textContent = amt >= 0 ? (amt * rate).toLocaleString('de-DE', { maximumFractionDigits: 2 }) : '\u2013';
 }
 
 function initFx() {
@@ -207,8 +210,8 @@ function fmtDue(t) {
   const d = new Date(t.due);
   const diff = Math.round((startOfDay(d) - startOfDay(new Date())) / 86400000);
   const day = diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : diff === -1 ? 'yesterday'
-    : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-  return t.allDay ? day : day + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    : d.toLocaleDateString('de-AT', { weekday: 'short', day: 'numeric', month: 'short' });
+  return t.allDay ? day : day + ' ' + d.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
 }
 
 /* ---------- 8) Shopping list (manual) ---------- */
@@ -237,16 +240,16 @@ function iconButton(name, label, onclick) {
 function renderShop() {
   const ul = $('shop');
   ul.replaceChildren();
-  if (!shop.length) ul.append(el('li', { class: 'muted' }, 'List is empty.'));
+  if (!shop.length) ul.append(el('li', { class: 'muted' }, 'Liste ist leer.'));
   for (const it of shop) {
     if (editingShopId === it.id) { ul.append(shopEditRow(it)); continue; }
-    const box = el('input', { type: 'checkbox', 'aria-label': 'Got it' });
+    const box = el('input', { type: 'checkbox', 'aria-label': 'Erledigt' });
     box.checked = it.done;
     box.addEventListener('change', () => { it.done = box.checked; store.set('shop', shop); renderShop(); });
     ul.append(el('li', { class: it.done ? 'done' : '' },
       box, el('span', { class: 'grow t' }, it.text),
-      iconButton('edit', 'Edit ' + it.text, () => { editingShopId = it.id; renderShop(); }),
-      iconButton('trash', 'Delete ' + it.text, () => {
+      iconButton('edit', 'Bearbeiten: ' + it.text, () => { editingShopId = it.id; renderShop(); }),
+      iconButton('trash', 'Löschen: ' + it.text, () => {
         shop = shop.filter((x) => x.id !== it.id); store.set('shop', shop); renderShop();
       })));
   }
@@ -254,7 +257,7 @@ function renderShop() {
 
 // One item as a text field: Enter or Save keeps the change, Escape or Cancel drops it.
 function shopEditRow(it) {
-  const input = el('input', { type: 'text', maxlength: '60', 'aria-label': 'Item' });
+  const input = el('input', { type: 'text', maxlength: '60', 'aria-label': 'Eintrag' });
   input.value = it.text;
   const save = () => {
     const v = input.value.trim();
@@ -270,8 +273,8 @@ function shopEditRow(it) {
   });
   requestAnimationFrame(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
   return el('li', null, el('span', { class: 'grow' }, input),
-    el('button', { type: 'button', class: 'small', onclick: save }, 'Save'),
-    el('button', { type: 'button', class: 'ghost small', onclick: cancel }, 'Cancel'));
+    el('button', { type: 'button', class: 'small', onclick: save }, 'Speichern'),
+    el('button', { type: 'button', class: 'ghost small', onclick: cancel }, 'Abbrechen'));
 }
 
 /* ---------- Notes (free text, saved in this browser while you type) ---------- */
@@ -290,11 +293,11 @@ function initNotes() {
   box.value = store.get('notes', '');
   box.addEventListener('input', () => {
     growNotes();
-    $('notes-status').textContent = 'Saving...';
+    $('notes-status').textContent = 'Speichert…';
     clearTimeout(notesTimer);
     notesTimer = setTimeout(() => {
       store.set('notes', box.value);
-      $('notes-status').textContent = 'Saved';
+      $('notes-status').textContent = 'Gespeichert';
     }, 400);
   });
   // save at once when leaving the page, so nothing typed is lost
@@ -328,7 +331,7 @@ function toggleDictation() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR || store.get('noWebSpeech', false)) { systemDictation(); return; }
   const rec = new SR();
-  rec.lang = navigator.language || 'de-AT';
+  rec.lang = 'de-AT'; // the app speaks German
   rec.continuous = true;
   rec.interimResults = false;
   rec.onresult = (ev) => {
@@ -349,7 +352,7 @@ function toggleDictation() {
     dictation = rec;
     btn.classList.add('rec');
     btn.setAttribute('aria-pressed', 'true');
-    st.textContent = 'Listening…';
+    st.textContent = 'Hört zu…';
   } catch (e) {
     systemDictation();
   }
@@ -364,8 +367,8 @@ function systemDictation() {
   const mac = /Mac/.test(navigator.platform) && !('ontouchend' in document);
   const hint = $('notes-hint');
   hint.textContent = mac
-    ? 'Press the fn key twice (or the 🎤 key) and speak. If nothing happens: System Settings → Keyboard → Dictation → On.'
-    : 'Tap 🎤 at the bottom right of the keyboard and speak.';
+    ? 'Drücke zweimal die fn-Taste (oder die 🎤-Taste) und sprich. Passiert nichts: Systemeinstellungen → Tastatur → Diktat → Ein.'
+    : 'Tippe unten rechts auf der Tastatur auf 🎤 und sprich.';
   hint.hidden = false;
   clearTimeout(hint.timer);
   hint.timer = setTimeout(() => { hint.hidden = true; }, 10000);
@@ -383,10 +386,10 @@ function clearNote() {
   const undo = el('button', { type: 'button', class: 'linkbtn', onclick: () => {
     box.value = before;
     store.set('notes', before);
-    st.textContent = 'Restored';
+    st.textContent = 'Wiederhergestellt';
     clearTimeout(notesUndo);
-  } }, 'Undo');
-  st.replaceChildren('Cleared \u00b7 ', undo);
+  } }, 'Rückgängig');
+  st.replaceChildren('Gelöscht \u00b7 ', undo);
   clearTimeout(notesUndo);
   notesUndo = setTimeout(() => { if (st.contains(undo)) st.textContent = ''; }, 10000);
 }
@@ -398,20 +401,20 @@ async function shareNote() {
   const sel = box.value.slice(box.selectionStart, box.selectionEnd).trim();
   const text = sel || box.value.trim();
   const st = $('notes-status');
-  if (!text) { st.textContent = 'Nothing to share'; return; }
+  if (!text) { st.textContent = 'Nichts zu teilen'; return; }
   if (navigator.share) {
-    try { await navigator.share({ title: 'Note from Fred', text }); st.textContent = 'Shared'; return; }
+    try { await navigator.share({ title: 'Notiz aus Fred', text }); st.textContent = 'Geteilt'; return; }
     catch (e) { if (e && e.name === 'AbortError') return; } // closed without sharing
   }
-  try { await navigator.clipboard.writeText(text); st.textContent = 'Copied \u2013 paste it in Notes'; }
-  catch { st.textContent = 'Sharing not supported here'; }
+  try { await navigator.clipboard.writeText(text); st.textContent = 'Kopiert \u2013 in Notizen einfügen'; }
+  catch { st.textContent = 'Teilen wird hier nicht unterstützt'; }
 }
 
 /* ---------- Settings ---------- */
 
 // Compact "this needs a setting" line with a button that opens Settings (instead of a big empty card)
 function setupLine(text, tag) {
-  return el(tag || 'p', { class: 'setup' }, el('span', {}, text), el('button', { type: 'button', class: 'ghost small', onclick: openSettings }, 'Open Settings'));
+  return el(tag || 'p', { class: 'setup' }, el('span', {}, text), el('button', { type: 'button', class: 'ghost small', onclick: openSettings }, 'Einstellungen öffnen'));
 }
 
 function openSettings() {
@@ -423,7 +426,7 @@ function openSettings() {
   nutriFillSettings();
   $('set-gclient').value = googleClientId;
   if (typeof syncNow === 'function') syncNow(); // shows the sync state when Settings opens
-  $('g-status').textContent = gHasToken() ? 'Connected.' : '';
+  $('g-status').textContent = gHasToken() ? 'Verbunden.' : '';
   $('bk-status').textContent = '';
   $('dlg-settings').showModal();
 }
@@ -469,14 +472,14 @@ function exportSettings() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  $('bk-status').textContent = 'Saved ' + Object.keys(data).length + ' items to your Downloads folder.';
+  $('bk-status').textContent = 'Gespeichert: ' + Object.keys(data).length + ' Einträge im Download-Ordner.';
 }
 
 async function importSettings(file) {
   const st = $('bk-status');
   try {
     const j = JSON.parse(await file.text());
-    if (!j || j.app !== 'fred' || typeof j.data !== 'object' || j.data === null) throw new Error('This is not a Fred settings file.');
+    if (!j || j.app !== 'fred' || typeof j.data !== 'object' || j.data === null) throw new Error('Das ist keine Fred-Einstellungsdatei.');
     let n = 0;
     for (const k of BACKUP_KEYS) {
       if (!(k in j.data)) continue;
@@ -484,10 +487,10 @@ async function importSettings(file) {
       store.set(k, j.data[k]);
       n++;
     }
-    st.textContent = 'Imported ' + n + ' items. Reloading...';
+    st.textContent = 'Importiert: ' + n + ' Einträge. Lädt neu…';
     setTimeout(() => location.reload(), 700);
   } catch (e) {
-    st.textContent = 'Import failed: ' + e.message;
+    st.textContent = 'Import fehlgeschlagen: ' + e.message;
   }
 }
 
@@ -512,10 +515,10 @@ function currentOrder() {
 
 /* Cards are grouped into tabs (phone: bottom bar, desktop: row in the header); only the active group shows. */
 const TAB_GROUPS = [
-  { id: 'today', label: 'Today', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
-  { id: 'markets', label: 'Markets', cards: ['card-tickers', 'card-heat', 'card-news'] },
-  { id: 'nutrition', label: 'Nutrition', cards: ['card-nutsum', 'card-food', 'card-tips', 'card-trends', 'card-weekly', 'card-patterns'] },
-  { id: 'body', label: 'Body', cards: ['card-bodysum', 'card-health', 'card-recovery', 'card-sleep', 'card-habits'] },
+  { id: 'today', label: 'Heute', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
+  { id: 'markets', label: 'Märkte', cards: ['card-tickers', 'card-heat', 'card-news'] },
+  { id: 'nutrition', label: 'Ernährung', cards: ['card-nutsum', 'card-food', 'card-tips', 'card-trends', 'card-weekly', 'card-patterns'] },
+  { id: 'body', label: 'Körper', cards: ['card-bodysum', 'card-health', 'card-recovery', 'card-sleep', 'card-habits'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
 let activeTab = store.get('tab', 'today'); // per device, not synced
@@ -619,27 +622,27 @@ function showCard(id) { layout.hidden = layout.hidden.filter((x) => x !== id); s
 function renderLayoutBar() {
   const hiddenIds = layout.hidden.filter((id) => $(id));
   $('layoutbar').replaceChildren(
-    el('span', { class: 'muted small' }, 'Layout: move cards with the arrows, remove them with Hide.'),
+    el('span', { class: 'muted small' }, 'Layout: Kacheln mit den Pfeilen verschieben, mit Ausblenden entfernen.'),
     ...(hiddenIds.length
-      ? [el('span', { class: 'muted small' }, 'Hidden:'),
+      ? [el('span', { class: 'muted small' }, 'Ausgeblendet:'),
         ...hiddenIds.map((id) => el('button', { type: 'button', class: 'chip', onclick: () => showCard(id) }, '+ ' + cardTitle($(id))))]
       : []),
-    el('button', { type: 'button', class: 'ghost small', onclick: () => { layout = { order: [], hidden: [] }; saveLayout(); } }, 'Reset'),
-    el('button', { type: 'button', class: 'small', onclick: toggleLayoutMode }, 'Done'));
+    el('button', { type: 'button', class: 'ghost small', onclick: () => { layout = { order: [], hidden: [] }; saveLayout(); } }, 'Zurücksetzen'),
+    el('button', { type: 'button', class: 'small', onclick: toggleLayoutMode }, 'Fertig'));
 }
 
 function toggleLayoutMode() {
   const on = document.body.classList.toggle('editing');
   $('layoutbar').hidden = !on;
-  $('btn-layout').textContent = on ? 'Done' : 'Layout';
+  $('btn-layout').textContent = on ? 'Fertig' : 'Layout';
 }
 
 function initLayout() {
   for (const c of cardEls()) {
     c.prepend(el('div', { class: 'cardtools' },
-      el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Move earlier', onclick: () => moveCard(c.id, -1) }, '‹ Earlier'),
-      el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Move later', onclick: () => moveCard(c.id, 1) }, 'Later ›'),
-      el('button', { type: 'button', class: 'ghost small', onclick: () => hideCard(c.id) }, 'Hide')));
+      el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Nach vorne', onclick: () => moveCard(c.id, -1) }, '‹ Vor'),
+      el('button', { type: 'button', class: 'ghost small', 'aria-label': 'Nach hinten', onclick: () => moveCard(c.id, 1) }, 'Zurück ›'),
+      el('button', { type: 'button', class: 'ghost small', onclick: () => hideCard(c.id) }, 'Ausblenden')));
   }
   // one-time: Market News directly before Food, so the two half-width cards sit side by side (Food on the right)
   if (!store.get('mig.newsFood', false)) {
@@ -809,7 +812,7 @@ function initCards() {
     h2.prepend(el('span', { class: 'chead' }, ic || '', title));
     for (const id of ['btn-refresh', 'news-refresh']) {
       const b = h2.querySelector('#' + id);
-      if (b) { b.className = 'hicon'; b.setAttribute('aria-label', 'Refresh'); b.title = 'Refresh'; b.replaceChildren(refreshIcon()); }
+      if (b) { b.className = 'hicon'; b.setAttribute('aria-label', 'Aktualisieren'); b.title = 'Aktualisieren'; b.replaceChildren(refreshIcon()); }
     }
     const body = el('div', { class: 'cardbody' });
     while (h2.nextSibling) body.append(h2.nextSibling);
@@ -906,7 +909,7 @@ function init() {
   $('set-cancel').addEventListener('click', () => $('dlg-settings').close());
   $('bk-export').addEventListener('click', exportSettings);
   $('bk-import').addEventListener('click', () => $('bk-file').click());
-  $('set-geo').addEventListener('change', () => { if ($('set-geo').checked) geoPosition().catch(() => { $('set-place-status').textContent = 'Location not allowed. iPhone: Settings \u2192 Privacy \u2192 Location Services \u2192 Safari Websites.'; }); });
+  $('set-geo').addEventListener('change', () => { if ($('set-geo').checked) geoPosition().catch(() => { $('set-place-status').textContent = 'Standort nicht erlaubt. iPhone: Einstellungen \u2192 Datenschutz \u2192 Ortungsdienste \u2192 Safari-Websites.'; }); });
   $('bk-file').addEventListener('change', (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); });
   $('dlg-settings').addEventListener('close', () => {
     if ($('dlg-settings').returnValue === 'ok') saveSettings();
