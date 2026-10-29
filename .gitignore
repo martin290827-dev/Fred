@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# screenshots from local tests never go into the public repo (app icons stay)
+/*.png
+!/icon-192.png
+!/icon-512.png
+!/apple-touch-icon.png
