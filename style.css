@@ -1441,40 +1441,80 @@ body[data-tab="body"] { --card-h: 700px; }
 /* "+" buttons next to input fields (Food, quick add, shopping): short, so the field keeps its room */
 button.add-btn { min-width: 48px; padding-left: 0; padding-right: 0; font-size: 1.4rem; line-height: 1; font-weight: 500; }
 
-/* Cockpit (Body, first): three rings, then "week vs normal" rows; desktop: rings left, rows right */
-.ck { display: grid; gap: 12px; }
-.ck-head { margin: 0; font-size: 0.9rem; }
-.ck-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: center; }
-.ck-dial { position: relative; width: min(100%, 118px); margin: 0 auto; aspect-ratio: 1; }
+/* Cockpit (Body, first) in Material 3 style (Google Fit look): Google colours, tonal surfaces, pill chips, light numbers */
+.ck {
+  --ck-sleep: #1a73e8; --ck-rec: #1e8e3e; --ck-load: #f9ab00;
+  --ck-good-bg: #e6f4ea; --ck-good: #137333; --ck-bad-bg: #fce8e6; --ck-bad: #c5221f;
+  --ck-warn-bg: #fef7e0; --ck-warn: #b06000; --ck-neu-bg: rgba(60, 64, 67, 0.08); --ck-neu: #5f6368;
+  --ck-surface: rgba(26, 115, 232, 0.05);
+  display: grid; gap: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  .ck {
+    --ck-sleep: #8ab4f8; --ck-rec: #81c995; --ck-load: #fdd663;
+    --ck-good-bg: rgba(129, 201, 149, 0.16); --ck-good: #81c995; --ck-bad-bg: rgba(242, 139, 130, 0.16); --ck-bad: #f28b82;
+    --ck-warn-bg: rgba(253, 214, 99, 0.16); --ck-warn: #fdd663; --ck-neu-bg: rgba(232, 234, 237, 0.08); --ck-neu: #bdc1c6;
+    --ck-surface: rgba(138, 180, 248, 0.07);
+  }
+}
+.ck-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ck-date { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 0.88rem; font-weight: 500; }
+.ck-head-s { font-size: 0.82rem; color: var(--muted); }
+.ck-ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.ck-hero { display: grid; grid-template-columns: minmax(120px, 42%) minmax(0, 1fr); align-items: center; gap: 14px; padding: 16px; border-radius: 24px; background: var(--ck-surface); }
+.ck-dial { position: relative; aspect-ratio: 1; width: 100%; max-width: 200px; justify-self: center; }
 .ck-svg { width: 100%; height: 100%; display: block; }
-.ck-track { fill: none; stroke: var(--fill); stroke-width: 9; }
-.ck-fill { fill: none; stroke-width: 9; stroke-linecap: round; stroke: var(--muted); }
-.ck-fill.ck-g { stroke: var(--up); } .ck-fill.ck-o { stroke: var(--warn); } .ck-fill.ck-r { stroke: var(--down); } .ck-fill.ck-load { stroke: #0a84ff; }
-.ck-tick { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; }
-.ck-big { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
-.ck-lab { margin-top: 6px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
-.ck-sm { font-size: 0.75rem; color: var(--muted); line-height: 1.3; }
-.ck-list { display: grid; }
-.ck-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 6px; border-radius: 12px; background: var(--card-2); }
-.ck-l { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
-.ck-v { text-align: right; line-height: 1.2; }
-.ck-v b { display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-.ck-v small { color: var(--muted); font-size: 0.75rem; }
-.ck-a { font-size: 0.8rem; text-align: center; }
-.ck-a.better { color: #30a14e; } .ck-a.worse { color: #e5484d; } .ck-a.same { color: var(--muted); }
-.ck-foot { margin: 0; }
+.ck-track { fill: none; stroke-width: 7; opacity: 0.18; }
+.ck-fill { fill: none; stroke-width: 7; stroke-linecap: round; }
+.ck-track.ck-c-sleep, .ck-fill.ck-c-sleep { stroke: var(--ck-sleep); }
+.ck-track.ck-c-rec, .ck-fill.ck-c-rec { stroke: var(--ck-rec); }
+.ck-track.ck-c-load, .ck-fill.ck-c-load { stroke: var(--ck-load); }
+.ck-tick { stroke: var(--text); stroke-width: 2; stroke-linecap: round; }
+.ck-centre { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ck-centre b { font-size: 1.7rem; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }
+.ck-centre span { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+
+.ck-legend { display: grid; gap: 12px; }
+.ck-leg { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 10px; align-items: center; }
+.ck-leg > .ck-chip { grid-column: 2; justify-self: start; margin-top: 4px; }
+.ck-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.ck-dot .ck-ic { width: 17px; height: 17px; }
+.ck-dot.ck-c-sleep { background: var(--ck-sleep); } .ck-dot.ck-c-rec { background: var(--ck-rec); } .ck-dot.ck-c-load { background: var(--ck-load); }
+@media (prefers-color-scheme: dark) { .ck-dot { color: #202124; } }
+.ck-leg-t { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; min-width: 0; }
+.ck-leg-l { width: 100%; font-size: 0.78rem; color: var(--muted); }
+.ck-leg-v { font-size: 1.25rem; font-weight: 400; font-variant-numeric: tabular-nums; }
+.ck-leg-n { font-size: 0.75rem; color: var(--muted); }
+
+.ck-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+.ck-chip.ck-good { background: var(--ck-good-bg); color: var(--ck-good); }
+.ck-chip.ck-bad { background: var(--ck-bad-bg); color: var(--ck-bad); }
+.ck-chip.ck-warn { background: var(--ck-warn-bg); color: var(--ck-warn); }
+.ck-chip.ck-neutral { background: var(--ck-neu-bg); color: var(--ck-neu); }
+
+.ck-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ck-tile { display: grid; gap: 6px; padding: 14px; border-radius: 16px; background: var(--card-2); min-width: 0; }
+.ck-tile.ck-wide { grid-column: 1 / -1; }
+.ck-tile-h { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 500; color: var(--muted); }
+.ck-tile-h .ck-ic { width: 16px; height: 16px; color: var(--ck-sleep); }
+.ck-tile-v { font-size: 1.6rem; font-weight: 400; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ck-tile-v small { font-size: 0.85rem; color: var(--muted); }
+.ck-tile-f { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ck-tile-n { font-size: 0.75rem; color: var(--muted); }
+.ck-foot { margin: 0; font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
 @media (min-width: 1000px) {
   .grid > #card-cockpit { grid-column: span 6; height: auto; }
-  .ck { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .ck { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 16px; align-items: start; }
   .ck-head, .ck-foot { grid-column: 1 / -1; }
-  .ck-rings { align-self: center; }
-  .ck-dial { width: min(100%, 150px); }
-  .ck-big { font-size: 1.6rem; }
-  .ck-list { grid-template-columns: 1fr 1fr; column-gap: 8px; }
+  .ck-hero { height: 100%; box-sizing: border-box; }
+  .ck-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-@media (max-width: 700px) { /* phone: the rows become two-column tiles */
-  .ck-list { grid-template-columns: 1fr 1fr; gap: 6px; }
-  .ck-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l a" "v v"; row-gap: 2px; margin: 0; padding: 8px 10px; }
-  .ck-l { grid-area: l; font-size: 0.7rem; } .ck-a { grid-area: a; } .ck-v { grid-area: v; text-align: left; }
-  .ck-v b { font-size: 1.05rem; }
+@media (max-width: 700px) { /* phone: the dial big and centred, the legend below it with the chip at the right */
+  .ck-hero { grid-template-columns: 1fr; gap: 18px; }
+  .ck-dial { max-width: 210px; }
+  .ck-centre b { font-size: 2.2rem; }
+  .ck-centre span { font-size: 0.75rem; }
+  .ck-leg { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .ck-leg > .ck-chip { grid-column: 3; margin-top: 0; }
 }
