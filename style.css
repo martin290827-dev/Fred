@@ -1440,3 +1440,41 @@ body[data-tab="body"] { --card-h: 700px; }
 
 /* "+" buttons next to input fields (Food, quick add, shopping): short, so the field keeps its room */
 button.add-btn { min-width: 48px; padding-left: 0; padding-right: 0; font-size: 1.4rem; line-height: 1; font-weight: 500; }
+
+/* Cockpit (Body, first): three rings, then "week vs normal" rows; desktop: rings left, rows right */
+.ck { display: grid; gap: 12px; }
+.ck-head { margin: 0; font-size: 0.9rem; }
+.ck-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: center; }
+.ck-dial { position: relative; width: min(100%, 118px); margin: 0 auto; aspect-ratio: 1; }
+.ck-svg { width: 100%; height: 100%; display: block; }
+.ck-track { fill: none; stroke: var(--fill); stroke-width: 9; }
+.ck-fill { fill: none; stroke-width: 9; stroke-linecap: round; stroke: var(--muted); }
+.ck-fill.ck-g { stroke: var(--up); } .ck-fill.ck-o { stroke: var(--warn); } .ck-fill.ck-r { stroke: var(--down); } .ck-fill.ck-load { stroke: #0a84ff; }
+.ck-tick { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; }
+.ck-big { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.ck-lab { margin-top: 6px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.ck-sm { font-size: 0.75rem; color: var(--muted); line-height: 1.3; }
+.ck-list { display: grid; }
+.ck-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 6px; border-radius: 12px; background: var(--card-2); }
+.ck-l { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ck-v { text-align: right; line-height: 1.2; }
+.ck-v b { display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.ck-v small { color: var(--muted); font-size: 0.75rem; }
+.ck-a { font-size: 0.8rem; text-align: center; }
+.ck-a.better { color: #30a14e; } .ck-a.worse { color: #e5484d; } .ck-a.same { color: var(--muted); }
+.ck-foot { margin: 0; }
+@media (min-width: 1000px) {
+  .grid > #card-cockpit { grid-column: span 6; height: auto; }
+  .ck { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .ck-head, .ck-foot { grid-column: 1 / -1; }
+  .ck-rings { align-self: center; }
+  .ck-dial { width: min(100%, 150px); }
+  .ck-big { font-size: 1.6rem; }
+  .ck-list { grid-template-columns: 1fr 1fr; column-gap: 8px; }
+}
+@media (max-width: 700px) { /* phone: the rows become two-column tiles */
+  .ck-list { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ck-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l a" "v v"; row-gap: 2px; margin: 0; padding: 8px 10px; }
+  .ck-l { grid-area: l; font-size: 0.7rem; } .ck-a { grid-area: a; } .ck-v { grid-area: v; text-align: left; }
+  .ck-v b { font-size: 1.05rem; }
+}

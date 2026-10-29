@@ -75,9 +75,9 @@ const SH_SETS = {
   // daily Whoop values that feed the Recovery and Sleep cards
   whoop: {
     tab: 'Whoop Tage', key: 'd',
-    cols: ['d', 'hrv', 'rhr', 'resp', 'skinTemp', 'spo2', 'sleepMin', 'sleepNeedMin', 'sleepDebtMin', 'sleepEff', 'sleepConsist', 'lightMin', 'deepMin', 'remMin', 'awakeMin', 'bed', 'wake', 'strain', 'whoopRecovery'],
+    cols: ['d', 'hrv', 'rhr', 'resp', 'skinTemp', 'spo2', 'sleepMin', 'sleepNeedMin', 'sleepDebtMin', 'sleepEff', 'sleepConsist', 'lightMin', 'deepMin', 'remMin', 'awakeMin', 'bed', 'wake', 'strain', 'whoopRecovery', 'dev'],
     get: () => whoop,
-    set: (rows) => { whoop = rows.map((r) => Object.fromEntries(SH_SETS.whoop.cols.map((c) => [c, c === 'd' ? r.d : r[c] === '' || r[c] == null ? null : (c === 'bed' || c === 'wake' ? String(r[c]) : Number(r[c]))]))); },
+    set: (rows) => { whoop = rows.map((r) => Object.fromEntries(SH_SETS.whoop.cols.map((c) => [c, c === 'd' ? r.d : r[c] === '' || r[c] == null ? null : (c === 'bed' || c === 'wake' || c === 'dev' ? String(r[c]) : Number(r[c]))]))); },
     order: (a, b) => String(a.d).localeCompare(String(b.d)),
     save: () => store.set('whoop', whoop),
     show: () => { if (typeof renderRecovery === 'function') renderRecovery(); if (typeof renderWeekly === 'function') renderWeekly(); },
@@ -91,7 +91,7 @@ const SH_SETS = {
     },
     order: (a, b) => String(a.start).localeCompare(String(b.start)),
     save: () => store.set('workouts', workouts),
-    show: () => { if (typeof renderBodySum === 'function') renderBodySum(); },
+    show: () => { if (typeof renderBodySum === 'function') renderBodySum(); if (typeof renderCockpit === 'function') renderCockpit(); },
   },
   // the written weekly summaries, one readable row per week
   review: {

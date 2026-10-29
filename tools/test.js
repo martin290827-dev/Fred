@@ -13,7 +13,7 @@ ctx.window = ctx; ctx.self = ctx;
 vm.createContext(ctx);
 // top-level const / let become sandbox properties, so the tests can read and replace them
 const load = (f) => vm.runInContext(fs.readFileSync(f, 'utf8').replace(/^'use strict';/, '').replace(/^(const|let) /gm, 'var '), ctx, { filename: f });
-for (const f of ['app.js', 'sync.js', 'food.js', 'recovery.js', 'now.js', 'nsum.js', 'heatmap.js', 'sheets.js']) load(f);
+for (const f of ['app.js', 'sync.js', 'food.js', 'recovery.js', 'now.js', 'nsum.js', 'cockpit.js', 'heatmap.js', 'sheets.js']) load(f);
 const run = (code) => vm.runInContext(code, ctx);
 let ok = 0;
 const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console.log('FAIL ' + name + ': ' + e.message); process.exitCode = 1; } };
@@ -143,6 +143,40 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
     const series = []; for (let i = 400; i >= 0; i--) series.push([day(i), 1000 - i]);
     const b = ctx.heatBases(series);
     assert.strictEqual(b.m3, 1000 - 91); assert.strictEqual(b.m6, 1000 - 182); assert.strictEqual(b.y1, 1000 - 365);
+  });
+
+  /* ---- Cockpit and device switch ---- */
+  // n nights ending d0 days ago, with values from f(i)
+  const nights = (n, d0, f) => Array.from({ length: n }, (_, i) => Object.assign({ d: day(d0 + n - 1 - i), hrv: 50, rhr: 55, sleepMin: 420, sleepNeedMin: 480, sleepDebtMin: 0 }, f(i)));
+
+  await test('device switch: the baseline only uses nights of the same device', () => {
+    const rows = nights(20, 3, () => ({})).concat(nights(3, 0, () => ({ dev: 'other', hrv: 25 })));
+    const sc = ctx.computeScores(rows);
+    assert.ok(sc[19].score != null, 'old device scored');
+    assert.ok(sc.slice(20).every((r) => r.score == null), 'new device: no score until 7 own nights');
+    const f = ctx.ckFacts(rows, []);
+    assert.strictEqual(f.dev, 'other'); assert.strictEqual(f.calib, true); assert.strictEqual(f.norm, null);
+    assert.strictEqual(f.nights, 3);
+  });
+
+  await test('cockpit: newest week against the 30 nights before, training against the average week', () => {
+    const rows = nights(30, 7, () => ({ hrv: 40 })).concat(nights(7, 0, () => ({ hrv: 50, sleepMin: 432 })));
+    const wos = [{ d: day(1), min: 60, kcal: 400 }, { d: day(3), min: 30, kcal: 200 }, // this week: 90 min
+      { d: day(10), min: 60 }, { d: day(20), min: 60 }, { d: day(30), min: 60 }, { d: day(40), min: 60 }]; // day 40 is outside the 28 days before
+    const f = ctx.ckFacts(rows, wos);
+    assert.strictEqual(f.calib, false);
+    assert.strictEqual(f.week.hrv, 50); assert.strictEqual(f.norm.hrv, 40);
+    assert.strictEqual(Math.round(f.week.sleepPct), 90);
+    assert.strictEqual(f.load.min, 90); assert.strictEqual(f.load.n, 2); assert.strictEqual(f.load.normMin, 45);
+    assert.strictEqual(ctx.ckJudge('rhr', 58, 55, 1, false).cls, 'worse');
+    assert.strictEqual(ctx.ckJudge('resp', 15.2, 14.6, 0.5, null).cls, 'same');
+    assert.strictEqual(ctx.ckJudge('resp', 15.8, 14.6, 0.5, null).cls, 'worse');
+  });
+
+  await test('Sheet: the device column is read as text, an empty cell means the old device', () => {
+    ctx.SH_SETS.whoop.set([{ d: '2026-01-01', hrv: '50', dev: '' }, { d: '2026-01-02', hrv: '48', dev: 'other' }]);
+    assert.strictEqual(ctx.whoop[0].dev, null); assert.strictEqual(ctx.rcDev(ctx.whoop[0]), 'whoop');
+    assert.strictEqual(ctx.whoop[1].dev, 'other'); assert.strictEqual(ctx.whoop[1].hrv, 48);
   });
 
   console.log(process.exitCode ? 'Some tests failed.' : 'OK: ' + ok + ' logic tests passed.');

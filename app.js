@@ -518,7 +518,7 @@ const TAB_GROUPS = [
   { id: 'today', label: 'Heute', cards: ['card-now', 'card-weather', 'card-cal', 'card-shop', 'card-notes'] },
   { id: 'markets', label: 'Märkte', cards: ['card-tickers', 'card-heat', 'card-news'] },
   { id: 'nutrition', label: 'Ernährung', cards: ['card-nutsum', 'card-food', 'card-tips', 'card-trends', 'card-weekly', 'card-patterns'] },
-  { id: 'body', label: 'Körper', cards: ['card-bodysum', 'card-health', 'card-recovery', 'card-sleep', 'card-habits'] },
+  { id: 'body', label: 'Körper', cards: ['card-cockpit', 'card-bodysum', 'card-health', 'card-recovery', 'card-sleep', 'card-habits'] },
   { id: 'tools', label: 'Tools', cards: ['card-calc', 'card-poker'] },
 ];
 let activeTab = store.get('tab', 'today'); // per device, not synced
@@ -745,6 +745,13 @@ function initLayout() {
     if (n >= 0) { o.splice(n + 1, 0, 'card-health'); layout.order = o; store.set('layout', layout); }
     store.set('mig.healthToBody', true);
   }
+  // one-time: the Cockpit goes first in the Body group
+  if (!store.get('mig.cockpit', false)) {
+    const o = layout.order.filter((id) => id !== 'card-cockpit');
+    const n = o.indexOf('card-bodysum');
+    if (n >= 0) { o.splice(n, 0, 'card-cockpit'); layout.order = o; store.set('layout', layout); }
+    store.set('mig.cockpit', true);
+  }
   applyLayout();
 }
 
@@ -767,6 +774,7 @@ const CARD_ICONS = {
   'card-poker': ['#ff9f0a', 'M12 3c3 4 7 6 7 10a4 4 0 0 1-7 2.6A4 4 0 0 1 5 13c0-4 4-6 7-10zM12 15v5M9.5 20h5'],
   'card-now': ['#0a84ff', 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5'],
   'card-patterns': ['#5e5ce6', 'M4 18l5-6 4 3 7-9M4 21h16'],
+  'card-cockpit': ['#34c759', 'M12 20a8 8 0 1 1 8-8M12 12l4-4M12 16a4 4 0 1 1 4-4'],
   'card-bodysum': ['#5e5ce6', 'M4 12h4l2-6 4 12 2-6h4'],
   'card-nutsum': ['#30b0c7', 'M5 4v7a3 3 0 0 0 6 0V4M8 4v16M17 4c-2 2-2 6 0 8v8'],
   'card-weekly': ['#5e5ce6', 'M5 4h14v16H5zM8 9h8M8 13h8M8 17h4'],

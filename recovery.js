@@ -14,6 +14,9 @@ if (![7, 15, 30].includes(rcRange)) rcRange = 15;
 let rcImportMsg = '';
 
 function saveWhoop() { store.set('whoop', whoop); }
+// Which wearable measured a night. Older nights have no field: they all came from Whoop.
+// The baseline (Fred-Score, Cockpit) only compares nights of the same device, because HRV differs between devices.
+const rcDev = (r) => r.dev || 'whoop';
 
 // Workouts from the Whoop workouts CSV, in neutral fields: [{ id: start text, d: 'YYYY-MM-DD', t: 'HH:MM', name, min, kcal, avgHr, maxHr, strain }]
 let workouts = store.get('workouts', []);
@@ -55,6 +58,7 @@ function rowToEntry(get) {
     wake: get('Beginn des Aufwachens').slice(11, 16) || null,
     strain: rcNum(get('Tagesbelastung')),
     whoopRecovery: recovery,
+    dev: 'whoop',
   };
 }
 
@@ -160,7 +164,7 @@ function rcStd(a, m) { return a.length > 1 ? Math.sqrt(a.reduce((s, v) => s + (v
 
 function computeScores(rows) {
   return rows.map((r, i) => {
-    const win = rows.slice(Math.max(0, i - RC_BASELINE_WINDOW), i).filter((p) => p.hrv != null && p.rhr != null);
+    const win = rows.slice(Math.max(0, i - RC_BASELINE_WINDOW), i).filter((p) => p.hrv != null && p.rhr != null && rcDev(p) === rcDev(r));
     if (win.length < RC_BASELINE_MIN || r.hrv == null || r.rhr == null) return { ...r, score: null, baseHrv: null, baseRhr: null };
     const hrvs = win.map((p) => p.hrv), rhrs = win.map((p) => p.rhr);
     const mHrv = rcMean(hrvs), sHrv = rcStd(hrvs, mHrv) || 1;
@@ -328,6 +332,7 @@ function renderRecovery() {
   const box = $('recovery'), sbox = $('sleep'), hbox = $('habits');
   if (!box || !sbox || !hbox) return;
   if (typeof renderWeekly === 'function') renderWeekly();
+  if (typeof renderCockpit === 'function') renderCockpit();
   const rows = [...whoop].sort((a, b) => a.d.localeCompare(b.d));
   const scored = computeScores(rows);
 
@@ -435,7 +440,7 @@ function renderRecovery() {
     rcPanel('pulse', 'indigo', stale ? 'Letzte Nacht mit Daten' : 'Heute', 'Nacht auf ' + rcShort(last.d), scoreBlock, tiles, strainHint),
     trendPanel,
     rcPanel('tray', 'gray', 'Daten', '', importRow(),
-      el('p', { class: 'muted small' }, 'Der Fred-Score ist eine eigene Schätzung (HRV und Ruhepuls gegen deine laufende Basislinie, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel pendelt sich die Basislinie in etwa 1–2 Wochen ein.'))));
+      el('p', { class: 'muted small' }, 'Der Fred-Score ist eine eigene Schätzung (HRV und Ruhepuls gegen deine laufende Basislinie, minus Schlafschuld), kein Whoop-Wert. Nach einem Gerätewechsel beginnt die Basislinie neu (nur Nächte desselben Geräts) und steht nach 7 Nächten.'))));
   const effPanel = rcPanel('bars', 'teal', 'Schlafeffizienz', N + ' Nächte',
     rcBars(series((r) => r.sleepEff), { judge: RC_RULES.eff, fmt: (v) => v + ' %', max: 100, h: 100 }),
     rcLegend(['g', '90 % oder mehr'], ['o', '85\u201389 %'], ['r', 'unter 85 %']));

@@ -225,8 +225,9 @@ function bsFacts() {
   const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d)));
   const last = [...rows].reverse().find((x) => x.score != null);
   if (!last) return null;
-  const weekRows = rows.filter((x) => x.d <= last.d).slice(-n);
-  const prevRows = rows.filter((x) => x.d < weekRows[0].d).slice(-n);
+  const same = rows.filter((x) => rcDev(x) === rcDev(last)); // never compare two different devices
+  const weekRows = same.filter((x) => x.d <= last.d).slice(-n);
+  const prevRows = same.filter((x) => x.d < weekRows[0].d).slice(-n);
   const week = bsWeek(weekRows), prev = prevRows.length >= 4 ? bsWeek(prevRows) : null; // the earlier period needs at least 4 nights
   // no workouts in either week: probably no workouts file imported, so do not show zeros
   if (!(week.sessions > 0 || (prev && prev.sessions > 0))) for (const w of [week, prev]) if (w) w.sessions = w.trMin = w.trKcal = null;
