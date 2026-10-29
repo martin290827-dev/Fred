@@ -1,0 +1,179 @@
+/* =========================================================
+   Material 3 layer (Google look) for the whole app.
+   Loaded AFTER style.css and only changes the look: colours,
+   surfaces, shapes, controls, type weights. Layout stays in
+   style.css. Night is the default, day comes from the device
+   (same switches as style.css).
+   ========================================================= */
+:root {
+  --bg: #131314;
+  --card: #1e1f20;
+  --card-2: #282a2c;
+  --fill: rgba(227, 227, 227, 0.08);
+  --fill-2: rgba(227, 227, 227, 0.14);
+  --line: #333537;
+  --line-2: #444746;
+  --text: #e3e3e3;
+  --muted: #a8abaf;
+  --accent: #a8c7fa;
+  --accent-soft: rgba(168, 199, 250, 0.16);
+  --on-accent: #062e6f;
+  --up: #6dd58c;
+  --down: #f2b8b5;
+  --warn: #fdd663;
+  --field: transparent;
+  --shadow: none;
+  --glass: rgba(19, 19, 20, 0.9);
+  --m3-tonal: #004a77;      /* secondary container: tonal buttons, selected chips and tabs */
+  --m3-on-tonal: #c2e7ff;
+  --m3-state: rgba(227, 227, 227, 0.08); /* hover layer */
+  --m3-nav: #1e1f20;        /* bottom navigation bar */
+}
+:root[data-theme="light"] {
+  --bg: #f0f4f9;
+  --card: #ffffff;
+  --card-2: #f0f4f9;
+  --fill: rgba(31, 31, 31, 0.06);
+  --fill-2: rgba(31, 31, 31, 0.1);
+  --line: #e1e3e1;
+  --line-2: #c4c7c5;
+  --text: #1f1f1f;
+  --muted: #5f6368;
+  --accent: #0b57d0;
+  --accent-soft: #d3e3fd;
+  --on-accent: #ffffff;
+  --up: #146c2e;
+  --down: #b3261e;
+  --warn: #e37400;
+  --field: transparent;
+  --shadow: none;
+  --glass: rgba(240, 244, 249, 0.92);
+  --m3-tonal: #c2e7ff;
+  --m3-on-tonal: #001d35;
+  --m3-state: rgba(31, 31, 31, 0.06);
+  --m3-nav: #ffffff;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f0f4f9;
+    --card: #ffffff;
+    --card-2: #f0f4f9;
+    --fill: rgba(31, 31, 31, 0.06);
+    --fill-2: rgba(31, 31, 31, 0.1);
+    --line: #e1e3e1;
+    --line-2: #c4c7c5;
+    --text: #1f1f1f;
+    --muted: #5f6368;
+    --accent: #0b57d0;
+    --accent-soft: #d3e3fd;
+    --on-accent: #ffffff;
+    --up: #146c2e;
+    --down: #b3261e;
+    --warn: #e37400;
+    --field: transparent;
+    --shadow: none;
+    --glass: rgba(240, 244, 249, 0.92);
+    --m3-tonal: #c2e7ff;
+    --m3-on-tonal: #001d35;
+    --m3-state: rgba(31, 31, 31, 0.06);
+    --m3-nav: #ffffff;
+  }
+}
+
+/* ---------- type: Google fonts when the device has them, regular weights, no tight tracking ---------- */
+body { font-family: "Google Sans Text", "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; letter-spacing: 0; }
+.big, .clock .t, .wx-temp, .wx-tile-temp, .wx-alt-temp, .today, header h1,
+.food .num, .lg-v, .goal-num, .wt-v, .food-kc, .kpi-v, .ring-num {
+  font-family: "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.ring-num, .kpi-v, .lg-v, .goal-num, .wt-v, .now-v, .rc-score { font-weight: 400; }
+/* small uppercase labels become sentence-case titles (M3 "title small") */
+.fpanel .food-sub, .bs h3, .bs-head, .now-l, .ring-cap, .kpi-l, .ck-tile-h {
+  text-transform: none; letter-spacing: 0.01em; font-weight: 500;
+}
+.fpanel .food-sub, .bs h3 { font-size: 0.85rem; }
+.now-l { font-size: 0.75rem; }
+
+/* ---------- top app bar ---------- */
+header { border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+header h1 { font-weight: 400; font-size: 1.375rem; letter-spacing: 0; }
+header h1::before { border-radius: 50%; background: var(--accent); color: var(--on-accent); font-weight: 500; box-shadow: none; }
+.today { font-weight: 400; letter-spacing: 0; }
+
+/* ---------- cards: filled surfaces, extra large corners ---------- */
+.card { border-radius: 24px; box-shadow: none; }
+.card h2 { font-size: 1.1rem; font-weight: 500; letter-spacing: 0; }
+.cicon { border-radius: 50%; box-shadow: none; }
+.fpanel { border-radius: 20px; }
+.kpi { border-radius: 16px; }
+.now-row { border-radius: 16px; }
+.now-v { font-size: 1.2rem; }
+.card.flash { box-shadow: 0 0 0 3px var(--accent); }
+
+/* ---------- buttons: pill shape, label weight 500, state layer instead of fading ---------- */
+button { font-weight: 500; letter-spacing: 0.01em; }
+button:hover { opacity: 1; background-image: linear-gradient(var(--m3-state), var(--m3-state)); }
+button:active { transform: none; background-image: linear-gradient(var(--m3-state), var(--m3-state)), linear-gradient(var(--m3-state), var(--m3-state)); }
+button:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+/* secondary buttons become tonal buttons */
+button.ghost, .banner button { background-color: var(--m3-tonal); color: var(--m3-on-tonal); }
+button.ghost:hover { background-color: var(--m3-tonal); }
+button.hicon { width: 32px; height: 32px; background-color: var(--m3-tonal); color: var(--m3-on-tonal); }
+button.hicon:hover { background-color: var(--m3-tonal); }
+button.icon { background-color: transparent; }
+button.icon:hover { background-color: var(--fill); }
+button.linkbtn:hover { background-image: none; }
+.hbtn { background-color: var(--m3-tonal); color: var(--m3-on-tonal); }
+
+/* ---------- text fields: outlined, small corners ---------- */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]), select, textarea { border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); }
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+select { background-color: var(--card); }
+/* check boxes: square with small corners */
+input[type="checkbox"] { width: 18px; height: 18px; border-radius: 3px; border: 2px solid var(--muted); box-shadow: none; }
+input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+input[type="checkbox"]:checked::after { border-color: var(--on-accent); }
+input[type="checkbox"]:focus { box-shadow: none; }
+
+/* ---------- segmented buttons: outlined pill, selected part tonal with a check ---------- */
+.seg { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); border-radius: 999px; padding: 0; gap: 0; overflow: hidden; }
+.seg button { border-radius: 0; font-weight: 500; padding: 6px 0; color: var(--text); box-shadow: inset 1px 0 0 var(--line-2); }
+.seg button:first-child { box-shadow: none; }
+.seg button.on { background: var(--m3-tonal); color: var(--m3-on-tonal); }
+.seg button.on:not(:first-child) { box-shadow: inset 1px 0 0 var(--line-2); }
+.seg:not(:has(> :nth-child(5))) button.on::before { content: "\2713\00a0"; }
+
+/* ---------- chips: 8 px corners ---------- */
+.chip { border-radius: 8px; background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+.chip:hover { background-color: transparent; }
+.pill, .mchip, .tip-k { border-radius: 8px; }
+.quick-recent .chip { border-radius: 8px; background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); }
+
+/* ---------- tabs: tonal selection, one-colour icons ---------- */
+.tabbar .cicon { background: transparent !important; box-shadow: none; }
+.tabbar .cicon svg { stroke: currentColor; }
+.tabbar button { background: transparent; color: var(--muted); font-weight: 500; }
+.tabbar button.on { background: var(--m3-tonal); color: var(--m3-on-tonal); }
+.jumpbar button { background: transparent; color: var(--muted); font-weight: 500; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); }
+.jumpbar button.on { background: var(--m3-tonal); color: var(--m3-on-tonal); box-shadow: none; }
+/* phone: M3 navigation bar, a pill behind the icon of the open tab */
+@media (max-width: 700px) {
+  .tabbar { background: var(--m3-nav); border-top: 0; padding-top: 10px; box-shadow: 0 -1px 0 var(--line); }
+  .tabbar button, .tabbar button.on { background: none; gap: 4px; font-size: 0.72rem; }
+  .tabbar button.on { color: var(--text); font-weight: 700; }
+  .tabbar .cicon { width: 56px; height: 30px; border-radius: 15px; opacity: 1; color: var(--muted); }
+  .tabbar button.on .cicon { background: var(--m3-tonal) !important; color: var(--m3-on-tonal); }
+  .tabbar .cicon svg { width: 20px; height: 20px; }
+}
+
+/* ---------- dialogs, banners ---------- */
+dialog { border-radius: 28px; }
+dialog h2 { font-weight: 400; letter-spacing: 0; }
+dialog h3 { font-weight: 500; letter-spacing: 0; }
+dialog label { font-weight: 500; }
+.banner { border-radius: 16px; }
+
+/* ---------- status colours: one green and one red everywhere ---------- */
+.bs-ch.better, .ck-a.better { color: var(--up); }
+.bs-ch.worse, .ck-a.worse { color: var(--down); }

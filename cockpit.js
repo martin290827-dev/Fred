@@ -34,7 +34,7 @@ function ckFacts(rows, wos) {
   return { last, dev, from, to: last.d, week: stats(week), norm: calib ? null : stats(base), nights: week.length, baseN: base.length, calib, load, age: -dayDiff(last.d), needOwn: week.some((r) => r.sleepNeedMin) };
 }
 
-/* Look: Material 3 (Google Fit style). One dial with three nested rings, a legend with tonal status chips,
+/* Look: Material 3 (Google Fit style). Three rings, each with a tonal status chip,
    then tonal tiles with an icon, the value, a chip with the change and the normal value. */
 
 // Small line icons (24 x 24, stroke), one per measure
@@ -51,51 +51,39 @@ const CK_ICONS = {
 };
 const ckIcon = (k) => { const s = svgEl('svg', { viewBox: '0 0 24 24', class: 'ck-ic', 'aria-hidden': 'true' }); s.append(svgEl('path', { d: CK_ICONS[k] })); return s; };
 
-// The dial: rings from outside to inside. ring = { cls, fill (0..1), tick (0..1 or null) }
-function ckDial(rings, centre, sub) {
+// One ring: fill 0..1, colour class, value in the middle, label, a small line and a status chip below. tick = mark on the ring (0..1).
+function ckRing(label, fill, cls, big, small, chip, tick) {
+  const R = 42, C = 2 * Math.PI * R;
   const svg = svgEl('svg', { viewBox: '0 0 100 100', class: 'ck-svg', 'aria-hidden': 'true' });
-  rings.forEach((r, i) => {
-    const R = 44 - i * 10, C = 2 * Math.PI * R;
-    svg.append(svgEl('circle', { cx: 50, cy: 50, r: R, class: 'ck-track ' + r.cls }));
-    if (r.fill > 0) svg.append(svgEl('circle', { cx: 50, cy: 50, r: R, class: 'ck-fill ' + r.cls, 'stroke-dasharray': (C * Math.min(1, r.fill)).toFixed(2) + ' ' + C.toFixed(2), transform: 'rotate(-90 50 50)' }));
-    if (r.tick != null) { const a = 2 * Math.PI * r.tick - Math.PI / 2; svg.append(svgEl('line', { x1: 50 + (R - 4) * Math.cos(a), y1: 50 + (R - 4) * Math.sin(a), x2: 50 + (R + 4) * Math.cos(a), y2: 50 + (R + 4) * Math.sin(a), class: 'ck-tick' })); }
-  });
-  return el('div', { class: 'ck-dial' }, svg, el('div', { class: 'ck-centre' }, el('b', {}, centre), el('span', {}, sub)));
+  svg.append(svgEl('circle', { cx: 50, cy: 50, r: R, class: 'ck-track ' + cls }));
+  if (fill > 0) svg.append(svgEl('circle', { cx: 50, cy: 50, r: R, class: 'ck-fill ' + cls, 'stroke-dasharray': (C * Math.min(1, fill)).toFixed(1) + ' ' + C.toFixed(1), transform: 'rotate(-90 50 50)' }));
+  if (tick != null) { const a = 2 * Math.PI * tick - Math.PI / 2; svg.append(svgEl('line', { x1: 50 + 35 * Math.cos(a), y1: 50 + 35 * Math.sin(a), x2: 50 + 49 * Math.cos(a), y2: 50 + 49 * Math.sin(a), class: 'ck-tick' })); }
+  return el('div', { class: 'ck-ring', role: 'img', 'aria-label': label + ': ' + big + (small ? ', ' + small : '') },
+    el('div', { class: 'ck-dial' }, svg, el('b', { class: 'ck-big' }, big)),
+    el('div', { class: 'ck-lab' }, label), el('div', { class: 'ck-sm' }, small || ' '), chip || '');
 }
 
 // Tonal chip: tone 'good' | 'bad' | 'warn' | 'neutral'
 const ckChip = (tone, text, title) => el('span', { class: 'ck-chip ck-' + tone, title: title || '' }, text);
 const CK_TONE = { g: 'good', o: 'warn', r: 'bad' };
 
-// One legend line next to the dial
-const ckLegend = (cls, icon, label, value, chip, note) => el('div', { class: 'ck-leg' },
-  el('span', { class: 'ck-dot ' + cls }, ckIcon(icon)),
-  el('div', { class: 'ck-leg-t' }, el('span', { class: 'ck-leg-l' }, label), el('span', { class: 'ck-leg-v' }, value), note ? el('span', { class: 'ck-leg-n' }, note) : ''),
-  chip || '');
-
 const CK_SLEEP_BAND = (p) => (p >= 85 ? 'g' : p >= 70 ? 'o' : 'r'); // like the usual sleep-performance bands
 const CK_SLEEP_WORD = { g: 'genug', o: 'knapp', r: 'zu wenig' };
 
+// Ring colour = status (good / watch / poor) like the traffic lights elsewhere; load is neutral blue.
 function ckHero(f) {
   const w = f.week, n = f.norm, l = f.load;
-  const ratio = l && l.normMin ? l.min / l.normMin : null;
-  const rings = [
-    { cls: 'ck-c-sleep', fill: w.sleepPct != null ? w.sleepPct / 100 : 0 },
-    { cls: 'ck-c-rec', fill: w.score != null ? w.score / 100 : 0 },
-    { cls: 'ck-c-load', fill: ratio != null ? ratio / 2 : l && l.min ? 1 : 0, tick: ratio != null ? 0.5 : null },
-  ];
   const sb = w.sleepPct != null ? CK_SLEEP_BAND(w.sleepPct) : null;
   const rb = w.score != null ? RC_RULES.score(w.score) : null;
-  const loadWord = ratio == null ? null : ratio < 0.75 ? 'weniger als normal' : ratio > 1.25 ? 'mehr als normal' : 'wie normal';
-  const legend = el('div', { class: 'ck-legend' },
-    ckLegend('ck-c-sleep', 'sleep', f.needOwn ? 'Schlaf vom Bedarf' : 'Schlaf von 8 h', w.sleepPct != null ? Math.round(w.sleepPct) + ' %' : '–',
-      sb ? ckChip(CK_TONE[sb], CK_SLEEP_WORD[sb]) : '', w.sleep != null ? 'Ø ' + rcHmShort(w.sleep) + ' pro Nacht' : ''),
-    ckLegend('ck-c-rec', 'rec', 'Erholung', w.score != null ? String(Math.round(w.score)) : '–',
-      rb ? ckChip(CK_TONE[rb], BAND_LABEL[scoreBand(w.score)]) : '', n && n.score != null ? 'Normal ' + Math.round(n.score) : f.calib ? 'Kalibrierung' : 'Fred-Score'),
-    ckLegend('ck-c-load', 'load', 'Belastung', l ? rcHmShort(l.min) : '–',
-      loadWord ? ckChip('neutral', loadWord) : '', l ? (l.normMin != null ? 'Normal ' + rcHmShort(l.normMin) : 'Trainingszeit') : 'keine Trainings'));
-  const dial = ckDial(rings, w.score != null ? String(Math.round(w.score)) : '–', 'Erholung');
-  return el('div', { class: 'ck-hero', role: 'img', 'aria-label': 'Schlaf, Erholung und Belastung der Woche' }, dial, legend);
+  const ratio = l && l.normMin ? l.min / l.normMin : null;
+  const loadWord = ratio == null ? null : ratio < 0.75 ? 'unter normal' : ratio > 1.25 ? 'über normal' : 'normal';
+  return el('div', { class: 'ck-rings' },
+    sb ? ckRing(f.needOwn ? 'Schlaf' : 'Schlaf (8 h)', w.sleepPct / 100, 'ck-s-' + sb, Math.round(w.sleepPct) + ' %', 'Ø ' + rcHmShort(w.sleep), ckChip(CK_TONE[sb], CK_SLEEP_WORD[sb]))
+      : ckRing('Schlaf', 0, '', '–', 'keine Schlafdaten'),
+    rb ? ckRing('Erholung', w.score / 100, 'ck-s-' + rb, String(Math.round(w.score)), n && n.score != null ? 'Normal ' + Math.round(n.score) : 'Fred-Score', ckChip(CK_TONE[rb], BAND_LABEL[scoreBand(w.score)]))
+      : ckRing('Erholung', 0, '', '–', f.calib ? 'Kalibrierung' : 'kein Score'),
+    l ? ckRing('Belastung', ratio != null ? ratio / 2 : l.min ? 1 : 0, 'ck-s-load', rcHmShort(l.min), l.normMin != null ? 'Normal ' + rcHmShort(l.normMin) : 'Trainingszeit', loadWord ? ckChip('neutral', loadWord) : '', ratio != null ? 0.5 : null)
+      : ckRing('Belastung', 0, '', '–', 'keine Trainings'));
 }
 
 /* rows "week vs normal": label, key, format, step (smaller = same), up (true = higher is better, false = lower, null = neutral) */
@@ -161,5 +149,5 @@ function renderCockpit() {
       el('span', { class: 'ck-head-s' }, f.nights + (f.nights === 1 ? ' Nacht' : ' Nächte') + ' · verglichen mit den 30 Nächten davor')),
     ckHero(f),
     ckList(f),
-    el('p', { class: 'ck-foot' }, [ageNote, calibNote, 'Erholung = Fred-Score. Belastung = Trainingszeit der Woche; der Strich am inneren Ring ist deine normale Woche. Gerät: ' + (CK_DEV_NAME[f.dev] || f.dev) + '.'].filter(Boolean).join(' ')));
+    el('p', { class: 'ck-foot' }, [ageNote, calibNote, 'Erholung = Fred-Score. Belastung = Trainingszeit der Woche; der Strich am Ring ist deine normale Woche. Gerät: ' + (CK_DEV_NAME[f.dev] || f.dev) + '.'].filter(Boolean).join(' ')));
 }

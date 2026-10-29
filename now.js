@@ -90,8 +90,8 @@ function nowBodyMore() {
   const rows = computeScores([...whoop].sort((a, b) => a.d.localeCompare(b.d)));
   const r = [...rows].reverse().find((x) => x.score != null), out = [];
   if (!r) return out;
-  if (r.hrv != null) out.push(nowLine('HRV', r.hrv + ' ms' + (r.baseHrv ? ' (usual ' + r.baseHrv + ')' : '')));
-  if (r.rhr != null) out.push(nowLine('Ruhepuls', r.rhr + ' bpm' + (r.baseRhr ? ' (usual ' + r.baseRhr + ')' : '')));
+  if (r.hrv != null) out.push(nowLine('HRV', r.hrv + ' ms' + (r.baseHrv ? ' (normal ' + r.baseHrv + ')' : '')));
+  if (r.rhr != null) out.push(nowLine('Ruhepuls', r.rhr + ' bpm' + (r.baseRhr ? ' (normal ' + r.baseRhr + ')' : '')));
   if (r.sleepMin != null) out.push(nowLine('Schlaf', rcHmShort(r.sleepMin)));
   out.push(nowLine('Daten vom', rcShort(r.d)));
   return out;
