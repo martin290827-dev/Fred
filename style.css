@@ -1501,3 +1501,14 @@ button.add-btn { min-width: 48px; padding-left: 0; padding-right: 0; font-size: 
 }
 
 @media (max-width: 700px) { .ck-big { font-size: 1.2rem; } } /* "2:00 h" fits inside the ring */
+
+/* Food: which day the diary shows (‹ Heute ›); a past day is tinted so you see you are not on today */
+.food-day { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; padding: 4px; border-radius: 999px; background: var(--card-2); }
+.food-day.past { background: var(--m3-tonal, var(--accent-soft)); color: var(--m3-on-tonal, var(--text)); }
+.food-day-b { width: 36px; height: 36px; padding: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 1.4rem; line-height: 1; display: grid; place-items: center; }
+.food-day-b:disabled { opacity: 0.3; cursor: default; }
+.food-day-l { flex: 1; background: transparent; color: inherit; font-weight: 500; padding: 6px 8px; }
+.food-day-l .muted { color: inherit; opacity: 0.7; font-weight: 400; }
+.food-time-row { display: flex; align-items: center; gap: 8px; margin: -4px 0 8px; color: var(--muted); }
+.food-time-row .food-add-time { width: auto; padding: 4px 10px; }
+.food-edit-bar input[type="date"] { width: 150px; }

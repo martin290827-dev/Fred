@@ -179,5 +179,17 @@ const test = async (name, fn) => { try { await fn(); ok++; } catch (e) { console
     assert.strictEqual(ctx.whoop[1].dev, 'other'); assert.strictEqual(ctx.whoop[1].hrv, 48);
   });
 
+  /* ---- Food: add or move a meal on an earlier day ---- */
+  await test('a meal can be added to an earlier day at a chosen time; the preview names that day', () => {
+    ctx.estimateEntry = () => {}; ctx.food = []; ctx.nutri = Object.assign({}, ctx.nutri, { kcal: 2000 });
+    ctx.addMeal('Testessen 500 kcal', day(1), '19:30');
+    assert.strictEqual(ctx.food[0].at, day(1) + 'T19:30');
+    ctx.addMeal('Jetzt', day(0));
+    assert.strictEqual(ctx.food[1].at.slice(0, 10), day(0));
+    assert.ok(ctx.mealPreview('Testessen 500 kcal', day(1)).text.includes('gestern'));
+    assert.ok(ctx.mealPreview('Testessen 500 kcal', day(3)).text.includes('→ am '));
+    assert.ok(ctx.mealPreview('Testessen 500 kcal').text.includes('heute'));
+  });
+
   console.log(process.exitCode ? 'Some tests failed.' : 'OK: ' + ok + ' logic tests passed.');
 })();

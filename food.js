@@ -860,9 +860,20 @@ function cheatRow(today) {
   return el('div', { class: 'cheat-box' }, ...rows);
 }
 
-// Add one meal for now and start the estimate (used by the Food form and the quick add)
-function addMeal(text) {
-  const e = { id: uid(), at: toLocalISO(new Date()), text, kcal: null, p: null, c: null, f: null, s: null, src: null, err: null };
+/* ---------- which day the Food card shows: today or up to 7 days back (to add or fix meals later) ---------- */
+const FOOD_BACK_MAX = 7;
+let foodBack = 0; // days back from today; not stored, so Fred always opens on today
+const foodDay = () => toDateStr(addDays(new Date(), -foodBack));
+// "Heute", "Gestern" or the short date
+const dayWord = (d) => (d === toDateStr(new Date()) ? 'Heute' : d === toDateStr(addDays(new Date(), -1)) ? 'Gestern' : shortDay(d));
+const dayIn = (d) => { const w = dayWord(d); return w === 'Heute' || w === 'Gestern' ? w.toLowerCase() : 'am ' + w; }; // inside a sentence
+
+// Add one meal and start the estimate (used by the Food form and the quick add).
+// day / time: for a past day (Food card set back); without them the meal is logged now.
+function addMeal(text, day, time) {
+  const now = toLocalISO(new Date());
+  const at = day && day !== now.slice(0, 10) ? day + 'T' + (time || now.slice(11, 16)) : now;
+  const e = { id: uid(), at, text, kcal: null, p: null, c: null, f: null, s: null, src: null, err: null };
   food.push(e);
   saveFood();
   estimateEntry(e);
@@ -879,15 +890,16 @@ function knownMeal(text) {
   return e ? { kcal: e.kcal, p: e.p } : null;
 }
 
-// Where today would stand after this meal: { text, over } or null when the calories are not known.
-function mealPreview(text) {
+// Where the day (default today) would stand after this meal: { text, over } or null when the calories are not known.
+function mealPreview(text, day) {
   const m = knownMeal(text);
   if (!m) return null;
-  const tg = targets(), after = dayTotals(toDateStr(new Date())).kcal + m.kcal;
-  return { over: after > tg.kcal, text: '≈ ' + fmtN(m.kcal) + ' kcal → heute ' + fmtN(after) + ' von ' + fmtN(tg.kcal) + (after > tg.kcal ? ' (' + fmtN(after - tg.kcal) + ' drüber)' : '') };
+  const d = day || toDateStr(new Date());
+  const tg = targets(), after = dayTotals(d).kcal + m.kcal;
+  return { over: after > tg.kcal, text: '≈ ' + fmtN(m.kcal) + ' kcal → ' + dayIn(d) + ' ' + fmtN(after) + ' von ' + fmtN(tg.kcal) + (after > tg.kcal ? ' (' + fmtN(after - tg.kcal) + ' drüber)' : '') };
 }
-function showPreview(node, text) {
-  const pv = mealPreview(text);
+function showPreview(node, text, day) {
+  const pv = mealPreview(text, day);
   node.textContent = pv ? pv.text : '';
   node.classList.toggle('over', !!(pv && pv.over));
 }
@@ -992,19 +1004,23 @@ function renderFood() {
   const wtyping = document.activeElement && document.activeElement.id === 'wt-in' ? document.activeElement.value : null;
   const watyping = document.activeElement && document.activeElement.id === 'wa-in' ? document.activeElement.value : null;
   const today = toDateStr(new Date());
-  const t = dayTotals(today);
+  const day = foodDay(), past = day !== today; // the day the diary shows (today or up to 7 days back)
+  const t = dayTotals(day);
   const avg7 = avgKcal(lastDays(7));
-  const list = food.filter((e) => e.at.slice(0, 10) === today).sort((a, b) => b.at.localeCompare(a.at));
+  const list = food.filter((e) => e.at.slice(0, 10) === day).sort((a, b) => b.at.localeCompare(a.at));
 
-  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: 'Was hast du gegessen?', title: 'Tipp: Zum Diktieren auf das Mikrofon der iPhone-Tastatur tippen', maxlength: '1500', autocomplete: 'off', 'aria-label': 'Was hast du gegessen' });
+  const input = el('input', { type: 'text', id: 'food-text', list: 'food-hist', placeholder: past ? 'Was hast du ' + dayIn(day) + ' gegessen?' : 'Was hast du gegessen?', title: 'Tipp: Zum Diktieren auf das Mikrofon der iPhone-Tastatur tippen', maxlength: '1500', autocomplete: 'off', 'aria-label': 'Was hast du gegessen' });
+  // a past day gets a time field (default: now), so the meal lands at the right place in that day
+  const time = past ? el('input', { type: 'time', id: 'food-time', class: 'food-add-time', 'aria-label': 'Uhrzeit', value: foodTime || toLocalISO(new Date()).slice(11, 16) }) : '';
+  if (time) time.addEventListener('change', () => { foodTime = time.value; });
   const form = el('form', { class: 'row food-add' }, input, foodHistList(), el('button', { type: 'submit', class: 'add-btn', 'aria-label': 'Eintragen', title: 'Eintragen' }, '+'));
   const preview = el('p', { class: 'small meal-prev', 'aria-live': 'polite' });
-  input.addEventListener('input', () => showPreview(preview, input.value));
+  input.addEventListener('input', () => showPreview(preview, input.value, day));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const text = input.value.trim();
     if (!text) return;
-    addMeal(text);
+    addMeal(text, day, time ? time.value : null);
     input.value = '';
     showPreview(preview, '');
   });
@@ -1022,9 +1038,10 @@ function renderFood() {
   const hero = el('div', { class: 'fsum' }, el('div', { class: 'fsum-rings' }, stackRings(parts, 150)), legend);
   const macros = tg.p ? '' : el('p', { class: 'muted small fsum-foot' }, 'Trag dein Gewicht unter Gewicht & Ziel ein, um Ziele für Protein, Kohlenhydrate und Fett zu bekommen.');
   const head = el('div', { class: 'food-today' }, hero, macros, cheatRow(today));
+  const dayNav = foodDayNav(day);
 
   const ul = el('ul', { class: 'list food-list' });
-  if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, 'Noch nichts eingetragen. Tippe oder diktiere, was du gegessen hast.'));
+  if (!list.length) ul.append(el('li', { class: 'muted small meal-empty' }, past ? 'An diesem Tag ist nichts eingetragen.' : 'Noch nichts eingetragen. Tippe oder diktiere, was du gegessen hast.'));
   for (const e of list) ul.append(foodEditId === e.id ? foodEditRow(e) : foodRow(e));
 
   const w = weightOn(today);
@@ -1046,7 +1063,7 @@ function renderFood() {
   const waBefore = wa ? waist.filter((x) => x.d < wa.d).sort((a, b) => b.d.localeCompare(a.d))[0] : null;
   const dwa = wa && waBefore ? wa.cm - waBefore.cm : null;
   const ref = waistRef();
-  const refTxt = wa && ref ? (wa.cm < ref[0] ? 'geringeres Risiko' : wa.cm < ref[1] ? 'above ' + ref[0] + ' cm: erhöhtes Risiko' : 'above ' + ref[1] + ' cm: hohes Risiko') : '';
+  const refTxt = wa && ref ? (wa.cm < ref[0] ? 'geringeres Risiko' : wa.cm < ref[1] ? 'über ' + ref[0] + ' cm: erhöhtes Risiko' : 'über ' + ref[1] + ' cm: hohes Risiko') : '';
   const refCls = wa && ref ? (wa.cm < ref[0] ? 'good' : wa.cm < ref[1] ? 'mid' : 'high') : ''; // colour of the risk text
   const waForBlock = el('div', { class: 'food-weight' },
     el('div', { class: 'grow' },
@@ -1080,8 +1097,9 @@ function renderFood() {
   ];
 
   // three cards: Food (today), Health (weight and goal), Trends (last days)
-  box.replaceChildren(el('div', { class: 'food-col' }, form, preview, head,
-    hcard('meals', 'pink', 'Mahlzeiten', list.length ? list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') : 'heute', ul)));
+  const timeRow = time ? el('label', { class: 'food-time-row small' }, 'Uhrzeit für den Eintrag ', time) : '';
+  box.replaceChildren(el('div', { class: 'food-col' }, dayNav, form, timeRow, preview, head,
+    hcard('meals', 'pink', 'Mahlzeiten', (list.length ? list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' · ' : '') + dayIn(day), ul)));
   const wcard = trendCards.find((c) => c && c.classList && c.querySelector('.w-cap'));
   const wsvg = wcard.querySelector('svg.fchart');
   const wcap = wcard.querySelector('.w-cap');
@@ -1095,11 +1113,25 @@ function renderFood() {
     // card height is fixed in CSS; more content scrolls inside the card
     growChart($('trends'), (h) => weightChart(daysN, h));
   });
-  if (typing !== null) { input.value = typing; input.focus(); showPreview(preview, typing); }
+  if (typing !== null) { input.value = typing; input.focus(); showPreview(preview, typing, day); }
   if (wtyping !== null) { const wi = $('wt-in'); if (wi) { wi.value = wtyping; wi.focus(); } }
   if (watyping !== null) { const wai = $('wa-in'); if (wai) { wai.value = watyping; wai.focus(); } }
   if (typeof renderWeekly === 'function') renderWeekly();
   if (typeof renderTips === 'function') renderTips();
+}
+
+let foodTime = ''; // the time typed for a past day, kept while the card redraws
+// ‹ day › above the diary: back up to 7 days, forward to today; tap the day to jump back to today
+function foodDayNav(day) {
+  const go = (n) => { foodBack = Math.max(0, Math.min(FOOD_BACK_MAX, n)); foodEditId = null; foodTime = ''; renderFood(); };
+  const back = el('button', { type: 'button', class: 'food-day-b', 'aria-label': 'Tag zurück', title: 'Tag zurück', onclick: () => go(foodBack + 1) }, '‹');
+  const fwd = el('button', { type: 'button', class: 'food-day-b', 'aria-label': 'Tag vor', title: 'Tag vor', onclick: () => go(foodBack - 1) }, '›');
+  back.disabled = foodBack >= FOOD_BACK_MAX;
+  fwd.disabled = !foodBack;
+  return el('div', { class: 'food-day' + (foodBack ? ' past' : ''), role: 'group', 'aria-label': 'Tag' }, back,
+    el('button', { type: 'button', class: 'food-day-l', title: foodBack ? 'Zurück zu heute' : '', onclick: () => go(0) },
+      dayWord(day), foodBack > 1 ? '' : el('span', { class: 'muted' }, ' · ' + shortDay(day))),
+    fwd);
 }
 
 // One row per meal: text (up to 3 lines; tap it to edit) with the buttons at its right, below it time, calories and macro chips.
@@ -1132,6 +1164,8 @@ function foodEditRow(e) {
   const text = el('textarea', { rows: '3', maxlength: '1500', 'aria-label': 'Mahlzeit', class: 'food-edit-text' }); text.value = e.text;
   text.addEventListener('input', () => autoGrow(text));
   const time = el('input', { type: 'time', 'aria-label': 'Uhrzeit' }); time.value = e.at.slice(11, 16);
+  // the day can change too (a meal logged today that belongs to yesterday), within the last 7 days
+  const date = el('input', { type: 'date', 'aria-label': 'Tag', min: toDateStr(addDays(new Date(), -FOOD_BACK_MAX)), max: toDateStr(new Date()) }); date.value = e.at.slice(0, 10);
   const kcal = el('input', { type: 'text', inputmode: 'numeric', 'aria-label': 'kcal', placeholder: 'kcal' }); kcal.value = e.kcal ?? '';
   const leave = () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }; // focus leaves the edit row, so the card may redraw
   const done = () => { leave(); foodEditId = null; renderFood(); };
@@ -1142,7 +1176,9 @@ function foodEditRow(e) {
     const textChanged = newText !== e.text;
     const kcalChanged = newKcal !== (e.kcal ?? null);
     e.text = newText;
-    e.at = e.at.slice(0, 11) + (time.value || e.at.slice(11, 16));
+    const newDay = date.value && date.value >= date.min && date.value <= date.max ? date.value : e.at.slice(0, 10);
+    e.at = newDay + 'T' + (time.value || e.at.slice(11, 16));
+    if (newDay !== foodDay()) foodBack = -dayDiff(newDay); // follow the meal to its new day
     foodEditId = null;
     if (kcalChanged && newKcal !== null) Object.assign(e, { kcal: newKcal, p: null, c: null, f: null, s: null, src: 'manual', err: null });
     saveFood();
@@ -1153,7 +1189,7 @@ function foodEditRow(e) {
       if (e.src === 'manual' && e.p == null) fillMacros(e).then(() => { saveFood(); renderFood(); }); // own calories: macros are estimated and scaled
     }
   };
-  for (const n of [text, time, kcal]) n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } if (ev.key === 'Escape') done(); });
+  for (const n of [text, date, time, kcal]) n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } if (ev.key === 'Escape') done(); });
   requestAnimationFrame(() => {
     autoGrow(text);
     text.focus({ preventScroll: true });
@@ -1162,7 +1198,7 @@ function foodEditRow(e) {
   });
   // text box over the full width, below it time, kcal and the buttons
   const row = el('li', { class: 'food-edit' }, el('div', { class: 'food-edit-fields' }, text,
-    el('div', { class: 'food-edit-bar' }, time, kcal,
+    el('div', { class: 'food-edit-bar' }, date, time, kcal,
       el('button', { type: 'button', class: 'small', onclick: save }, 'Speichern'),
       el('button', { type: 'button', class: 'ghost small', onclick: done }, 'Abbrechen'))));
   return row;
